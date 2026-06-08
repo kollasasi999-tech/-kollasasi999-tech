@@ -1,0 +1,16 @@
+{
+  "name": "interview-copilot",
+  "version": "1.0.0",
+  "description": "Real-time AI interview assistant powered by Anthropic Claude",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "electron": "^35.0.0"
+  },
+  "author": "Kolla Sasi Kumar <kollasasi999@gmail.com>",
+  "license": "MIT"
+}

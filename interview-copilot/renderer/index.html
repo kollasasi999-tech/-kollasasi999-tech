@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>Interview Copilot</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Title Bar -->
+    <div class="titlebar" id="titlebar">
+      <div class="titlebar-left">
+        <span class="app-dot"></span>
+        <span class="app-name">Interview Copilot</span>
+        <span class="app-badge">AI</span>
+      </div>
+      <div class="titlebar-right">
+        <button class="btn-icon" id="btnSettings" title="Settings">⚙</button>
+        <button class="btn-icon" id="btnMinimize" title="Minimize">−</button>
+        <button class="btn-icon btn-close" id="btnClose" title="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-inner">
+        <p class="settings-title">Settings</p>
+        <div class="field">
+          <label>Anthropic API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+        </div>
+        <div class="field">
+          <label>Job Role <span class="optional">(optional)</span></label>
+          <input type="text" id="jobRoleInput" placeholder="e.g. Senior Software Engineer" />
+        </div>
+        <div class="field">
+          <label>Job Context <span class="optional">(optional)</span></label>
+          <textarea id="jobDescInput" placeholder="Brief job description or company info..."></textarea>
+        </div>
+        <button class="btn-save" id="btnSaveSettings">Save Settings</button>
+        <p class="settings-note">Your API key is saved locally on your machine only.</p>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Ready — click Start to listen</span>
+      <div class="waves" id="waves" style="display:none">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn-listen" id="btnListen">
+        <span class="mic-icon" id="micIcon">🎤</span>
+        <span id="btnListenText">Start Listening</span>
+      </button>
+      <button class="btn-clear" id="btnClear" title="Clear all">Clear</button>
+    </div>
+
+    <!-- Question Section -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label">Detected Question</span>
+        <button class="btn-action" id="btnAsk">↑ Ask Claude</button>
+      </div>
+      <div class="text-box" id="transcriptBox">
+        <span class="hint">Start listening — questions will appear here automatically...</span>
+      </div>
+    </div>
+
+    <!-- Answer Section -->
+    <div class="section answer-section">
+      <div class="section-header">
+        <span class="section-label">Claude's Answer</span>
+        <button class="btn-action" id="btnCopy">📋 Copy</button>
+      </div>
+      <div class="text-box answer-box" id="answerBox">
+        <span class="hint">Answer will stream here in real-time...</span>
+      </div>
+    </div>
+
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
