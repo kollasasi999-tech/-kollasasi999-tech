@@ -240,6 +240,71 @@ html, body {
 }
 .btn-clear:hover { color: var(--text); border-color: var(--accent); }
 
+/* ── Language Row ── */
+.lang-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 8px;
+  flex-shrink: 0;
+}
+
+.lang-label {
+  font-size: 11px;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+
+.lang-select {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238888aa'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+.lang-select:focus { border-color: var(--accent); }
+.lang-select option { background: var(--bg2); }
+
+/* ── Hotkeys Bar ── */
+.hotkeys-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 5px 14px 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.hk {
+  font-size: 10px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+kbd {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-family: inherit;
+  color: var(--accent2);
+  letter-spacing: 0.2px;
+}
+
 /* ── Sections ── */
 .section {
   display: flex;

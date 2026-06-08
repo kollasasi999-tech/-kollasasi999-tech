@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onClaudeError: (callback) => {
     ipcRenderer.on('claude-error', (_, error) => callback(error))
   },
+  onHotkey: (callback) => {
+    ipcRenderer.on('hotkey', (_, action) => callback(action))
+  },
   removeListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)
   },

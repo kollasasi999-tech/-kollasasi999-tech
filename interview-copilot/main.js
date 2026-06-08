@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, session } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, session, globalShortcut } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const Anthropic = require('@anthropic-ai/sdk')
@@ -47,9 +47,29 @@ function createWindow() {
   })
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+
+  // Register global hotkeys after window is ready
+  mainWindow.webContents.once('did-finish-load', () => {
+    globalShortcut.register('CommandOrControl+Shift+L', () => {
+      mainWindow.webContents.send('hotkey', 'toggle-listen')
+    })
+    globalShortcut.register('CommandOrControl+Shift+S', () => {
+      mainWindow.webContents.send('hotkey', 'send-claude')
+    })
+    globalShortcut.register('CommandOrControl+Shift+C', () => {
+      mainWindow.webContents.send('hotkey', 'copy-answer')
+    })
+    globalShortcut.register('CommandOrControl+Shift+X', () => {
+      mainWindow.webContents.send('hotkey', 'clear')
+    })
+  })
 }
 
 app.whenReady().then(createWindow)
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

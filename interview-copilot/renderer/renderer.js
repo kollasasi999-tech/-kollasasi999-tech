@@ -18,6 +18,7 @@ const answerBox    = document.getElementById('answerBox')
 const apiKeyInput  = document.getElementById('apiKeyInput')
 const jobRoleInput = document.getElementById('jobRoleInput')
 const jobDescInput = document.getElementById('jobDescInput')
+const langSelect   = document.getElementById('langSelect')
 
 /* ── State ── */
 let isListening   = false
@@ -33,10 +34,46 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (saved.apiKey)      apiKeyInput.value  = saved.apiKey
   if (saved.jobRole)     jobRoleInput.value = saved.jobRole
   if (saved.jobDesc)     jobDescInput.value = saved.jobDesc
+  if (saved.language)    langSelect.value   = saved.language
 
   window.electronAPI.onClaudeChunk(handleChunk)
   window.electronAPI.onClaudeDone(handleDone)
   window.electronAPI.onClaudeError(handleError)
+
+  // Global hotkeys from main process
+  window.electronAPI.onHotkey((action) => {
+    switch (action) {
+      case 'toggle-listen':
+        isListening ? stopListening() : startListening()
+        break
+      case 'send-claude': {
+        const txt = transcriptBox.textContent.trim()
+        if (txt && !txt.includes('Start listening')) sendToClaude(txt)
+        break
+      }
+      case 'copy-answer': {
+        const ans = answerBox.innerText
+        if (ans && !ans.includes('Answer will stream')) {
+          navigator.clipboard.writeText(ans).then(() => {
+            btnCopy.textContent = '✓ Copied!'
+            setTimeout(() => { btnCopy.textContent = '📋 Copy' }, 2000)
+          })
+        }
+        break
+      }
+      case 'clear':
+        btnClear.click()
+        break
+    }
+  })
+
+  // Escape closes settings
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && settingsOpen) {
+      settingsOpen = false
+      settingsPanel.classList.remove('open')
+    }
+  })
 })
 
 /* ── Claude response handlers ── */
@@ -82,9 +119,10 @@ btnSave.addEventListener('click', async () => {
   const key = apiKeyInput.value.trim()
   if (!key) { alert('Please enter your Anthropic API key.'); return }
   await window.electronAPI.saveSettings({
-    apiKey:  key,
-    jobRole: jobRoleInput.value.trim(),
-    jobDesc: jobDescInput.value.trim(),
+    apiKey:    key,
+    jobRole:   jobRoleInput.value.trim(),
+    jobDesc:   jobDescInput.value.trim(),
+    language:  langSelect.value,
   })
   settingsOpen = false
   settingsPanel.classList.remove('open')
@@ -132,7 +170,7 @@ function startListening() {
   recognition = new SR()
   recognition.continuous     = true
   recognition.interimResults = true
-  recognition.lang           = 'en-US'
+  recognition.lang           = langSelect.value || 'en-US'
   finalText                  = ''
 
   recognition.onstart = () => {
