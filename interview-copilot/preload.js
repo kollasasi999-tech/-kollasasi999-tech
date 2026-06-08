@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.invoke('minimize-window'),
   close: () => ipcRenderer.invoke('close-window'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
+
+  setOpacity: (value) => ipcRenderer.invoke('set-opacity', value),
 
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),

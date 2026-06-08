@@ -18,9 +18,10 @@
         <span class="app-badge">AI</span>
       </div>
       <div class="titlebar-right">
+        <button class="btn-icon" id="btnTheme" title="Toggle theme">☀</button>
         <button class="btn-icon" id="btnSettings" title="Settings">⚙</button>
         <button class="btn-icon" id="btnMinimize" title="Minimize">−</button>
-        <button class="btn-icon btn-close" id="btnClose" title="Close">✕</button>
+        <button class="btn-icon btn-close" id="btnClose" title="Hide to tray">✕</button>
       </div>
     </div>
 
@@ -40,8 +41,15 @@
           <label>Job Context <span class="optional">(optional)</span></label>
           <textarea id="jobDescInput" placeholder="Brief job description or company info..."></textarea>
         </div>
+        <div class="field">
+          <label>Window Opacity — <span id="opacityValue">95%</span></label>
+          <input type="range" id="opacitySlider" min="20" max="100" value="95" step="5" />
+        </div>
         <button class="btn-save" id="btnSaveSettings">Save Settings</button>
-        <p class="settings-note">Your API key is saved locally on your machine only.</p>
+        <div class="settings-footer">
+          <p class="settings-note">API key is saved locally on your machine only.</p>
+          <button class="btn-quit" id="btnQuit">Quit App</button>
+        </div>
       </div>
     </div>
 

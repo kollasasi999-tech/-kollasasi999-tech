@@ -15,10 +15,14 @@ const btnClose     = document.getElementById('btnClose')
 const settingsPanel= document.getElementById('settingsPanel')
 const transcriptBox= document.getElementById('transcriptBox')
 const answerBox    = document.getElementById('answerBox')
-const apiKeyInput  = document.getElementById('apiKeyInput')
-const jobRoleInput = document.getElementById('jobRoleInput')
-const jobDescInput = document.getElementById('jobDescInput')
-const langSelect   = document.getElementById('langSelect')
+const apiKeyInput    = document.getElementById('apiKeyInput')
+const jobRoleInput   = document.getElementById('jobRoleInput')
+const jobDescInput   = document.getElementById('jobDescInput')
+const langSelect     = document.getElementById('langSelect')
+const btnTheme       = document.getElementById('btnTheme')
+const opacitySlider  = document.getElementById('opacitySlider')
+const opacityValue   = document.getElementById('opacityValue')
+const btnQuit        = document.getElementById('btnQuit')
 
 /* ── State ── */
 let isListening   = false
@@ -27,6 +31,7 @@ let recognition   = null
 let silenceTimer  = null
 let settingsOpen  = false
 let finalText     = ''
+let isDark        = true
 
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
@@ -35,6 +40,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (saved.jobRole)     jobRoleInput.value = saved.jobRole
   if (saved.jobDesc)     jobDescInput.value = saved.jobDesc
   if (saved.language)    langSelect.value   = saved.language
+
+  // Restore opacity
+  if (saved.opacity != null) {
+    const pct = Math.round(saved.opacity * 100)
+    opacitySlider.value = pct
+    opacityValue.textContent = pct + '%'
+  }
+
+  // Restore theme
+  if (saved.theme === 'light') {
+    isDark = false
+    document.querySelector('.app').classList.add('light')
+    btnTheme.textContent = '🌙'
+    btnTheme.title = 'Switch to dark mode'
+  }
 
   window.electronAPI.onClaudeChunk(handleChunk)
   window.electronAPI.onClaudeDone(handleDone)
@@ -109,6 +129,17 @@ function handleError(err) {
 btnMinimize.addEventListener('click', () => window.electronAPI.minimize())
 btnClose.addEventListener('click',    () => window.electronAPI.close())
 
+btnTheme.addEventListener('click', () => {
+  isDark = !isDark
+  const app = document.querySelector('.app')
+  app.classList.toggle('light', !isDark)
+  btnTheme.textContent = isDark ? '☀' : '🌙'
+  btnTheme.title = isDark ? 'Switch to light mode' : 'Switch to dark mode'
+  window.electronAPI.saveSettings({ theme: isDark ? 'dark' : 'light' })
+})
+
+btnQuit.addEventListener('click', () => window.electronAPI.quitApp())
+
 /* ── Settings ── */
 btnSettings.addEventListener('click', () => {
   settingsOpen = !settingsOpen
@@ -118,15 +149,25 @@ btnSettings.addEventListener('click', () => {
 btnSave.addEventListener('click', async () => {
   const key = apiKeyInput.value.trim()
   if (!key) { alert('Please enter your Anthropic API key.'); return }
+  const opacity = parseInt(opacitySlider.value) / 100
   await window.electronAPI.saveSettings({
     apiKey:    key,
     jobRole:   jobRoleInput.value.trim(),
     jobDesc:   jobDescInput.value.trim(),
     language:  langSelect.value,
+    opacity,
+    theme:     isDark ? 'dark' : 'light',
   })
   settingsOpen = false
   settingsPanel.classList.remove('open')
   setStatus('ready', 'Settings saved ✓')
+})
+
+/* ── Opacity slider (real-time) ── */
+opacitySlider.addEventListener('input', () => {
+  const pct = parseInt(opacitySlider.value)
+  opacityValue.textContent = pct + '%'
+  window.electronAPI.setOpacity(pct / 100)
 })
 
 /* ── Listen toggle ── */
