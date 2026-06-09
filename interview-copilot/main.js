@@ -188,6 +188,28 @@ ipcMain.handle('save-settings', (event, newSettings) => {
   return { success: true }
 })
 
+// Mock interview — multi-turn conversation
+ipcMain.handle('mock-interview-turn', async (event, { messages, systemPrompt }) => {
+  if (!settings.apiKey) {
+    mainWindow.webContents.send('mock-error', 'API key not set.')
+    return
+  }
+  const client = new Anthropic({ apiKey: settings.apiKey })
+  try {
+    const stream = client.messages.stream({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages,
+    })
+    stream.on('text',         (t) => mainWindow.webContents.send('mock-chunk', t))
+    stream.on('finalMessage', ()  => mainWindow.webContents.send('mock-done'))
+    stream.on('error',        (e) => mainWindow.webContents.send('mock-error', e.message))
+  } catch (e) {
+    mainWindow.webContents.send('mock-error', e.message)
+  }
+})
+
 // Screen capture for coding interviews
 ipcMain.handle('capture-screen', async () => {
   try {

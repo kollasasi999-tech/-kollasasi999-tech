@@ -19,6 +19,7 @@
         <span class="stealth-badge" id="stealthBadge">STEALTH</span>
       </div>
       <div class="titlebar-right">
+        <button class="btn-icon btn-mock-open" id="btnMockOpen" title="Mock interview practice">🎯</button>
         <button class="btn-icon" id="btnTheme" title="Toggle theme">☀</button>
         <button class="btn-icon" id="btnSettings" title="Settings">⚙</button>
         <button class="btn-icon" id="btnMinimize" title="Minimize">−</button>
@@ -161,6 +162,92 @@
       </div>
       <div class="text-box answer-box" id="answerBox">
         <span class="hint">Answer will stream here in real-time...</span>
+      </div>
+    </div>
+
+    <!-- Mock Interview Overlay Panel -->
+    <div class="mock-panel" id="mockPanel">
+
+      <!-- Setup Screen -->
+      <div class="mock-setup" id="mockSetup">
+        <p class="mock-title">🎯 Mock Interview</p>
+        <div class="field">
+          <label>Role</label>
+          <input type="text" id="mockRole" placeholder="e.g. Software Engineer, Data Scientist" />
+        </div>
+        <div class="mock-row">
+          <div class="field" style="flex:1">
+            <label>Type</label>
+            <select id="mockType">
+              <option value="behavioral">Behavioral</option>
+              <option value="technical">Technical</option>
+              <option value="system design">System Design</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1">
+            <label>Difficulty</label>
+            <select id="mockDifficulty">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+        </div>
+        <div class="mock-row">
+          <div class="field" style="flex:1">
+            <label>Questions</label>
+            <select id="mockCount">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1;display:flex;align-items:flex-end">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="mockTTS" checked /> Voice questions
+            </label>
+          </div>
+        </div>
+        <button class="btn-mock-start" id="btnMockStart">Start Mock Interview</button>
+        <button class="btn-action" id="btnMockClose" style="width:100%;margin-top:6px;text-align:center">Cancel</button>
+      </div>
+
+      <!-- Interview Screen -->
+      <div class="mock-interview" id="mockInterview" style="display:none">
+        <div class="mock-progress-bar">
+          <div class="mock-progress-fill" id="mockProgressFill"></div>
+        </div>
+        <div class="mock-meta">
+          <span id="mockQNum">Q 1 / 5</span>
+          <button class="btn-action" id="btnMockEnd">End Session</button>
+        </div>
+        <div class="mock-question-box" id="mockQuestionBox">
+          <span class="hint">Loading first question...</span>
+        </div>
+        <div class="mock-answer-area">
+          <div class="mock-answer-box" id="mockAnswerBox" contenteditable="true" spellcheck="false" placeholder="Speak or type your answer..."></div>
+          <div class="mock-controls">
+            <button class="btn-listen btn-mock-mic" id="btnMockMic">🎤 Answer</button>
+            <button class="btn-analyze" id="btnMockSubmit">Submit →</button>
+          </div>
+        </div>
+        <div class="mock-feedback-box" id="mockFeedbackBox" style="display:none"></div>
+      </div>
+
+      <!-- Results Screen -->
+      <div class="mock-results" id="mockResults" style="display:none">
+        <p class="mock-title">📊 Session Results</p>
+        <div class="mock-score-ring">
+          <span id="mockScoreNum">--</span>
+          <span class="mock-score-label">/ 10</span>
+        </div>
+        <div class="mock-results-list" id="mockResultsList"></div>
+        <div class="mock-results-actions">
+          <button class="btn-save" id="btnMockRestart">New Session</button>
+          <button class="btn-action" id="btnMockDone">Close</button>
+        </div>
       </div>
     </div>
 

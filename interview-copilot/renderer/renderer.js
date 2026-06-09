@@ -31,6 +31,30 @@ const opacitySlider    = document.getElementById('opacitySlider')
 const opacityValue     = document.getElementById('opacityValue')
 const btnQuit          = document.getElementById('btnQuit')
 const btnHistory       = document.getElementById('btnHistory')
+const btnMockOpen      = document.getElementById('btnMockOpen')
+const mockPanel        = document.getElementById('mockPanel')
+const mockSetup        = document.getElementById('mockSetup')
+const mockInterview    = document.getElementById('mockInterview')
+const mockResults      = document.getElementById('mockResults')
+const mockRole         = document.getElementById('mockRole')
+const mockType         = document.getElementById('mockType')
+const mockDifficulty   = document.getElementById('mockDifficulty')
+const mockCount        = document.getElementById('mockCount')
+const mockTTS          = document.getElementById('mockTTS')
+const btnMockStart     = document.getElementById('btnMockStart')
+const btnMockClose     = document.getElementById('btnMockClose')
+const btnMockEnd       = document.getElementById('btnMockEnd')
+const btnMockMic       = document.getElementById('btnMockMic')
+const btnMockSubmit    = document.getElementById('btnMockSubmit')
+const btnMockRestart   = document.getElementById('btnMockRestart')
+const btnMockDone      = document.getElementById('btnMockDone')
+const mockQNum         = document.getElementById('mockQNum')
+const mockQuestionBox  = document.getElementById('mockQuestionBox')
+const mockAnswerBox    = document.getElementById('mockAnswerBox')
+const mockFeedbackBox  = document.getElementById('mockFeedbackBox')
+const mockProgressFill = document.getElementById('mockProgressFill')
+const mockScoreNum     = document.getElementById('mockScoreNum')
+const mockResultsList  = document.getElementById('mockResultsList')
 const btnCodeMode      = document.getElementById('btnCodeMode')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
@@ -553,4 +577,296 @@ function setStatus(state, text) {
   statusText.textContent = text
   if (state === 'listening') waves.style.display = 'flex'
   else if (state !== 'processing') waves.style.display = 'none'
+}
+
+/* ── Mock Interview ── */
+let mockPhase    = 'idle'   // 'idle' | 'asking-q' | 'waiting-answer' | 'evaluating'
+let mockMsgBuf   = ''
+let mockQIdx     = 0        // 1-based index of the question currently displayed
+let mockTotalQs  = 5
+let mockCfg      = {}
+let mockScores   = []
+let mockQA       = []       // { question, answer, feedback, score }
+let mockMsgs     = []       // multi-turn messages array for the API
+let mockMicOn    = false
+let mockMicRecog = null
+
+/* Open / Close */
+btnMockOpen.addEventListener('click', () => mockPanel.classList.add('open'))
+
+function closeMockPanel() {
+  mockPanel.classList.remove('open')
+  stopMockMic()
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
+}
+
+btnMockClose.addEventListener('click', closeMockPanel)
+
+btnMockDone.addEventListener('click', () => {
+  closeMockPanel()
+  setTimeout(() => {
+    mockResults.style.display   = 'none'
+    mockInterview.style.display = 'none'
+    mockSetup.style.display     = 'block'
+  }, 300)
+})
+
+btnMockRestart.addEventListener('click', () => {
+  stopMockMic()
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
+  mockResults.style.display   = 'none'
+  mockInterview.style.display = 'none'
+  mockSetup.style.display     = 'block'
+})
+
+btnMockEnd.addEventListener('click', () => {
+  stopMockMic()
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
+  showMockResults()
+})
+
+/* Start */
+btnMockStart.addEventListener('click', async () => {
+  const role       = mockRole.value.trim() || 'Software Engineer'
+  const type       = mockType.value
+  const difficulty = mockDifficulty.value
+  const count      = parseInt(mockCount.value)
+  const useTTS     = mockTTS.checked
+
+  mockCfg    = { role, type, difficulty, count, useTTS }
+  mockTotalQs = count
+  mockQIdx   = 0
+  mockScores = []
+  mockQA     = []
+  mockMsgs   = []
+  mockMsgBuf = ''
+
+  mockSetup.style.display     = 'none'
+  mockInterview.style.display = 'flex'
+  mockResults.style.display   = 'none'
+
+  mockAnswerBox.textContent     = ''
+  mockFeedbackBox.style.display = 'none'
+  mockFeedbackBox.innerHTML     = ''
+  mockQuestionBox.innerHTML     = '<span class="hint">Loading first question...</span>'
+  updateMockMeta()
+
+  window.electronAPI.removeListeners('mock-chunk')
+  window.electronAPI.removeListeners('mock-done')
+  window.electronAPI.removeListeners('mock-error')
+  window.electronAPI.onMockChunk(handleMockChunk)
+  window.electronAPI.onMockDone(handleMockDone)
+  window.electronAPI.onMockError(handleMockError)
+
+  mockPhase  = 'asking-q'
+  mockMsgBuf = ''
+  mockMsgs.push({ role: 'user', content: 'Please begin the mock interview. Ask me the first question.' })
+
+  await window.electronAPI.mockInterviewTurn({
+    messages:     mockMsgs,
+    systemPrompt: buildMockSystemPrompt(),
+  })
+})
+
+function buildMockSystemPrompt() {
+  const { role, type, difficulty, count } = mockCfg
+  return `You are a professional ${type} interviewer conducting a ${difficulty}-level mock interview for a ${role} position. You will ask exactly ${count} questions total.
+
+Rules:
+- On the first message: respond with ONLY the first question text, no preamble or numbering.
+- After each candidate answer: respond in EXACTLY this format, no extra text:
+FEEDBACK: [2-3 sentence honest and encouraging assessment]
+SCORE: [integer 1 to 10]
+NEXT: [text of the next question, or the word END if all ${count} questions are done]
+
+Questions must be ${difficulty}-difficulty and relevant to the ${role} role.`
+}
+
+/* Streaming handlers */
+function handleMockChunk(chunk) {
+  mockMsgBuf += chunk
+  if (mockPhase === 'asking-q') {
+    mockQuestionBox.innerHTML = escapeHtml(mockMsgBuf).replace(/\n/g, '<br>') + '<span class="cursor"></span>'
+  } else if (mockPhase === 'evaluating') {
+    mockFeedbackBox.style.display = 'block'
+    mockFeedbackBox.innerHTML = escapeHtml(mockMsgBuf).replace(/\n/g, '<br>') + '<span class="cursor"></span>'
+    mockFeedbackBox.scrollTop = mockFeedbackBox.scrollHeight
+  }
+}
+
+function handleMockDone() {
+  if (mockPhase === 'asking-q') {
+    const question = mockMsgBuf.trim()
+    mockMsgBuf = ''
+    mockQIdx++
+    mockQA.push({ question, answer: '', feedback: '', score: 0 })
+    mockMsgs.push({ role: 'assistant', content: question })
+
+    mockQuestionBox.textContent = question
+    updateMockMeta()
+    if (mockCfg.useTTS) speakMockText(question)
+
+    mockPhase = 'waiting-answer'
+    mockAnswerBox.textContent = ''
+    mockAnswerBox.focus()
+
+  } else if (mockPhase === 'evaluating') {
+    const { feedback, score, next } = parseMockFeedback(mockMsgBuf)
+
+    const qa = mockQA[mockQA.length - 1]
+    if (qa) { qa.feedback = feedback; qa.score = score }
+    mockScores.push(score)
+
+    mockMsgs.push({ role: 'assistant', content: mockMsgBuf.trim() })
+    mockMsgBuf = ''
+
+    mockFeedbackBox.innerHTML = `<strong>Score: ${score}/10</strong><br>${escapeHtml(feedback).replace(/\n/g, '<br>')}`
+
+    const isDone = next === 'END' || mockQIdx >= mockTotalQs
+    setTimeout(() => {
+      if (isDone) {
+        showMockResults()
+      } else {
+        mockQIdx++
+        mockQA.push({ question: next, answer: '', feedback: '', score: 0 })
+
+        mockQuestionBox.textContent   = next
+        mockFeedbackBox.style.display = 'none'
+        updateMockMeta()
+        if (mockCfg.useTTS) speakMockText(next)
+
+        mockPhase = 'waiting-answer'
+        mockAnswerBox.textContent = ''
+        mockAnswerBox.focus()
+      }
+    }, isDone ? 2000 : 3000)
+  }
+}
+
+function handleMockError(err) {
+  mockPhase = 'waiting-answer'
+  showToast('⚠ ' + (err || 'Mock interview error'))
+  mockQuestionBox.innerHTML = '<span style="color:var(--red)">Error — check API key and try again.</span>'
+}
+
+/* Submit answer */
+btnMockSubmit.addEventListener('click', submitMockAnswer)
+
+async function submitMockAnswer() {
+  if (mockPhase !== 'waiting-answer') return
+  const answer = mockAnswerBox.innerText.trim()
+  if (!answer) { showToast('Please speak or type your answer first'); return }
+
+  const qa = mockQA[mockQA.length - 1]
+  if (qa) qa.answer = answer
+
+  mockMsgs.push({ role: 'user', content: answer })
+  mockPhase  = 'evaluating'
+  mockMsgBuf = ''
+  mockFeedbackBox.style.display = 'block'
+  mockFeedbackBox.innerHTML = '<span class="hint">Evaluating your answer...</span>'
+
+  await window.electronAPI.mockInterviewTurn({
+    messages:     mockMsgs,
+    systemPrompt: buildMockSystemPrompt(),
+  })
+}
+
+/* Mock mic */
+btnMockMic.addEventListener('click', () => {
+  if (mockPhase !== 'waiting-answer') return
+  mockMicOn ? stopMockMic() : startMockMic()
+})
+
+function startMockMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SR) { showToast('Speech not supported in this build'); return }
+
+  mockMicRecog = new SR()
+  mockMicRecog.continuous     = true
+  mockMicRecog.interimResults = true
+  mockMicRecog.lang           = langSelect.value || 'en-US'
+
+  mockMicRecog.onstart = () => {
+    mockMicOn = true
+    btnMockMic.classList.add('active')
+    btnMockMic.textContent = '⏹ Stop'
+  }
+
+  mockMicRecog.onresult = (event) => {
+    let text = ''
+    for (let i = 0; i < event.results.length; i++) {
+      text += event.results[i][0].transcript + ' '
+    }
+    mockAnswerBox.textContent = text.trim()
+  }
+
+  mockMicRecog.onerror = () => stopMockMic()
+  mockMicRecog.onend   = () => {
+    if (mockMicOn) { try { mockMicRecog.start() } catch (e) {} }
+  }
+
+  try { mockMicRecog.start() } catch (e) { showToast('Mic error — check permissions') }
+}
+
+function stopMockMic() {
+  mockMicOn = false
+  if (mockMicRecog) { mockMicRecog.stop(); mockMicRecog = null }
+  btnMockMic.classList.remove('active')
+  btnMockMic.textContent = '🎤 Answer'
+}
+
+/* TTS */
+function speakMockText(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const utt = new SpeechSynthesisUtterance(text)
+  utt.rate  = 0.9
+  utt.pitch = 1
+  window.speechSynthesis.speak(utt)
+}
+
+/* Parse Claude's feedback response */
+function parseMockFeedback(text) {
+  const fbMatch    = text.match(/FEEDBACK:\s*([\s\S]+?)(?=\nSCORE:|$)/i)
+  const scoreMatch = text.match(/SCORE:\s*(\d+)/i)
+  const nextMatch  = text.match(/NEXT:\s*([\s\S]+?)$/i)
+
+  return {
+    feedback: fbMatch    ? fbMatch[1].trim()                                       : text.trim(),
+    score:    scoreMatch ? Math.min(10, Math.max(1, parseInt(scoreMatch[1])))       : 5,
+    next:     nextMatch  ? nextMatch[1].trim()                                     : 'END',
+  }
+}
+
+/* Meta / progress bar */
+function updateMockMeta() {
+  mockQNum.textContent         = `Q ${mockQIdx} / ${mockTotalQs}`
+  mockProgressFill.style.width = `${(mockQIdx / mockTotalQs) * 100}%`
+}
+
+/* Results screen */
+function showMockResults() {
+  stopMockMic()
+  mockInterview.style.display = 'none'
+  mockResults.style.display   = 'flex'
+
+  const avg = mockScores.length
+    ? (mockScores.reduce((a, b) => a + b, 0) / mockScores.length).toFixed(1)
+    : '--'
+
+  mockScoreNum.textContent = avg
+
+  mockResultsList.innerHTML = mockQA
+    .filter(qa => qa.question)
+    .map((qa, i) => `
+      <div class="mock-result-item">
+        <div class="mock-result-q">
+          <span class="mock-result-num">Q${i + 1}</span>
+          ${escapeHtml(qa.question)}
+        </div>
+        ${qa.feedback ? `<div class="mock-result-feedback">${escapeHtml(qa.feedback)}</div>` : ''}
+        ${qa.score    ? `<div class="mock-result-score">Score: ${qa.score}/10</div>` : ''}
+      </div>
+    `).join('')
 }

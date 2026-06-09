@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   setOpacity: (value) => ipcRenderer.invoke('set-opacity', value),
   captureScreen: () => ipcRenderer.invoke('capture-screen'),
+  mockInterviewTurn: (data) => ipcRenderer.invoke('mock-interview-turn', data),
+  onMockChunk: (cb) => ipcRenderer.on('mock-chunk', (_, t) => cb(t)),
+  onMockDone:  (cb) => ipcRenderer.on('mock-done', cb),
+  onMockError: (cb) => ipcRenderer.on('mock-error', (_, e) => cb(e)),
   askClaudeCoding: (data) => ipcRenderer.invoke('ask-claude-coding', data),
   selectResumeFile: () => ipcRenderer.invoke('select-resume-file'),
   fetchJobUrl: (url) => ipcRenderer.invoke('fetch-job-url', url),
