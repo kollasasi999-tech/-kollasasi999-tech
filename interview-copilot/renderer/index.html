@@ -13,9 +13,10 @@
     <!-- Title Bar -->
     <div class="titlebar" id="titlebar">
       <div class="titlebar-left">
-        <span class="app-dot"></span>
+        <span class="app-dot" id="appDot"></span>
         <span class="app-name">Interview Copilot</span>
         <span class="app-badge">AI</span>
+        <span class="stealth-badge" id="stealthBadge">STEALTH</span>
       </div>
       <div class="titlebar-right">
         <button class="btn-icon" id="btnTheme" title="Toggle theme">☀</button>
@@ -73,6 +74,7 @@
         <span id="btnListenText">Start Listening</span>
       </button>
       <button class="btn-clear" id="btnClear" title="Clear all">Clear</button>
+      <button class="btn-history" id="btnHistory" title="View past Q&amp;As">History (0)</button>
     </div>
 
     <!-- Language Row -->
@@ -96,10 +98,12 @@
 
     <!-- Hotkeys Bar -->
     <div class="hotkeys-bar">
-      <span class="hk"><kbd>Ctrl+Shift+L</kbd> Listen</span>
-      <span class="hk"><kbd>Ctrl+Shift+S</kbd> Ask</span>
-      <span class="hk"><kbd>Ctrl+Shift+C</kbd> Copy</span>
-      <span class="hk"><kbd>Ctrl+Shift+X</kbd> Clear</span>
+      <span class="hk"><kbd>⇧L</kbd> Listen</span>
+      <span class="hk"><kbd>⇧S</kbd> Ask</span>
+      <span class="hk"><kbd>⇧C</kbd> Copy</span>
+      <span class="hk"><kbd>⇧X</kbd> Clear</span>
+      <span class="hk"><kbd>⇧O</kbd> Opacity</span>
+      <span class="hk"><kbd>⇧H</kbd> Stealth</span>
     </div>
 
     <!-- Question Section -->
@@ -123,6 +127,20 @@
         <span class="hint">Answer will stream here in real-time...</span>
       </div>
     </div>
+
+    <!-- History Overlay Panel -->
+    <div class="history-panel" id="historyPanel">
+      <div class="history-header">
+        <span class="section-label">Session History</span>
+        <button class="btn-action" id="btnHistoryBack">← Back</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <span class="hint">No history yet...</span>
+      </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
 
   </div>
   <script src="renderer.js"></script>

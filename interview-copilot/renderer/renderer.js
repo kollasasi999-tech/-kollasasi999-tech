@@ -1,54 +1,70 @@
 /* ── DOM refs ── */
-const statusDot    = document.getElementById('statusDot')
-const statusText   = document.getElementById('statusText')
-const waves        = document.getElementById('waves')
-const btnListen    = document.getElementById('btnListen')
-const btnListenTxt = document.getElementById('btnListenText')
-const micIcon      = document.getElementById('micIcon')
-const btnClear     = document.getElementById('btnClear')
-const btnSettings  = document.getElementById('btnSettings')
-const btnSave      = document.getElementById('btnSaveSettings')
-const btnAsk       = document.getElementById('btnAsk')
-const btnCopy      = document.getElementById('btnCopy')
-const btnMinimize  = document.getElementById('btnMinimize')
-const btnClose     = document.getElementById('btnClose')
-const settingsPanel= document.getElementById('settingsPanel')
-const transcriptBox= document.getElementById('transcriptBox')
-const answerBox    = document.getElementById('answerBox')
-const apiKeyInput    = document.getElementById('apiKeyInput')
-const jobRoleInput   = document.getElementById('jobRoleInput')
-const jobDescInput   = document.getElementById('jobDescInput')
-const langSelect     = document.getElementById('langSelect')
-const btnTheme       = document.getElementById('btnTheme')
-const opacitySlider  = document.getElementById('opacitySlider')
-const opacityValue   = document.getElementById('opacityValue')
-const btnQuit        = document.getElementById('btnQuit')
+const statusDot     = document.getElementById('statusDot')
+const statusText    = document.getElementById('statusText')
+const waves         = document.getElementById('waves')
+const btnListen     = document.getElementById('btnListen')
+const btnListenTxt  = document.getElementById('btnListenText')
+const micIcon       = document.getElementById('micIcon')
+const btnClear      = document.getElementById('btnClear')
+const btnSettings   = document.getElementById('btnSettings')
+const btnSave       = document.getElementById('btnSaveSettings')
+const btnAsk        = document.getElementById('btnAsk')
+const btnCopy       = document.getElementById('btnCopy')
+const btnMinimize   = document.getElementById('btnMinimize')
+const btnClose      = document.getElementById('btnClose')
+const settingsPanel = document.getElementById('settingsPanel')
+const transcriptBox = document.getElementById('transcriptBox')
+const answerBox     = document.getElementById('answerBox')
+const apiKeyInput   = document.getElementById('apiKeyInput')
+const jobRoleInput  = document.getElementById('jobRoleInput')
+const jobDescInput  = document.getElementById('jobDescInput')
+const langSelect    = document.getElementById('langSelect')
+const btnTheme      = document.getElementById('btnTheme')
+const opacitySlider = document.getElementById('opacitySlider')
+const opacityValue  = document.getElementById('opacityValue')
+const btnQuit       = document.getElementById('btnQuit')
+const btnHistory    = document.getElementById('btnHistory')
+const historyPanel  = document.getElementById('historyPanel')
+const historyList   = document.getElementById('historyList')
+const btnHistoryBack= document.getElementById('btnHistoryBack')
+const stealthBadge  = document.getElementById('stealthBadge')
+const toast         = document.getElementById('toast')
 
 /* ── State ── */
-let isListening   = false
-let isProcessing  = false
-let recognition   = null
-let silenceTimer  = null
-let settingsOpen  = false
-let finalText     = ''
-let isDark        = true
+let isListening       = false
+let isProcessing      = false
+let recognition       = null
+let silenceTimer      = null
+let settingsOpen      = false
+let finalText         = ''
+let isDark            = true
+let isStealthy        = false
+let preStealthOpacity = 0.95
+let currentQuestion   = ''
+let toastTimer        = null
+
+const sessionHistory  = []
+const opacityCycle    = [1.0, 0.8, 0.6, 0.4]
+let opacityCycleIdx   = 0
 
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
   const saved = await window.electronAPI.getSettings()
-  if (saved.apiKey)      apiKeyInput.value  = saved.apiKey
-  if (saved.jobRole)     jobRoleInput.value = saved.jobRole
-  if (saved.jobDesc)     jobDescInput.value = saved.jobDesc
-  if (saved.language)    langSelect.value   = saved.language
+  if (saved.apiKey)   apiKeyInput.value  = saved.apiKey
+  if (saved.jobRole)  jobRoleInput.value = saved.jobRole
+  if (saved.jobDesc)  jobDescInput.value = saved.jobDesc
+  if (saved.language) langSelect.value   = saved.language
 
-  // Restore opacity
   if (saved.opacity != null) {
     const pct = Math.round(saved.opacity * 100)
     opacitySlider.value = pct
     opacityValue.textContent = pct + '%'
+    preStealthOpacity = saved.opacity
+    // Sync cycle index to nearest value
+    opacityCycleIdx = opacityCycle.reduce((best, v, i) =>
+      Math.abs(v - saved.opacity) < Math.abs(opacityCycle[best] - saved.opacity) ? i : best, 0)
   }
 
-  // Restore theme
   if (saved.theme === 'light') {
     isDark = false
     document.querySelector('.app').classList.add('light')
@@ -60,7 +76,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.electronAPI.onClaudeDone(handleDone)
   window.electronAPI.onClaudeError(handleError)
 
-  // Global hotkeys from main process
   window.electronAPI.onHotkey((action) => {
     switch (action) {
       case 'toggle-listen':
@@ -77,6 +92,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           navigator.clipboard.writeText(ans).then(() => {
             btnCopy.textContent = '✓ Copied!'
             setTimeout(() => { btnCopy.textContent = '📋 Copy' }, 2000)
+            showToast('Answer copied!')
           })
         }
         break
@@ -84,14 +100,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       case 'clear':
         btnClear.click()
         break
+      case 'opacity-cycle':
+        cycleOpacity()
+        break
+      case 'stealth-toggle':
+        toggleStealth()
+        break
     }
   })
 
-  // Escape closes settings
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && settingsOpen) {
-      settingsOpen = false
-      settingsPanel.classList.remove('open')
+    if (e.key === 'Escape') {
+      if (settingsOpen) { settingsOpen = false; settingsPanel.classList.remove('open') }
+      if (historyPanel.classList.contains('open')) hideHistoryPanel()
     }
   })
 })
@@ -101,10 +122,7 @@ function handleChunk(chunk) {
   if (answerBox.querySelector('.hint')) answerBox.innerHTML = ''
   const cursor = answerBox.querySelector('.cursor')
   if (cursor) cursor.remove()
-
-  // Render newlines as line breaks
   answerBox.innerHTML += chunk.replace(/\n/g, '<br>')
-
   const cur = document.createElement('span')
   cur.className = 'cursor'
   answerBox.appendChild(cur)
@@ -115,6 +133,11 @@ function handleDone() {
   const cursor = answerBox.querySelector('.cursor')
   if (cursor) cursor.remove()
   isProcessing = false
+  // Save to history
+  const answer = answerBox.innerText.trim()
+  if (currentQuestion && answer) {
+    addToHistory(currentQuestion, answer)
+  }
   setStatus(isListening ? 'listening' : 'ready',
             isListening ? 'Listening...' : 'Ready — click Start to listen')
 }
@@ -125,17 +148,17 @@ function handleError(err) {
   setStatus('error', 'Error — check Settings')
 }
 
-/* ── Titlebar buttons ── */
+/* ── Titlebar ── */
 btnMinimize.addEventListener('click', () => window.electronAPI.minimize())
 btnClose.addEventListener('click',    () => window.electronAPI.close())
 
 btnTheme.addEventListener('click', () => {
   isDark = !isDark
-  const app = document.querySelector('.app')
-  app.classList.toggle('light', !isDark)
+  document.querySelector('.app').classList.toggle('light', !isDark)
   btnTheme.textContent = isDark ? '☀' : '🌙'
   btnTheme.title = isDark ? 'Switch to light mode' : 'Switch to dark mode'
   window.electronAPI.saveSettings({ theme: isDark ? 'dark' : 'light' })
+  showToast(isDark ? 'Dark mode' : 'Light mode')
 })
 
 btnQuit.addEventListener('click', () => window.electronAPI.quitApp())
@@ -151,23 +174,23 @@ btnSave.addEventListener('click', async () => {
   if (!key) { alert('Please enter your Anthropic API key.'); return }
   const opacity = parseInt(opacitySlider.value) / 100
   await window.electronAPI.saveSettings({
-    apiKey:    key,
-    jobRole:   jobRoleInput.value.trim(),
-    jobDesc:   jobDescInput.value.trim(),
-    language:  langSelect.value,
+    apiKey:   key,
+    jobRole:  jobRoleInput.value.trim(),
+    jobDesc:  jobDescInput.value.trim(),
+    language: langSelect.value,
     opacity,
-    theme:     isDark ? 'dark' : 'light',
+    theme:    isDark ? 'dark' : 'light',
   })
   settingsOpen = false
   settingsPanel.classList.remove('open')
   setStatus('ready', 'Settings saved ✓')
 })
 
-/* ── Opacity slider (real-time) ── */
 opacitySlider.addEventListener('input', () => {
   const pct = parseInt(opacitySlider.value)
   opacityValue.textContent = pct + '%'
   window.electronAPI.setOpacity(pct / 100)
+  if (!isStealthy) preStealthOpacity = pct / 100
 })
 
 /* ── Listen toggle ── */
@@ -178,6 +201,7 @@ btnListen.addEventListener('click', () => {
 /* ── Clear ── */
 btnClear.addEventListener('click', () => {
   finalText = ''
+  currentQuestion = ''
   transcriptBox.innerHTML = '<span class="hint">Start listening — questions will appear here automatically...</span>'
   answerBox.innerHTML     = '<span class="hint">Answer will stream here in real-time...</span>'
   clearTimeout(silenceTimer)
@@ -199,6 +223,97 @@ btnCopy.addEventListener('click', () => {
     })
   }
 })
+
+/* ── History ── */
+btnHistory.addEventListener('click', showHistoryPanel)
+btnHistoryBack.addEventListener('click', hideHistoryPanel)
+
+function showHistoryPanel() {
+  renderHistory()
+  historyPanel.classList.add('open')
+}
+
+function hideHistoryPanel() {
+  historyPanel.classList.remove('open')
+}
+
+function addToHistory(question, answer) {
+  sessionHistory.unshift({
+    question,
+    answer,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  })
+  if (sessionHistory.length > 30) sessionHistory.pop()
+  btnHistory.textContent = `History (${sessionHistory.length})`
+}
+
+function renderHistory() {
+  if (sessionHistory.length === 0) {
+    historyList.innerHTML = '<span class="hint" style="padding:12px;display:block">No history yet — answers will appear here after each question.</span>'
+    return
+  }
+  historyList.innerHTML = sessionHistory.map((item, i) => `
+    <div class="history-item" data-index="${i}">
+      <div class="history-meta">${item.time}</div>
+      <div class="history-q">${escapeHtml(item.question.slice(0, 90))}${item.question.length > 90 ? '…' : ''}</div>
+      <div class="history-a">${escapeHtml(item.answer.slice(0, 110))}${item.answer.length > 110 ? '…' : ''}</div>
+    </div>
+  `).join('')
+
+  historyList.querySelectorAll('.history-item').forEach((el) => {
+    el.addEventListener('click', () => {
+      const item = sessionHistory[parseInt(el.dataset.index)]
+      transcriptBox.textContent = item.question
+      answerBox.innerHTML = item.answer.replace(/\n/g, '<br>')
+      hideHistoryPanel()
+    })
+  })
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/* ── Stealth mode ── */
+function toggleStealth() {
+  if (isStealthy) {
+    isStealthy = false
+    window.electronAPI.setOpacity(preStealthOpacity)
+    stealthBadge.style.display = 'none'
+    document.getElementById('appDot').style.background = ''
+    showToast(`Stealth off — ${Math.round(preStealthOpacity * 100)}%`)
+  } else {
+    isStealthy = true
+    preStealthOpacity = parseInt(opacitySlider.value) / 100
+    window.electronAPI.setOpacity(0.15)
+    stealthBadge.style.display = 'flex'
+    document.getElementById('appDot').style.background = '#f59e0b'
+    showToast('Stealth on — Ctrl+Shift+H to exit')
+  }
+}
+
+/* ── Opacity cycle ── */
+function cycleOpacity() {
+  if (isStealthy) return  // don't cycle while stealthy
+  opacityCycleIdx = (opacityCycleIdx + 1) % opacityCycle.length
+  const val = opacityCycle[opacityCycleIdx]
+  window.electronAPI.setOpacity(val)
+  preStealthOpacity = val
+  opacitySlider.value = Math.round(val * 100)
+  opacityValue.textContent = Math.round(val * 100) + '%'
+  showToast(`Opacity: ${Math.round(val * 100)}%`)
+}
+
+/* ── Toast ── */
+function showToast(msg) {
+  toast.textContent = msg
+  toast.classList.add('show')
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1600)
+}
 
 /* ── Speech Recognition ── */
 function startListening() {
@@ -227,11 +342,8 @@ function startListening() {
     let interim = ''
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const t = event.results[i][0].transcript
-      if (event.results[i].isFinal) {
-        finalText += t + ' '
-      } else {
-        interim = t
-      }
+      if (event.results[i].isFinal) finalText += t + ' '
+      else interim = t
     }
 
     const display = finalText + interim
@@ -240,7 +352,6 @@ function startListening() {
       transcriptBox.scrollTop   = transcriptBox.scrollHeight
     }
 
-    // Auto-send after 2.5s of silence (once we have enough text)
     clearTimeout(silenceTimer)
     if (finalText.trim().split(' ').length >= 4) {
       silenceTimer = setTimeout(() => {
@@ -257,13 +368,10 @@ function startListening() {
       setStatus('error', 'Microphone access denied')
       stopListening()
     }
-    // 'no-speech' and 'aborted' are handled by onend auto-restart
   }
 
   recognition.onend = () => {
-    if (isListening) {
-      setTimeout(() => { try { recognition.start() } catch (e) {} }, 150)
-    }
+    if (isListening) setTimeout(() => { try { recognition.start() } catch (e) {} }, 150)
   }
 
   try { recognition.start() } catch (e) { console.error(e) }
@@ -283,8 +391,8 @@ function stopListening() {
 /* ── Claude call ── */
 async function sendToClaude(question) {
   if (isProcessing || !question.trim()) return
-  isProcessing = true
-
+  currentQuestion = question
+  isProcessing    = true
   answerBox.innerHTML = '<span class="cursor"></span>'
   setStatus('processing', 'Generating answer...')
   waves.style.display = 'none'
@@ -298,7 +406,7 @@ async function sendToClaude(question) {
 
 /* ── Status helper ── */
 function setStatus(state, text) {
-  statusDot.className  = `status-dot ${state === 'ready' ? '' : state}`
+  statusDot.className    = `status-dot ${state === 'ready' ? '' : state}`
   statusText.textContent = text
   if (state === 'listening') waves.style.display = 'flex'
   else if (state !== 'processing') waves.style.display = 'none'

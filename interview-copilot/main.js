@@ -140,6 +140,12 @@ function createWindow() {
     globalShortcut.register('CommandOrControl+Shift+X', () => {
       mainWindow.webContents.send('hotkey', 'clear')
     })
+    globalShortcut.register('CommandOrControl+Shift+O', () => {
+      mainWindow.webContents.send('hotkey', 'opacity-cycle')
+    })
+    globalShortcut.register('CommandOrControl+Shift+H', () => {
+      mainWindow.webContents.send('hotkey', 'stealth-toggle')
+    })
   })
 
   createTray()
