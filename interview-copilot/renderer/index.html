@@ -94,6 +94,22 @@
       </button>
       <button class="btn-clear" id="btnClear" title="Clear all">Clear</button>
       <button class="btn-history" id="btnHistory" title="View past Q&amp;As">History (0)</button>
+      <button class="btn-code" id="btnCodeMode" title="Toggle coding mode">{ } Code</button>
+    </div>
+
+    <!-- Coding Mode Panel -->
+    <div class="coding-panel" id="codingPanel">
+      <div class="coding-header">
+        <span class="section-label">📸 Coding Mode</span>
+        <button class="btn-action" id="btnCapture">Capture Screen</button>
+      </div>
+      <div class="capture-preview" id="capturePreview">
+        <img id="captureImg" src="" alt="Screenshot" />
+        <div class="capture-actions">
+          <button class="btn-analyze" id="btnAnalyze">⚡ Analyze Problem</button>
+          <span class="capture-note" id="captureNote">Screenshot ready</span>
+        </div>
+      </div>
     </div>
 
     <!-- Language Row -->
@@ -123,6 +139,7 @@
       <span class="hk"><kbd>⇧X</kbd> Clear</span>
       <span class="hk"><kbd>⇧O</kbd> Opacity</span>
       <span class="hk"><kbd>⇧H</kbd> Stealth</span>
+      <span class="hk"><kbd>⇧P</kbd> Capture</span>
     </div>
 
     <!-- Question Section -->

@@ -31,6 +31,13 @@ const opacitySlider    = document.getElementById('opacitySlider')
 const opacityValue     = document.getElementById('opacityValue')
 const btnQuit          = document.getElementById('btnQuit')
 const btnHistory       = document.getElementById('btnHistory')
+const btnCodeMode      = document.getElementById('btnCodeMode')
+const codingPanel      = document.getElementById('codingPanel')
+const btnCapture       = document.getElementById('btnCapture')
+const capturePreview   = document.getElementById('capturePreview')
+const captureImg       = document.getElementById('captureImg')
+const captureNote      = document.getElementById('captureNote')
+const btnAnalyze       = document.getElementById('btnAnalyze')
 const historyPanel     = document.getElementById('historyPanel')
 const historyList      = document.getElementById('historyList')
 const btnHistoryBack   = document.getElementById('btnHistoryBack')
@@ -52,6 +59,8 @@ let rawAnswerBuffer    = ''
 let toastTimer         = null
 let silenceDelay       = 2500
 let resumeText         = ''
+let codingModeOpen     = false
+let capturedBase64     = null
 
 const sessionHistory   = []
 const opacityCycle     = [1.0, 0.8, 0.6, 0.4]
@@ -115,6 +124,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       case 'clear':          btnClear.click(); break
       case 'opacity-cycle':  cycleOpacity(); break
       case 'stealth-toggle': toggleStealth(); break
+      case 'capture-screen': doCapture(); break
     }
   })
 
@@ -357,6 +367,55 @@ function renderHistory() {
     })
   })
 }
+
+/* ── Coding Mode ── */
+btnCodeMode.addEventListener('click', () => {
+  codingModeOpen = !codingModeOpen
+  codingPanel.classList.toggle('open', codingModeOpen)
+  btnCodeMode.classList.toggle('active', codingModeOpen)
+  showToast(codingModeOpen ? 'Coding mode on — capture your screen' : 'Coding mode off')
+})
+
+btnCapture.addEventListener('click', doCapture)
+
+async function doCapture() {
+  if (!codingModeOpen) {
+    // Auto-open coding panel when hotkey used
+    codingModeOpen = true
+    codingPanel.classList.add('open')
+    btnCodeMode.classList.add('active')
+  }
+  btnCapture.textContent = 'Capturing...'
+  const result = await window.electronAPI.captureScreen()
+  btnCapture.textContent = 'Capture Screen'
+
+  if (!result || result.error) {
+    showToast('⚠ ' + (result?.error || 'Capture failed'))
+    return
+  }
+
+  capturedBase64 = result.base64
+  captureImg.src = result.dataURL
+  capturePreview.classList.add('show')
+  captureNote.textContent = 'Screenshot captured — click Analyze'
+  showToast('Screen captured! Press Analyze to solve.')
+}
+
+btnAnalyze.addEventListener('click', async () => {
+  if (!capturedBase64) { showToast('Capture a screen first'); return }
+  if (isProcessing) return
+
+  const extraHint = transcriptBox.innerText.trim()
+  const question  = !extraHint.includes('Start listening') ? extraHint : ''
+
+  currentQuestion = 'Coding problem (screenshot)'
+  rawAnswerBuffer = ''
+  isProcessing    = true
+  answerBox.innerHTML = '<span class="cursor"></span>'
+  setStatus('processing', 'Solving coding problem...')
+
+  await window.electronAPI.askClaudeCoding({ base64: capturedBase64, question })
+})
 
 /* ── Stealth mode ── */
 function toggleStealth() {

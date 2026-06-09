@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, session, globalShortcut, Tray, nativeImage, Menu, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, session, globalShortcut, Tray, nativeImage, Menu, dialog, desktopCapturer } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const zlib = require('zlib')
@@ -146,6 +146,9 @@ function createWindow() {
     globalShortcut.register('CommandOrControl+Shift+H', () => {
       mainWindow.webContents.send('hotkey', 'stealth-toggle')
     })
+    globalShortcut.register('CommandOrControl+Shift+P', () => {
+      mainWindow.webContents.send('hotkey', 'capture-screen')
+    })
   })
 
   createTray()
@@ -183,6 +186,72 @@ ipcMain.handle('save-settings', (event, newSettings) => {
   settings = { ...settings, ...newSettings }
   saveSettings(settings)
   return { success: true }
+})
+
+// Screen capture for coding interviews
+ipcMain.handle('capture-screen', async () => {
+  try {
+    // Hide window so it doesn't appear in the screenshot
+    mainWindow.hide()
+    await new Promise(r => setTimeout(r, 300))
+
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1440, height: 900 },
+    })
+
+    mainWindow.show()
+    mainWindow.focus()
+
+    if (!sources.length) return { error: 'No screen found' }
+
+    const jpeg   = sources[0].thumbnail.toJPEG(85)
+    const base64 = jpeg.toString('base64')
+    return { base64, dataURL: `data:image/jpeg;base64,${base64}`, success: true }
+  } catch (e) {
+    mainWindow.show()
+    return { error: e.message }
+  }
+})
+
+// Ask Claude with a screenshot (coding mode)
+ipcMain.handle('ask-claude-coding', async (event, { base64, question }) => {
+  if (!settings.apiKey) {
+    mainWindow.webContents.send('claude-error', 'API key not set.')
+    return
+  }
+
+  const client = new Anthropic({ apiKey: settings.apiKey })
+
+  const systemPrompt = `You are an expert software engineer helping solve a live coding interview problem.
+Analyze the coding problem shown in the screenshot and provide:
+1. Brief problem summary
+2. Optimal approach with time and space complexity
+3. Clean, working solution in the most appropriate language
+4. Key steps explained
+
+Always wrap code in triple backticks with the language name (e.g. \`\`\`python).`
+
+  try {
+    const stream = client.messages.stream({
+      model: 'claude-opus-4-8',
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text',  text: question || 'Analyze this coding problem and provide a complete solution.' },
+        ],
+      }],
+    })
+
+    stream.on('text',         (text)  => mainWindow.webContents.send('claude-chunk', text))
+    stream.on('finalMessage', ()      => mainWindow.webContents.send('claude-done'))
+    stream.on('error',        (error) => mainWindow.webContents.send('claude-error', error.message))
+  } catch (e) {
+    mainWindow.webContents.send('claude-error', e.message)
+  }
 })
 
 // Resume file picker + PDF parser
