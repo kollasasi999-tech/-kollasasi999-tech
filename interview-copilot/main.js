@@ -308,6 +308,25 @@ ipcMain.handle('select-resume-file', async () => {
   }
 })
 
+// Export session notes to markdown file
+ipcMain.handle('export-notes', async (event, { content, defaultName }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: defaultName || 'interview-notes.md',
+    filters: [
+      { name: 'Markdown', extensions: ['md'] },
+      { name: 'Text File', extensions: ['txt'] },
+    ],
+  })
+  if (result.canceled || !result.filePath) return { canceled: true }
+
+  try {
+    fs.writeFileSync(result.filePath, content, 'utf-8')
+    return { success: true, filePath: result.filePath }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
 // Job URL scraper — fetches HTML, strips tags, returns raw text
 function fetchUrl(url, redirectsLeft = 4) {
   return new Promise((resolve, reject) => {

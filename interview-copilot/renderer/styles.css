@@ -442,6 +442,21 @@ input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent2); }
 }
 .btn-quit:hover { background: var(--red); color: #fff; }
 
+/* ── Export Notes Button ── */
+.btn-export {
+  padding: 10px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.btn-export:hover { color: var(--text); border-color: var(--green); }
+
 /* ── Coding Mode Button ── */
 .btn-code {
   padding: 10px 10px;

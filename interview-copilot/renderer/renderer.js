@@ -56,6 +56,7 @@ const mockProgressFill = document.getElementById('mockProgressFill')
 const mockScoreNum     = document.getElementById('mockScoreNum')
 const mockResultsList  = document.getElementById('mockResultsList')
 const btnCodeMode      = document.getElementById('btnCodeMode')
+const btnExport        = document.getElementById('btnExport')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
 const capturePreview   = document.getElementById('capturePreview')
@@ -570,6 +571,37 @@ async function sendToClaude(question) {
     resumeText,
   })
 }
+
+/* ── Export Session Notes ── */
+btnExport.addEventListener('click', async () => {
+  if (sessionHistory.length === 0) {
+    showToast('No Q&As to export yet')
+    return
+  }
+
+  const date    = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const role    = jobRoleInput.value.trim()
+  const header  = `# Interview Copilot — Session Notes\n**Date:** ${date}${role ? `\n**Role:** ${role}` : ''}\n\n---\n\n`
+
+  const body = sessionHistory
+    .slice()
+    .reverse()
+    .map((item, i) => `## Q${i + 1} · ${item.time}\n\n**Question:**\n${item.question}\n\n**Answer:**\n${item.answer}\n`)
+    .join('\n---\n\n')
+
+  const content     = header + body
+  const dateStr     = new Date().toISOString().slice(0, 10)
+  const defaultName = `interview-notes-${dateStr}.md`
+
+  btnExport.textContent = '...'
+  const result = await window.electronAPI.exportNotes({ content, defaultName })
+  btnExport.textContent = '⬇ Notes'
+
+  if (result.canceled) return
+  if (result.error)    { showToast('⚠ Export failed: ' + result.error); return }
+
+  showToast(`Saved: ${result.filePath.split('/').pop().split('\\').pop()}`)
+})
 
 /* ── Status helper ── */
 function setStatus(state, text) {
