@@ -362,14 +362,38 @@ ipcMain.handle('fetch-job-url', async (event, url) => {
   }
 })
 
+// Follow-up question suggestions (non-streaming, fast Haiku call)
+ipcMain.handle('get-followups', async (event, { question, answer }) => {
+  if (!settings.apiKey) return { error: 'API key not set' }
+  const client = new Anthropic({ apiKey: settings.apiKey })
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Interview question: ${question}\n\nAnswer: ${answer}\n\nSuggest exactly 3 brief follow-up questions an interviewer would likely ask next. Output only the 3 questions, one per line, no numbering or bullets or extra text.`,
+      }],
+    })
+    return { text: msg.content[0].text, success: true }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
 // Claude streaming
-ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription, resumeText }) => {
+ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription, resumeText, answerMode }) => {
   if (!settings.apiKey) {
     mainWindow.webContents.send('claude-error', 'API key not set. Click ⚙ to add your Anthropic API key.')
     return
   }
 
   const client = new Anthropic({ apiKey: settings.apiKey })
+
+  let lengthRule
+  if (answerMode === 'detailed') lengthRule = 'Provide thorough answers (300-400 words) with specific examples and context'
+  else if (answerMode === 'bullets') lengthRule = 'Structure your answer as 4-6 concise bullet points; start each with a strong action word'
+  else lengthRule = 'Keep answers concise (under 200 words) unless it is a coding problem'
 
   const systemPrompt = `You are an expert interview coach helping a candidate during a live job interview.
 ${jobRole ? `Role being interviewed for: ${jobRole}` : ''}
@@ -382,7 +406,7 @@ Rules:
 - For behavioral questions use STAR method (Situation, Task, Action, Result) drawing from the resume
 - For technical questions give a precise expert-level answer
 - For coding problems provide clean code with a brief explanation; wrap code in triple backticks with the language name
-- Keep answers concise (under 200 words) unless it is a coding problem
+- ${lengthRule}
 - Be confident and professional
 - Do not mention you are an AI`
 

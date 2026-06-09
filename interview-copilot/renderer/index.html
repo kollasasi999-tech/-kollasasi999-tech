@@ -78,6 +78,7 @@
     <div class="status-bar">
       <div class="status-dot" id="statusDot"></div>
       <span class="status-text" id="statusText">Ready — click Start to listen</span>
+      <span class="listen-timer" id="listenTimer" style="display:none">00:00</span>
       <div class="waves" id="waves" style="display:none">
         <div class="wave-bar"></div>
         <div class="wave-bar"></div>
@@ -159,10 +160,17 @@
     <div class="section answer-section">
       <div class="section-header">
         <span class="section-label">Claude's Answer</span>
-        <button class="btn-action" id="btnCopy">📋 Copy</button>
+        <div class="answer-header-right">
+          <button class="btn-mode" id="btnMode" title="Cycle answer style">💬 Brief</button>
+          <button class="btn-action" id="btnCopy">📋 Copy</button>
+        </div>
       </div>
       <div class="text-box answer-box" id="answerBox">
         <span class="hint">Answer will stream here in real-time...</span>
+      </div>
+      <div class="followup-row" id="followupRow" style="display:none">
+        <span class="followup-label">Follow-ups:</span>
+        <div class="followup-chips" id="followupChips"></div>
       </div>
     </div>
 

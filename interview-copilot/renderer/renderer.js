@@ -57,6 +57,10 @@ const mockScoreNum     = document.getElementById('mockScoreNum')
 const mockResultsList  = document.getElementById('mockResultsList')
 const btnCodeMode      = document.getElementById('btnCodeMode')
 const btnExport        = document.getElementById('btnExport')
+const btnMode          = document.getElementById('btnMode')
+const listenTimer      = document.getElementById('listenTimer')
+const followupRow      = document.getElementById('followupRow')
+const followupChips    = document.getElementById('followupChips')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
 const capturePreview   = document.getElementById('capturePreview')
@@ -90,6 +94,15 @@ let capturedBase64     = null
 const sessionHistory   = []
 const opacityCycle     = [1.0, 0.8, 0.6, 0.4]
 let opacityCycleIdx    = 0
+
+const answerModes = [
+  { key: 'concise',  label: '💬 Brief'   },
+  { key: 'detailed', label: '📝 Detailed' },
+  { key: 'bullets',  label: '• Bullets'  },
+]
+let answerModeIdx  = 0
+let listenStart    = null
+let timerInterval  = null
 
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
@@ -176,7 +189,6 @@ function handleChunk(chunk) {
 }
 
 function handleDone() {
-  // Final render with code block formatting
   if (rawAnswerBuffer) {
     answerBox.innerHTML = renderAnswer(rawAnswerBuffer)
   }
@@ -184,7 +196,10 @@ function handleDone() {
   isProcessing = false
 
   const answer = answerBox.innerText.trim()
-  if (currentQuestion && answer) addToHistory(currentQuestion, answer)
+  if (currentQuestion && answer) {
+    addToHistory(currentQuestion, answer)
+    triggerFollowups(currentQuestion, answer)
+  }
 
   setStatus(isListening ? 'listening' : 'ready',
             isListening ? 'Listening...' : 'Ready — click Start to listen')
@@ -235,6 +250,13 @@ btnTheme.addEventListener('click', () => {
 })
 
 btnQuit.addEventListener('click', () => window.electronAPI.quitApp())
+
+/* ── Answer Mode Cycle ── */
+btnMode.addEventListener('click', () => {
+  answerModeIdx = (answerModeIdx + 1) % answerModes.length
+  btnMode.textContent = answerModes[answerModeIdx].label
+  showToast(`Mode: ${answerModes[answerModeIdx].label}`)
+})
 
 /* ── Settings ── */
 btnSettings.addEventListener('click', () => {
@@ -328,6 +350,7 @@ btnClear.addEventListener('click', () => {
   transcriptBox.innerHTML = '<span class="hint">Start listening — questions will appear here automatically...</span>'
   answerBox.innerHTML     = '<span class="hint">Answer will stream here in real-time...</span>'
   clearTimeout(silenceTimer)
+  clearFollowups()
 })
 
 /* ── Manual ask ── */
@@ -501,6 +524,14 @@ function startListening() {
     micIcon.textContent = '⏹'
     setStatus('listening', 'Listening...')
     waves.style.display = 'flex'
+    // Start timer
+    listenStart = Date.now()
+    listenTimer.style.display = 'inline'
+    clearInterval(timerInterval)
+    timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - listenStart) / 1000)
+      listenTimer.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+    }, 1000)
   }
 
   recognition.onresult = (event) => {
@@ -546,6 +577,8 @@ function startListening() {
 function stopListening() {
   isListening = false
   clearTimeout(silenceTimer)
+  clearInterval(timerInterval)
+  listenTimer.style.display = 'none'
   if (recognition) { recognition.stop(); recognition = null }
   btnListen.classList.remove('active')
   btnListenTxt.textContent = 'Start Listening'
@@ -561,6 +594,7 @@ async function sendToClaude(question) {
   rawAnswerBuffer = ''
   isProcessing    = true
   answerBox.innerHTML = '<span class="cursor"></span>'
+  clearFollowups()
   setStatus('processing', 'Generating answer...')
   waves.style.display = 'none'
 
@@ -569,7 +603,50 @@ async function sendToClaude(question) {
     jobRole:        jobRoleInput.value.trim(),
     jobDescription: jobDescInput.value.trim(),
     resumeText,
+    answerMode:     answerModes[answerModeIdx].key,
   })
+}
+
+/* ── Follow-up Suggestions ── */
+async function triggerFollowups(question, answer) {
+  followupRow.style.display = 'flex'
+  followupChips.innerHTML   = '<span class="followup-loading">Suggesting follow-ups...</span>'
+
+  const result = await window.electronAPI.getFollowups({
+    question,
+    answer: answer.slice(0, 600),
+  })
+
+  if (!result || result.error || !result.text) {
+    followupRow.style.display = 'none'
+    return
+  }
+
+  const questions = result.text
+    .split('\n')
+    .map(q => q.replace(/^[\d\.\-\*]+\s*/, '').trim())
+    .filter(q => q.length > 8)
+    .slice(0, 3)
+
+  if (!questions.length) { followupRow.style.display = 'none'; return }
+
+  followupChips.innerHTML = ''
+  questions.forEach(q => {
+    const chip = document.createElement('button')
+    chip.className   = 'followup-chip'
+    chip.textContent = q
+    chip.title       = q
+    chip.addEventListener('click', () => {
+      transcriptBox.textContent = q
+      sendToClaude(q)
+    })
+    followupChips.appendChild(chip)
+  })
+}
+
+function clearFollowups() {
+  followupRow.style.display = 'none'
+  followupChips.innerHTML   = ''
 }
 
 /* ── Export Session Notes ── */
