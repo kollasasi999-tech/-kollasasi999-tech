@@ -100,7 +100,7 @@ html, body {
   transition: max-height 0.25s ease;
   flex-shrink: 0;
 }
-.settings-panel.open { max-height: 320px; }
+.settings-panel.open { max-height: 480px; overflow-y: auto; }
 
 .settings-inner { padding: 16px; }
 
@@ -441,6 +441,119 @@ input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent2); }
   flex-shrink: 0;
 }
 .btn-quit:hover { background: var(--red); color: #fff; }
+
+/* ── URL Fetch Row ── */
+.url-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.url-row input { flex: 1; }
+
+.btn-fetch {
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.btn-fetch:hover { background: var(--accent2); }
+
+.fetch-status {
+  display: block;
+  font-size: 10px;
+  margin-top: 4px;
+  min-height: 14px;
+}
+
+/* ── Resume Row ── */
+.resume-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.resume-name {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-upload {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 11px;
+  padding: 5px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-upload:hover { color: var(--text); border-color: var(--accent); }
+
+/* ── Editable transcript ── */
+.editable-box {
+  cursor: text;
+  outline: none;
+}
+.editable-box:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 2px var(--glow);
+}
+
+.edit-hint {
+  font-size: 9px;
+  color: var(--text2);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 4px;
+}
+
+/* ── Code block highlight ── */
+.code-block {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+  font-family: 'Menlo', 'Fira Code', 'Consolas', monospace;
+}
+
+.code-lang {
+  display: block;
+  padding: 4px 10px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  font-size: 10px;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.code-block code {
+  color: #c9d1d9;
+  font-family: inherit;
+}
 
 /* ── Stealth Badge ── */
 .stealth-badge {

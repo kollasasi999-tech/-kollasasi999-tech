@@ -39,8 +39,27 @@
           <input type="text" id="jobRoleInput" placeholder="e.g. Senior Software Engineer" />
         </div>
         <div class="field">
-          <label>Job Context <span class="optional">(optional)</span></label>
-          <textarea id="jobDescInput" placeholder="Brief job description or company info..."></textarea>
+          <label>Job Posting URL <span class="optional">(auto-extract)</span></label>
+          <div class="url-row">
+            <input type="url" id="jobUrlInput" placeholder="https://company.com/careers/..." />
+            <button class="btn-fetch" id="btnFetchUrl">Fetch</button>
+          </div>
+          <span class="fetch-status" id="fetchStatus"></span>
+        </div>
+        <div class="field">
+          <label>Job Context <span class="optional">(edit after fetch)</span></label>
+          <textarea id="jobDescInput" placeholder="Paste job description, or fetch it from a URL above..."></textarea>
+        </div>
+        <div class="field">
+          <label>Resume <span class="optional">(personalises answers)</span></label>
+          <div class="resume-row">
+            <span class="resume-name" id="resumeName">No resume uploaded</span>
+            <button class="btn-upload" id="btnUploadResume">Upload PDF/TXT</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Auto-send delay — <span id="silenceTimerValue">2.5s</span></label>
+          <input type="range" id="silenceTimerSlider" min="1" max="5" value="2.5" step="0.5" />
         </div>
         <div class="field">
           <label>Window Opacity — <span id="opacityValue">95%</span></label>
@@ -109,10 +128,10 @@
     <!-- Question Section -->
     <div class="section">
       <div class="section-header">
-        <span class="section-label">Detected Question</span>
+        <span class="section-label">Detected Question <span class="edit-hint">✏ editable</span></span>
         <button class="btn-action" id="btnAsk">↑ Ask Claude</button>
       </div>
-      <div class="text-box" id="transcriptBox">
+      <div class="text-box editable-box" id="transcriptBox" contenteditable="true" spellcheck="false">
         <span class="hint">Start listening — questions will appear here automatically...</span>
       </div>
     </div>

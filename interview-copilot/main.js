@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, session, globalShortcut, Tray, nativeImage, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, session, globalShortcut, Tray, nativeImage, Menu, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const zlib = require('zlib')
@@ -185,8 +185,75 @@ ipcMain.handle('save-settings', (event, newSettings) => {
   return { success: true }
 })
 
+// Resume file picker + PDF parser
+ipcMain.handle('select-resume-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Documents', extensions: ['pdf', 'txt'] }],
+  })
+  if (result.canceled || !result.filePaths.length) return null
+
+  const filePath = result.filePaths[0]
+  const ext = path.extname(filePath).toLowerCase()
+  const name = path.basename(filePath)
+
+  try {
+    if (ext === '.txt') {
+      const text = fs.readFileSync(filePath, 'utf-8').slice(0, 8000)
+      return { name, text, success: true }
+    }
+    if (ext === '.pdf') {
+      // pdf-parse is an optional dep; give a friendly error if not installed yet
+      let pdfParse
+      try { pdfParse = require('pdf-parse') } catch {
+        return { error: 'Run  npm install  inside the interview-copilot folder first, then restart.' }
+      }
+      const data = await pdfParse(fs.readFileSync(filePath))
+      return { name, text: data.text.slice(0, 8000), success: true }
+    }
+    return { error: 'Only PDF and TXT files are supported.' }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
+// Job URL scraper — fetches HTML, strips tags, returns raw text
+function fetchUrl(url, redirectsLeft = 4) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https') ? require('https') : require('http')
+    const req = mod.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36' },
+    }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirectsLeft > 0) {
+        return fetchUrl(res.headers.location, redirectsLeft - 1).then(resolve).catch(reject)
+      }
+      let body = ''
+      res.on('data', c => { body += c })
+      res.on('end', () => resolve(body))
+    })
+    req.on('error', reject)
+    req.setTimeout(9000, () => { req.destroy(); reject(new Error('Request timed out')) })
+  })
+}
+
+ipcMain.handle('fetch-job-url', async (event, url) => {
+  try {
+    const html = await fetchUrl(url)
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 6000)
+    return { text, success: true }
+  } catch (e) {
+    return { error: e.message, success: false }
+  }
+})
+
 // Claude streaming
-ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription }) => {
+ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription, resumeText }) => {
   if (!settings.apiKey) {
     mainWindow.webContents.send('claude-error', 'API key not set. Click ⚙ to add your Anthropic API key.')
     return
@@ -195,14 +262,16 @@ ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription }
   const client = new Anthropic({ apiKey: settings.apiKey })
 
   const systemPrompt = `You are an expert interview coach helping a candidate during a live job interview.
-${jobRole ? `The candidate is interviewing for: ${jobRole}` : ''}
-${jobDescription ? `Job context: ${jobDescription}` : ''}
+${jobRole ? `Role being interviewed for: ${jobRole}` : ''}
+${jobDescription ? `Job description / company context:\n${jobDescription}` : ''}
+${resumeText ? `\nCandidate resume / background:\n${resumeText}` : ''}
 
 Rules:
 - Answer in first person as if the candidate is speaking
-- For behavioral questions (tell me about a time, describe a situation), use STAR method briefly
-- For technical questions, give a precise expert-level answer
-- For coding problems, provide clean code with brief explanation
+- Use specific experiences from the resume when relevant — make answers personal, not generic
+- For behavioral questions use STAR method (Situation, Task, Action, Result) drawing from the resume
+- For technical questions give a precise expert-level answer
+- For coding problems provide clean code with a brief explanation; wrap code in triple backticks with the language name
 - Keep answers concise (under 200 words) unless it is a coding problem
 - Be confident and professional
 - Do not mention you are an AI`

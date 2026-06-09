@@ -1,66 +1,83 @@
 /* ── DOM refs ── */
-const statusDot     = document.getElementById('statusDot')
-const statusText    = document.getElementById('statusText')
-const waves         = document.getElementById('waves')
-const btnListen     = document.getElementById('btnListen')
-const btnListenTxt  = document.getElementById('btnListenText')
-const micIcon       = document.getElementById('micIcon')
-const btnClear      = document.getElementById('btnClear')
-const btnSettings   = document.getElementById('btnSettings')
-const btnSave       = document.getElementById('btnSaveSettings')
-const btnAsk        = document.getElementById('btnAsk')
-const btnCopy       = document.getElementById('btnCopy')
-const btnMinimize   = document.getElementById('btnMinimize')
-const btnClose      = document.getElementById('btnClose')
-const settingsPanel = document.getElementById('settingsPanel')
-const transcriptBox = document.getElementById('transcriptBox')
-const answerBox     = document.getElementById('answerBox')
-const apiKeyInput   = document.getElementById('apiKeyInput')
-const jobRoleInput  = document.getElementById('jobRoleInput')
-const jobDescInput  = document.getElementById('jobDescInput')
-const langSelect    = document.getElementById('langSelect')
-const btnTheme      = document.getElementById('btnTheme')
-const opacitySlider = document.getElementById('opacitySlider')
-const opacityValue  = document.getElementById('opacityValue')
-const btnQuit       = document.getElementById('btnQuit')
-const btnHistory    = document.getElementById('btnHistory')
-const historyPanel  = document.getElementById('historyPanel')
-const historyList   = document.getElementById('historyList')
-const btnHistoryBack= document.getElementById('btnHistoryBack')
-const stealthBadge  = document.getElementById('stealthBadge')
-const toast         = document.getElementById('toast')
+const statusDot        = document.getElementById('statusDot')
+const statusText       = document.getElementById('statusText')
+const waves            = document.getElementById('waves')
+const btnListen        = document.getElementById('btnListen')
+const btnListenTxt     = document.getElementById('btnListenText')
+const micIcon          = document.getElementById('micIcon')
+const btnClear         = document.getElementById('btnClear')
+const btnSettings      = document.getElementById('btnSettings')
+const btnSave          = document.getElementById('btnSaveSettings')
+const btnAsk           = document.getElementById('btnAsk')
+const btnCopy          = document.getElementById('btnCopy')
+const btnMinimize      = document.getElementById('btnMinimize')
+const btnClose         = document.getElementById('btnClose')
+const settingsPanel    = document.getElementById('settingsPanel')
+const transcriptBox    = document.getElementById('transcriptBox')
+const answerBox        = document.getElementById('answerBox')
+const apiKeyInput      = document.getElementById('apiKeyInput')
+const jobRoleInput     = document.getElementById('jobRoleInput')
+const jobDescInput     = document.getElementById('jobDescInput')
+const jobUrlInput      = document.getElementById('jobUrlInput')
+const btnFetchUrl      = document.getElementById('btnFetchUrl')
+const fetchStatus      = document.getElementById('fetchStatus')
+const btnUploadResume  = document.getElementById('btnUploadResume')
+const resumeName       = document.getElementById('resumeName')
+const silenceTimerSlider = document.getElementById('silenceTimerSlider')
+const silenceTimerValue  = document.getElementById('silenceTimerValue')
+const langSelect       = document.getElementById('langSelect')
+const btnTheme         = document.getElementById('btnTheme')
+const opacitySlider    = document.getElementById('opacitySlider')
+const opacityValue     = document.getElementById('opacityValue')
+const btnQuit          = document.getElementById('btnQuit')
+const btnHistory       = document.getElementById('btnHistory')
+const historyPanel     = document.getElementById('historyPanel')
+const historyList      = document.getElementById('historyList')
+const btnHistoryBack   = document.getElementById('btnHistoryBack')
+const stealthBadge     = document.getElementById('stealthBadge')
+const toast            = document.getElementById('toast')
 
 /* ── State ── */
-let isListening       = false
-let isProcessing      = false
-let recognition       = null
-let silenceTimer      = null
-let settingsOpen      = false
-let finalText         = ''
-let isDark            = true
-let isStealthy        = false
-let preStealthOpacity = 0.95
-let currentQuestion   = ''
-let toastTimer        = null
+let isListening        = false
+let isProcessing       = false
+let recognition        = null
+let silenceTimer       = null
+let settingsOpen       = false
+let finalText          = ''
+let isDark             = true
+let isStealthy         = false
+let preStealthOpacity  = 0.95
+let currentQuestion    = ''
+let rawAnswerBuffer    = ''
+let toastTimer         = null
+let silenceDelay       = 2500
+let resumeText         = ''
 
-const sessionHistory  = []
-const opacityCycle    = [1.0, 0.8, 0.6, 0.4]
-let opacityCycleIdx   = 0
+const sessionHistory   = []
+const opacityCycle     = [1.0, 0.8, 0.6, 0.4]
+let opacityCycleIdx    = 0
 
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
   const saved = await window.electronAPI.getSettings()
-  if (saved.apiKey)   apiKeyInput.value  = saved.apiKey
-  if (saved.jobRole)  jobRoleInput.value = saved.jobRole
-  if (saved.jobDesc)  jobDescInput.value = saved.jobDesc
-  if (saved.language) langSelect.value   = saved.language
+
+  if (saved.apiKey)       apiKeyInput.value    = saved.apiKey
+  if (saved.jobRole)      jobRoleInput.value   = saved.jobRole
+  if (saved.jobDesc)      jobDescInput.value   = saved.jobDesc
+  if (saved.language)     langSelect.value     = saved.language
+  if (saved.resumeName)   resumeName.textContent = saved.resumeName
+  if (saved.resumeText)   resumeText           = saved.resumeText
+  if (saved.silenceDelay) {
+    silenceDelay = saved.silenceDelay
+    silenceTimerSlider.value = silenceDelay / 1000
+    silenceTimerValue.textContent = (silenceDelay / 1000) + 's'
+  }
 
   if (saved.opacity != null) {
     const pct = Math.round(saved.opacity * 100)
     opacitySlider.value = pct
     opacityValue.textContent = pct + '%'
     preStealthOpacity = saved.opacity
-    // Sync cycle index to nearest value
     opacityCycleIdx = opacityCycle.reduce((best, v, i) =>
       Math.abs(v - saved.opacity) < Math.abs(opacityCycle[best] - saved.opacity) ? i : best, 0)
   }
@@ -78,11 +95,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   window.electronAPI.onHotkey((action) => {
     switch (action) {
-      case 'toggle-listen':
-        isListening ? stopListening() : startListening()
-        break
+      case 'toggle-listen':  isListening ? stopListening() : startListening(); break
       case 'send-claude': {
-        const txt = transcriptBox.textContent.trim()
+        const txt = transcriptBox.innerText.trim()
         if (txt && !txt.includes('Start listening')) sendToClaude(txt)
         break
       }
@@ -97,15 +112,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         break
       }
-      case 'clear':
-        btnClear.click()
-        break
-      case 'opacity-cycle':
-        cycleOpacity()
-        break
-      case 'stealth-toggle':
-        toggleStealth()
-        break
+      case 'clear':          btnClear.click(); break
+      case 'opacity-cycle':  cycleOpacity(); break
+      case 'stealth-toggle': toggleStealth(); break
     }
   })
 
@@ -119,10 +128,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 /* ── Claude response handlers ── */
 function handleChunk(chunk) {
+  rawAnswerBuffer += chunk
   if (answerBox.querySelector('.hint')) answerBox.innerHTML = ''
   const cursor = answerBox.querySelector('.cursor')
-  if (cursor) cursor.remove()
-  answerBox.innerHTML += chunk.replace(/\n/g, '<br>')
+  // Streaming preview: escape HTML and show plain text with cursor
+  const preview = escapeHtml(rawAnswerBuffer).replace(/\n/g, '<br>')
+  answerBox.innerHTML = preview
   const cur = document.createElement('span')
   cur.className = 'cursor'
   answerBox.appendChild(cur)
@@ -130,22 +141,49 @@ function handleChunk(chunk) {
 }
 
 function handleDone() {
-  const cursor = answerBox.querySelector('.cursor')
-  if (cursor) cursor.remove()
-  isProcessing = false
-  // Save to history
-  const answer = answerBox.innerText.trim()
-  if (currentQuestion && answer) {
-    addToHistory(currentQuestion, answer)
+  // Final render with code block formatting
+  if (rawAnswerBuffer) {
+    answerBox.innerHTML = renderAnswer(rawAnswerBuffer)
   }
+  rawAnswerBuffer = ''
+  isProcessing = false
+
+  const answer = answerBox.innerText.trim()
+  if (currentQuestion && answer) addToHistory(currentQuestion, answer)
+
   setStatus(isListening ? 'listening' : 'ready',
             isListening ? 'Listening...' : 'Ready — click Start to listen')
 }
 
 function handleError(err) {
+  rawAnswerBuffer = ''
   isProcessing = false
-  answerBox.innerHTML = `<span style="color:#f04444">⚠ ${err}</span>`
+  answerBox.innerHTML = `<span style="color:#f04444">⚠ ${escapeHtml(err)}</span>`
   setStatus('error', 'Error — check Settings')
+}
+
+/* ── Answer renderer with code block support ── */
+function renderAnswer(raw) {
+  const parts = raw.split(/(```(?:\w+)?[\s\S]*?```)/g)
+  return parts.map(part => {
+    if (part.startsWith('```')) {
+      const match = part.match(/```(\w*)\n?([\s\S]*?)```/)
+      if (match) {
+        const lang = match[1] || 'code'
+        const code = escapeHtml(match[2].trim())
+        return `<div class="code-block"><span class="code-lang">${lang}</span><pre><code>${code}</code></pre></div>`
+      }
+    }
+    return escapeHtml(part).replace(/\n/g, '<br>')
+  }).join('')
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 /* ── Titlebar ── */
@@ -173,24 +211,73 @@ btnSave.addEventListener('click', async () => {
   const key = apiKeyInput.value.trim()
   if (!key) { alert('Please enter your Anthropic API key.'); return }
   const opacity = parseInt(opacitySlider.value) / 100
+  silenceDelay = parseFloat(silenceTimerSlider.value) * 1000
   await window.electronAPI.saveSettings({
-    apiKey:   key,
-    jobRole:  jobRoleInput.value.trim(),
-    jobDesc:  jobDescInput.value.trim(),
-    language: langSelect.value,
+    apiKey:       key,
+    jobRole:      jobRoleInput.value.trim(),
+    jobDesc:      jobDescInput.value.trim(),
+    language:     langSelect.value,
     opacity,
-    theme:    isDark ? 'dark' : 'light',
+    theme:        isDark ? 'dark' : 'light',
+    silenceDelay,
+    resumeText,
+    resumeName:   resumeName.textContent,
   })
   settingsOpen = false
   settingsPanel.classList.remove('open')
   setStatus('ready', 'Settings saved ✓')
 })
 
+/* ── Resume upload ── */
+btnUploadResume.addEventListener('click', async () => {
+  btnUploadResume.textContent = 'Loading...'
+  const result = await window.electronAPI.selectResumeFile()
+  btnUploadResume.textContent = 'Upload PDF/TXT'
+
+  if (!result) return  // cancelled
+  if (result.error) { showToast('⚠ ' + result.error); return }
+
+  resumeText = result.text
+  resumeName.textContent = result.name
+  showToast('Resume loaded: ' + result.name)
+})
+
+/* ── Job URL fetch ── */
+btnFetchUrl.addEventListener('click', async () => {
+  const url = jobUrlInput.value.trim()
+  if (!url) { showToast('Paste a job posting URL first'); return }
+
+  btnFetchUrl.textContent = '...'
+  fetchStatus.textContent = 'Fetching...'
+  fetchStatus.style.color = 'var(--text2)'
+
+  const result = await window.electronAPI.fetchJobUrl(url)
+  btnFetchUrl.textContent = 'Fetch'
+
+  if (!result.success) {
+    fetchStatus.textContent = '⚠ ' + (result.error || 'Failed to fetch')
+    fetchStatus.style.color = 'var(--red)'
+    return
+  }
+
+  jobDescInput.value = result.text
+  fetchStatus.textContent = '✓ Extracted — review and edit above'
+  fetchStatus.style.color = 'var(--green)'
+  showToast('Job posting fetched!')
+})
+
+/* ── Sliders (real-time) ── */
 opacitySlider.addEventListener('input', () => {
   const pct = parseInt(opacitySlider.value)
   opacityValue.textContent = pct + '%'
   window.electronAPI.setOpacity(pct / 100)
   if (!isStealthy) preStealthOpacity = pct / 100
+})
+
+silenceTimerSlider.addEventListener('input', () => {
+  const val = parseFloat(silenceTimerSlider.value)
+  silenceDelay = val * 1000
+  silenceTimerValue.textContent = val + 's'
 })
 
 /* ── Listen toggle ── */
@@ -202,6 +289,7 @@ btnListen.addEventListener('click', () => {
 btnClear.addEventListener('click', () => {
   finalText = ''
   currentQuestion = ''
+  rawAnswerBuffer = ''
   transcriptBox.innerHTML = '<span class="hint">Start listening — questions will appear here automatically...</span>'
   answerBox.innerHTML     = '<span class="hint">Answer will stream here in real-time...</span>'
   clearTimeout(silenceTimer)
@@ -209,7 +297,7 @@ btnClear.addEventListener('click', () => {
 
 /* ── Manual ask ── */
 btnAsk.addEventListener('click', () => {
-  const txt = transcriptBox.textContent.trim()
+  const txt = transcriptBox.innerText.trim()
   if (txt && !txt.includes('Start listening')) sendToClaude(txt)
 })
 
@@ -249,7 +337,7 @@ function addToHistory(question, answer) {
 
 function renderHistory() {
   if (sessionHistory.length === 0) {
-    historyList.innerHTML = '<span class="hint" style="padding:12px;display:block">No history yet — answers will appear here after each question.</span>'
+    historyList.innerHTML = '<span class="hint" style="padding:12px;display:block">No history yet.</span>'
     return
   }
   historyList.innerHTML = sessionHistory.map((item, i) => `
@@ -264,17 +352,10 @@ function renderHistory() {
     el.addEventListener('click', () => {
       const item = sessionHistory[parseInt(el.dataset.index)]
       transcriptBox.textContent = item.question
-      answerBox.innerHTML = item.answer.replace(/\n/g, '<br>')
+      answerBox.innerHTML = renderAnswer(item.answer)
       hideHistoryPanel()
     })
   })
-}
-
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
 }
 
 /* ── Stealth mode ── */
@@ -297,7 +378,7 @@ function toggleStealth() {
 
 /* ── Opacity cycle ── */
 function cycleOpacity() {
-  if (isStealthy) return  // don't cycle while stealthy
+  if (isStealthy) return
   opacityCycleIdx = (opacityCycleIdx + 1) % opacityCycle.length
   const val = opacityCycle[opacityCycleIdx]
   window.electronAPI.setOpacity(val)
@@ -312,14 +393,14 @@ function showToast(msg) {
   toast.textContent = msg
   toast.classList.add('show')
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 1600)
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800)
 }
 
 /* ── Speech Recognition ── */
 function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
   if (!SR) {
-    alert('Speech recognition is not supported. Please use a Chromium-based build.')
+    alert('Speech recognition not supported. Please use a Chromium-based build.')
     return
   }
 
@@ -348,6 +429,7 @@ function startListening() {
 
     const display = finalText + interim
     if (display.trim()) {
+      // Set as plain text (user can then edit in the contenteditable box)
       transcriptBox.textContent = display
       transcriptBox.scrollTop   = transcriptBox.scrollHeight
     }
@@ -359,7 +441,7 @@ function startListening() {
           sendToClaude(finalText.trim())
           finalText = ''
         }
-      }, 2500)
+      }, silenceDelay)
     }
   }
 
@@ -392,6 +474,7 @@ function stopListening() {
 async function sendToClaude(question) {
   if (isProcessing || !question.trim()) return
   currentQuestion = question
+  rawAnswerBuffer = ''
   isProcessing    = true
   answerBox.innerHTML = '<span class="cursor"></span>'
   setStatus('processing', 'Generating answer...')
@@ -401,6 +484,7 @@ async function sendToClaude(question) {
     question,
     jobRole:        jobRoleInput.value.trim(),
     jobDescription: jobDescInput.value.trim(),
+    resumeText,
   })
 }
 

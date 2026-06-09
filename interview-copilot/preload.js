@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   quitApp: () => ipcRenderer.invoke('quit-app'),
 
   setOpacity: (value) => ipcRenderer.invoke('set-opacity', value),
+  selectResumeFile: () => ipcRenderer.invoke('select-resume-file'),
+  fetchJobUrl: (url) => ipcRenderer.invoke('fetch-job-url', url),
 
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),

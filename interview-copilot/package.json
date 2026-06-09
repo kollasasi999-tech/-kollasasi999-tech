@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "electron": "^35.0.0"
+    "electron": "^35.0.0",
+    "pdf-parse": "^1.1.1"
   },
   "author": "Kolla Sasi Kumar <kollasasi999@gmail.com>",
   "license": "MIT"
