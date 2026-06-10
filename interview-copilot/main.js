@@ -3,6 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const zlib = require('zlib')
 const Anthropic = require('@anthropic-ai/sdk')
+const { autoUpdater } = require('electron-updater')
 
 let mainWindow
 let tray = null
@@ -157,7 +158,32 @@ function createWindow() {
   createTray()
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  createWindow()
+
+  // Auto-updater — only runs in packaged builds
+  if (app.isPackaged) {
+    autoUpdater.logger = null  // silence verbose logs
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+
+    autoUpdater.on('update-available', (info) => {
+      mainWindow.webContents.send('update-available', info.version)
+    })
+
+    autoUpdater.on('update-downloaded', () => {
+      mainWindow.webContents.send('update-downloaded')
+    })
+
+    autoUpdater.on('error', () => {}) // swallow update errors silently
+
+    // Check on launch, then every 4 hours
+    autoUpdater.checkForUpdates()
+    setInterval(() => autoUpdater.checkForUpdates(), 4 * 60 * 60 * 1000)
+  }
+})
+
+ipcMain.handle('install-update', () => autoUpdater.quitAndInstall())
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()

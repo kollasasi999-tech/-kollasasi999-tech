@@ -79,6 +79,9 @@ const activeStoryLabel = document.getElementById('activeStoryLabel')
 const btnClearStory    = document.getElementById('btnClearStory')
 const btnSpike         = document.getElementById('btnSpike')
 const btnSlim          = document.getElementById('btnSlim')
+const updateBanner     = document.getElementById('updateBanner')
+const updateMsg        = document.getElementById('updateMsg')
+const btnInstallUpdate = document.getElementById('btnInstallUpdate')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
 const capturePreview   = document.getElementById('capturePreview')
@@ -214,6 +217,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (historyPanel.classList.contains('open')) hideHistoryPanel()
     }
   })
+
+  // Auto-updater notifications
+  window.electronAPI.onUpdateAvailable((version) => {
+    updateBanner.style.display = 'flex'
+    updateMsg.textContent = `v${version} available — downloading...`
+  })
+  window.electronAPI.onUpdateDownloaded(() => {
+    updateBanner.style.display = 'flex'
+    updateMsg.textContent = 'Update ready to install'
+    btnInstallUpdate.style.display = 'inline-block'
+  })
+  btnInstallUpdate.addEventListener('click', () => window.electronAPI.installUpdate())
 })
 
 /* ── Claude response handlers ── */

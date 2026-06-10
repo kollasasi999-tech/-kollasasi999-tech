@@ -41,5 +41,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)
   },
-  setSlimMode: (isSlim) => ipcRenderer.invoke('set-slim-mode', isSlim),
+  setSlimMode:       (isSlim) => ipcRenderer.invoke('set-slim-mode', isSlim),
+  installUpdate:     ()       => ipcRenderer.invoke('install-update'),
+  onUpdateAvailable: (cb)     => ipcRenderer.on('update-available',  (_, v) => cb(v)),
+  onUpdateDownloaded:(cb)     => ipcRenderer.on('update-downloaded', cb),
 })

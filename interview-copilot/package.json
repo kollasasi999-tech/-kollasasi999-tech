@@ -14,9 +14,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "electron-updater": "^6.3.0",
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.3.0",
     "electron": "^35.0.0",
     "electron-builder": "^24.13.3"
   },
@@ -24,6 +26,12 @@
     "appId": "com.kollasasi.interview-copilot",
     "productName": "Interview Copilot",
     "copyright": "Copyright © 2025 Kolla Sasi Kumar",
+    "publish": {
+      "provider": "github",
+      "owner": "kollasasi999-tech",
+      "repo": "-kollasasi999-tech",
+      "releaseType": "release"
+    },
     "directories": {
       "output": "dist"
     },
@@ -32,7 +40,6 @@
       "preload.js",
       "renderer/**",
       "assets/**",
-      "scripts/**",
       "node_modules/**",
       "!node_modules/electron/**",
       "!dist/**"
@@ -40,10 +47,15 @@
     "mac": {
       "icon": "assets/icon.png",
       "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
       "target": [
         { "target": "dmg", "arch": ["x64", "arm64"] }
       ]
     },
+    "afterSign": "scripts/notarize.js",
     "win": {
       "icon": "assets/icon.png",
       "target": [
@@ -59,9 +71,7 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/icon.png",
-      "uninstallerIcon": "assets/icon.png"
+      "allowToChangeInstallationDirectory": true
     },
     "dmg": {
       "title": "Interview Copilot ${version}"
