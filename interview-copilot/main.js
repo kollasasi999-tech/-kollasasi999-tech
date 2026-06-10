@@ -196,10 +196,14 @@ ipcMain.handle('mock-interview-turn', async (event, { messages, systemPrompt }) 
   }
   const client = new Anthropic({ apiKey: settings.apiKey })
   try {
+    // Inject STAR scoring format reminder into system prompt if not already present
+    const enhancedSystem = systemPrompt.includes('STAR:') ? systemPrompt
+      : systemPrompt + '\nWhen evaluating answers always include STAR: S:[1-10] T:[1-10] A:[1-10] R:[1-10] on its own line between FEEDBACK and SCORE.'
+
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: systemPrompt,
+      system: enhancedSystem,
       messages,
     })
     stream.on('text',         (t) => mainWindow.webContents.send('mock-chunk', t))
@@ -362,6 +366,56 @@ ipcMain.handle('fetch-job-url', async (event, url) => {
   }
 })
 
+// Mine STAR stories from uploaded resume
+ipcMain.handle('mine-resume-stories', async (event, { resumeText }) => {
+  if (!settings.apiKey) return { error: 'API key not set' }
+  const client = new Anthropic({ apiKey: settings.apiKey })
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1400,
+      messages: [{
+        role: 'user',
+        content: `Analyze this resume and extract 5-8 of the strongest career stories that would make compelling STAR-format behavioral interview answers.
+
+For each story use EXACTLY this format (separate stories with ---):
+TITLE: [5-8 word title for this story]
+S: [One sentence: the situation or challenge]
+A: [One to two sentences: the specific actions taken]
+R: [One sentence: the measurable result or impact]
+---
+
+Resume:
+${resumeText}
+
+Output ONLY the stories in that format. No intro text, no conclusion, no numbering.`,
+      }],
+    })
+    return { text: msg.content[0].text, success: true }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
+// Behavioral spike drill — generate one tough follow-up probe question
+ipcMain.handle('get-spike', async (event, { question, answer }) => {
+  if (!settings.apiKey) return { error: 'API key not set' }
+  const client = new Anthropic({ apiKey: settings.apiKey })
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 120,
+      messages: [{
+        role: 'user',
+        content: `You are a tough interviewer. Based on this Q&A, generate ONE sharp follow-up question that probes for specifics, challenges a vague claim, or pushes the candidate to give a harder example. Output ONLY the follow-up question — no preamble, no explanation.\n\nQ: ${question}\nA: ${answer}`,
+      }],
+    })
+    return { text: msg.content[0].text.trim(), success: true }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
 // Generate a tailored question bank from the job description
 ipcMain.handle('generate-questions', async (event, { jobDescription, jobRole }) => {
   if (!settings.apiKey) return { error: 'API key not set' }
@@ -407,7 +461,7 @@ ipcMain.handle('get-followups', async (event, { question, answer }) => {
 })
 
 // Claude streaming
-ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription, resumeText, answerMode }) => {
+ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription, resumeText, answerMode, storyContext }) => {
   if (!settings.apiKey) {
     mainWindow.webContents.send('claude-error', 'API key not set. Click ⚙ to add your Anthropic API key.')
     return
@@ -424,6 +478,7 @@ ipcMain.handle('ask-claude', async (event, { question, jobRole, jobDescription, 
 ${jobRole ? `Role being interviewed for: ${jobRole}` : ''}
 ${jobDescription ? `Job description / company context:\n${jobDescription}` : ''}
 ${resumeText ? `\nCandidate resume / background:\n${resumeText}` : ''}
+${storyContext ? `\nKey story from candidate's experience to weave into the answer:\n${storyContext}` : ''}
 
 Rules:
 - Answer in first person as if the candidate is speaking

@@ -1235,6 +1235,143 @@ input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent2); }
 .btn-mock-open { color: var(--accent2) !important; }
 .btn-mock-open:hover { color: var(--accent) !important; }
 
+/* ── STAR bars in mock feedback ── */
+.mock-star-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.mock-star-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mock-star-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent2);
+  width: 12px;
+  flex-shrink: 0;
+}
+.mock-star-track {
+  flex: 1;
+  height: 5px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mock-star-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.mock-star-val {
+  font-size: 10px;
+  color: var(--text2);
+  width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── STAR mini badges in results ── */
+.mock-result-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+.mock-star-mini {
+  display: flex;
+  gap: 3px;
+}
+.star-mini-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--bg3);
+  color: var(--accent2);
+}
+
+/* ── Story bank items ── */
+.story-content {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.story-content:hover { background: var(--bg3); }
+.story-content:last-child { border-bottom: none; }
+.story-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent2);
+  margin-bottom: 3px;
+}
+.story-preview {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Active story chip ── */
+.active-story-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin: 0 0 4px 0;
+  background: rgba(124, 90, 240, 0.15);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+}
+.active-story-label {
+  font-size: 11px;
+  color: var(--accent2);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-clear-story {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.btn-clear-story:hover { color: var(--red); }
+
+/* ── Small icon-only buttons in question header ── */
+.btn-icon-sm {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-icon-sm:hover { background: var(--accent); color: #fff; }
+
 /* ── Light Theme ── */
 .app.light {
   --bg:      #f5f5fc;

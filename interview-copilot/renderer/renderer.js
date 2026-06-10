@@ -68,6 +68,16 @@ const btnQBankBack     = document.getElementById('btnQBankBack')
 const qbankPanel       = document.getElementById('qbankPanel')
 const qbankList        = document.getElementById('qbankList')
 const qbankMeta        = document.getElementById('qbankMeta')
+const btnMineStories   = document.getElementById('btnMineStories')
+const btnStories       = document.getElementById('btnStories')
+const btnStoryBack     = document.getElementById('btnStoryBack')
+const storyPanel       = document.getElementById('storyPanel')
+const storyList        = document.getElementById('storyList')
+const storyMeta        = document.getElementById('storyMeta')
+const activeStoryChip  = document.getElementById('activeStoryChip')
+const activeStoryLabel = document.getElementById('activeStoryLabel')
+const btnClearStory    = document.getElementById('btnClearStory')
+const btnSpike         = document.getElementById('btnSpike')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
 const capturePreview   = document.getElementById('capturePreview')
@@ -120,6 +130,10 @@ let lastWPM        = 0
 let questionBank   = []
 const FILLER_RE    = /\b(um+|uh+|hmm+|er+)\b/gi
 
+// Story bank
+let storyBank      = []   // [{ title, s, a, r }]
+let activeStoryCtx = null // currently selected story text
+
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
   const saved = await window.electronAPI.getSettings()
@@ -129,7 +143,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (saved.jobDesc)      jobDescInput.value   = saved.jobDesc
   if (saved.language)     langSelect.value     = saved.language
   if (saved.resumeName)   resumeName.textContent = saved.resumeName
-  if (saved.resumeText)   resumeText           = saved.resumeText
+  if (saved.resumeText) {
+    resumeText = saved.resumeText
+    btnMineStories.style.display = 'block'
+  }
+  if (saved.sessionHistory && Array.isArray(saved.sessionHistory)) {
+    sessionHistory.push(...saved.sessionHistory)
+    btnHistory.textContent = `History (${sessionHistory.length})`
+  }
   if (saved.silenceDelay) {
     silenceDelay = saved.silenceDelay
     silenceTimerSlider.value = silenceDelay / 1000
@@ -312,6 +333,7 @@ btnUploadResume.addEventListener('click', async () => {
 
   resumeText = result.text
   resumeName.textContent = result.name
+  btnMineStories.style.display = 'block'
   showToast('Resume loaded: ' + result.name)
 })
 
@@ -407,6 +429,8 @@ function addToHistory(question, answer) {
   })
   if (sessionHistory.length > 30) sessionHistory.pop()
   btnHistory.textContent = `History (${sessionHistory.length})`
+  // Persist last 20 entries across sessions
+  window.electronAPI.saveSettings({ sessionHistory: sessionHistory.slice(0, 20) })
 }
 
 function renderHistory() {
@@ -655,6 +679,7 @@ async function sendToClaude(question) {
     jobDescription: jobDescInput.value.trim(),
     resumeText,
     answerMode:     answerModes[answerModeIdx].key,
+    storyContext:   activeStoryCtx,
   })
 }
 
@@ -720,6 +745,112 @@ function updateDeliveryStats() {
 
   deliveryStats.innerHTML = [wpmPart, fillerPart].filter(Boolean).join(' ')
 }
+
+/* ── Story Bank ── */
+btnMineStories.addEventListener('click', async () => {
+  if (!resumeText) { showToast('Upload a resume first'); return }
+
+  btnMineStories.textContent = '⏳ Mining stories...'
+  btnMineStories.disabled    = true
+
+  const result = await window.electronAPI.mineResumeStories({ resumeText })
+
+  btnMineStories.textContent = '⚡ Mine Story Bank from Resume'
+  btnMineStories.disabled    = false
+
+  if (!result.success) { showToast('⚠ ' + (result.error || 'Failed')); return }
+
+  storyBank = parseStories(result.text)
+  showToast(`${storyBank.length} stories found!`)
+  settingsOpen = false
+  settingsPanel.classList.remove('open')
+  showStoryPanel()
+})
+
+btnStories.addEventListener('click', () => {
+  if (!storyBank.length) {
+    showToast('Upload a resume and mine stories first (Settings)')
+    return
+  }
+  showStoryPanel()
+})
+
+btnStoryBack.addEventListener('click', hideStoryPanel)
+
+btnClearStory.addEventListener('click', () => {
+  activeStoryCtx = null
+  activeStoryChip.style.display = 'none'
+  showToast('Story context cleared')
+})
+
+function parseStories(text) {
+  return text.split(/---+/).map(block => {
+    const titleM = block.match(/TITLE:\s*(.+)/i)
+    const sM     = block.match(/S:\s*(.+)/i)
+    const aM     = block.match(/A:\s*([\s\S]+?)(?=R:|$)/i)
+    const rM     = block.match(/R:\s*(.+)/i)
+    if (!titleM) return null
+    return {
+      title: titleM[1].trim(),
+      s:     sM  ? sM[1].trim()  : '',
+      a:     aM  ? aM[1].trim()  : '',
+      r:     rM  ? rM[1].trim()  : '',
+    }
+  }).filter(Boolean)
+}
+
+function showStoryPanel() {
+  renderStoryList()
+  storyPanel.classList.add('open')
+}
+
+function hideStoryPanel() {
+  storyPanel.classList.remove('open')
+}
+
+function renderStoryList() {
+  storyMeta.textContent = `${storyBank.length} stories — click to use as answer context`
+  storyList.innerHTML   = storyBank.map((story, i) => `
+    <div class="qbank-item story-item" data-i="${i}">
+      <span class="qbank-num">${i + 1}</span>
+      <div class="story-content">
+        <div class="story-title">${escapeHtml(story.title)}</div>
+        <div class="story-preview">${escapeHtml(story.r)}</div>
+      </div>
+    </div>
+  `).join('')
+
+  storyList.querySelectorAll('.story-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const story = storyBank[parseInt(el.dataset.i)]
+      activeStoryCtx = `Title: ${story.title}\nSituation: ${story.s}\nAction: ${story.a}\nResult: ${story.r}`
+      activeStoryLabel.textContent = `📖 ${story.title}`
+      activeStoryChip.style.display = 'flex'
+      hideStoryPanel()
+      showToast(`Story set: ${story.title}`)
+    })
+  })
+}
+
+/* ── Behavioral Spike Drill ── */
+btnSpike.addEventListener('click', async () => {
+  const q = currentQuestion
+  const a = answerBox.innerText.trim()
+  if (!q || !a || a.includes('Answer will stream')) {
+    showToast('Complete a Q&A first, then probe deeper')
+    return
+  }
+
+  btnSpike.textContent = '⏳'
+  const result = await window.electronAPI.getSpike({ question: q, answer: a })
+  btnSpike.textContent = '🔍 Probe'
+
+  if (!result.success) { showToast('⚠ ' + result.error); return }
+
+  transcriptBox.textContent = result.text
+  showToast('Probing deeper — asking Claude for guidance...')
+  sendToClaude(result.text)
+})
 
 /* ── Question Bank ── */
 btnGenQuestions.addEventListener('click', async () => {
@@ -962,16 +1093,23 @@ function handleMockDone() {
     mockAnswerBox.focus()
 
   } else if (mockPhase === 'evaluating') {
-    const { feedback, score, next } = parseMockFeedback(mockMsgBuf)
+    const { feedback, star, score, next } = parseMockFeedback(mockMsgBuf)
 
     const qa = mockQA[mockQA.length - 1]
-    if (qa) { qa.feedback = feedback; qa.score = score }
+    if (qa) { qa.feedback = feedback; qa.score = score; qa.star = star }
     mockScores.push(score)
 
     mockMsgs.push({ role: 'assistant', content: mockMsgBuf.trim() })
     mockMsgBuf = ''
 
-    mockFeedbackBox.innerHTML = `<strong>Score: ${score}/10</strong><br>${escapeHtml(feedback).replace(/\n/g, '<br>')}`
+    const starHtml = star ? `<div class="mock-star-row">${['S','T','A','R'].map(k =>
+      `<div class="mock-star-bar">
+        <span class="mock-star-label">${k}</span>
+        <div class="mock-star-track"><div class="mock-star-fill" style="width:${star[k] * 10}%"></div></div>
+        <span class="mock-star-val">${star[k]}</span>
+      </div>`).join('')}</div>` : ''
+
+    mockFeedbackBox.innerHTML = `<strong>Score: ${score}/10</strong><br>${escapeHtml(feedback).replace(/\n/g, '<br>')}${starHtml}`
 
     const isDone = next === 'END' || mockQIdx >= mockTotalQs
     setTimeout(() => {
@@ -1079,14 +1217,16 @@ function speakMockText(text) {
 
 /* Parse Claude's feedback response */
 function parseMockFeedback(text) {
-  const fbMatch    = text.match(/FEEDBACK:\s*([\s\S]+?)(?=\nSCORE:|$)/i)
+  const fbMatch    = text.match(/FEEDBACK:\s*([\s\S]+?)(?=\nSTAR:|\nSCORE:|$)/i)
+  const starMatch  = text.match(/STAR:\s*S:(\d+)\s+T:(\d+)\s+A:(\d+)\s+R:(\d+)/i)
   const scoreMatch = text.match(/SCORE:\s*(\d+)/i)
   const nextMatch  = text.match(/NEXT:\s*([\s\S]+?)$/i)
 
   return {
-    feedback: fbMatch    ? fbMatch[1].trim()                                       : text.trim(),
-    score:    scoreMatch ? Math.min(10, Math.max(1, parseInt(scoreMatch[1])))       : 5,
-    next:     nextMatch  ? nextMatch[1].trim()                                     : 'END',
+    feedback: fbMatch    ? fbMatch[1].trim()                                                        : text.trim(),
+    star:     starMatch  ? { S: +starMatch[1], T: +starMatch[2], A: +starMatch[3], R: +starMatch[4] } : null,
+    score:    scoreMatch ? Math.min(10, Math.max(1, parseInt(scoreMatch[1])))                        : 5,
+    next:     nextMatch  ? nextMatch[1].trim()                                                       : 'END',
   }
 }
 
@@ -1117,7 +1257,11 @@ function showMockResults() {
           ${escapeHtml(qa.question)}
         </div>
         ${qa.feedback ? `<div class="mock-result-feedback">${escapeHtml(qa.feedback)}</div>` : ''}
-        ${qa.score    ? `<div class="mock-result-score">Score: ${qa.score}/10</div>` : ''}
+        <div class="mock-result-bottom">
+          ${qa.score ? `<div class="mock-result-score">Score: ${qa.score}/10</div>` : ''}
+          ${qa.star  ? `<div class="mock-star-mini">${['S','T','A','R'].map(k =>
+            `<span class="star-mini-badge">${k}:${qa.star[k]}</span>`).join('')}</div>` : ''}
+        </div>
       </div>
     `).join('')
 }

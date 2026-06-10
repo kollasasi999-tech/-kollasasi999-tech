@@ -58,6 +58,7 @@
             <span class="resume-name" id="resumeName">No resume uploaded</span>
             <button class="btn-upload" id="btnUploadResume">Upload PDF/TXT</button>
           </div>
+          <button class="btn-gen-questions" id="btnMineStories" style="display:none">⚡ Mine Story Bank from Resume</button>
         </div>
         <div class="field">
           <label>Auto-send delay — <span id="silenceTimerValue">2.5s</span></label>
@@ -152,9 +153,14 @@
       <div class="section-header">
         <span class="section-label">Detected Question <span class="edit-hint">✏ editable</span></span>
         <div class="question-header-right">
-          <button class="btn-action" id="btnQBank" title="Open question bank">🎯 Q-Bank</button>
+          <button class="btn-action btn-icon-sm" id="btnStories" title="Story bank from resume">📖</button>
+          <button class="btn-action btn-icon-sm" id="btnQBank" title="Question bank from JD">🎯</button>
           <button class="btn-action" id="btnAsk">↑ Ask Claude</button>
         </div>
+      </div>
+      <div class="active-story-chip" id="activeStoryChip" style="display:none">
+        <span class="active-story-label" id="activeStoryLabel"></span>
+        <button class="btn-clear-story" id="btnClearStory">×</button>
       </div>
       <div class="text-box editable-box" id="transcriptBox" contenteditable="true" spellcheck="false">
         <span class="hint">Start listening — questions will appear here automatically...</span>
@@ -167,6 +173,7 @@
         <span class="section-label">Claude's Answer</span>
         <div class="answer-header-right">
           <button class="btn-mode" id="btnMode" title="Cycle answer style">💬 Brief</button>
+          <button class="btn-action" id="btnSpike" title="Generate tough follow-up probe">🔍 Probe</button>
           <button class="btn-action" id="btnCopy">📋 Copy</button>
         </div>
       </div>
@@ -262,6 +269,18 @@
           <button class="btn-save" id="btnMockRestart">New Session</button>
           <button class="btn-action" id="btnMockDone">Close</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Story Bank Panel -->
+    <div class="qbank-panel" id="storyPanel">
+      <div class="qbank-header">
+        <span class="section-label">📖 Story Bank</span>
+        <button class="btn-action" id="btnStoryBack">← Back</button>
+      </div>
+      <div class="qbank-meta" id="storyMeta"></div>
+      <div class="qbank-list" id="storyList">
+        <span class="hint" style="padding:12px;display:block">Upload a resume in Settings, then click "Mine Story Bank"...</span>
       </div>
     </div>
 

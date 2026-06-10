@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportNotes: (data) => ipcRenderer.invoke('export-notes', data),
   getFollowups: (data) => ipcRenderer.invoke('get-followups', data),
   generateQuestions: (data) => ipcRenderer.invoke('generate-questions', data),
+  mineResumeStories: (data) => ipcRenderer.invoke('mine-resume-stories', data),
+  getSpike: (data) => ipcRenderer.invoke('get-spike', data),
 
   removeListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)
