@@ -78,6 +78,7 @@ const activeStoryChip  = document.getElementById('activeStoryChip')
 const activeStoryLabel = document.getElementById('activeStoryLabel')
 const btnClearStory    = document.getElementById('btnClearStory')
 const btnSpike         = document.getElementById('btnSpike')
+const btnSlim          = document.getElementById('btnSlim')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
 const capturePreview   = document.getElementById('capturePreview')
@@ -133,6 +134,9 @@ const FILLER_RE    = /\b(um+|uh+|hmm+|er+)\b/gi
 // Story bank
 let storyBank      = []   // [{ title, s, a, r }]
 let activeStoryCtx = null // currently selected story text
+
+// Slim overlay mode
+let isSlimMode     = false
 
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
@@ -200,6 +204,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       case 'opacity-cycle':  cycleOpacity(); break
       case 'stealth-toggle': toggleStealth(); break
       case 'capture-screen': doCapture(); break
+      case 'slim-toggle':    toggleSlimMode(); break
     }
   })
 
@@ -521,6 +526,26 @@ function toggleStealth() {
     document.getElementById('appDot').style.background = '#f59e0b'
     showToast('Stealth on — Ctrl+Shift+H to exit')
   }
+}
+
+/* ── Slim Overlay Mode ── */
+btnSlim.addEventListener('click', toggleSlimMode)
+
+function toggleSlimMode() {
+  isSlimMode = !isSlimMode
+  const app = document.querySelector('.app')
+  app.classList.toggle('slim', isSlimMode)
+  btnSlim.textContent = isSlimMode ? '⊞' : '▬'
+  btnSlim.title       = isSlimMode ? 'Exit slim mode (⇧M)' : 'Slim overlay mode (⇧M)'
+  // Close any open panels when entering slim mode
+  if (isSlimMode) {
+    if (settingsOpen) { settingsOpen = false; settingsPanel.classList.remove('open') }
+    hideHistoryPanel()
+    hideQBankPanel()
+    hideStoryPanel()
+  }
+  window.electronAPI.setSlimMode(isSlimMode)
+  showToast(isSlimMode ? 'Slim mode — answer only' : 'Full mode restored')
 }
 
 /* ── Opacity cycle ── */

@@ -41,4 +41,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)
   },
+  setSlimMode: (isSlim) => ipcRenderer.invoke('set-slim-mode', isSlim),
 })

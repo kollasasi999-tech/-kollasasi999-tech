@@ -1372,6 +1372,34 @@ input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent2); }
 }
 .btn-icon-sm:hover { background: var(--accent); color: #fff; }
 
+/* ── Slim Overlay Mode ── */
+.app.slim { height: 180px; }
+
+.app.slim .status-bar,
+.app.slim .controls,
+.app.slim .coding-panel,
+.app.slim .lang-row,
+.app.slim .hotkeys-bar,
+.app.slim .section:not(.answer-section),
+.app.slim .followup-row {
+  display: none !important;
+}
+
+.app.slim .answer-section {
+  flex: 1;
+  min-height: 0;
+}
+
+.app.slim .answer-box {
+  max-height: 100px;
+  min-height: 60px;
+  font-size: 12px;
+}
+
+/* slim mode: titlebar compacts slightly */
+.app.slim .titlebar { height: 38px; }
+.app.slim .app-name { font-size: 11px; }
+
 /* ── Light Theme ── */
 .app.light {
   --bg:      #f5f5fc;

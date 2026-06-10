@@ -1,16 +1,71 @@
 {
   "name": "interview-copilot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Real-time AI interview assistant powered by Anthropic Claude",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev"
+    "dev": "electron . --dev",
+    "make-icon": "node scripts/make-icon.js",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "electron": "^35.0.0",
     "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.kollasasi.interview-copilot",
+    "productName": "Interview Copilot",
+    "copyright": "Copyright © 2025 Kolla Sasi Kumar",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "assets/**",
+      "scripts/**",
+      "node_modules/**",
+      "!node_modules/electron/**",
+      "!dist/**"
+    ],
+    "mac": {
+      "icon": "assets/icon.png",
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] }
+      ],
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.png",
+      "uninstallerIcon": "assets/icon.png"
+    },
+    "dmg": {
+      "title": "Interview Copilot ${version}"
+    }
   },
   "author": "Kolla Sasi Kumar <kollasasi999@gmail.com>",
   "license": "MIT"

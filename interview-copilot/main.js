@@ -149,6 +149,9 @@ function createWindow() {
     globalShortcut.register('CommandOrControl+Shift+P', () => {
       mainWindow.webContents.send('hotkey', 'capture-screen')
     })
+    globalShortcut.register('CommandOrControl+Shift+M', () => {
+      mainWindow.webContents.send('hotkey', 'slim-toggle')
+    })
   })
 
   createTray()
@@ -172,6 +175,16 @@ app.on('activate', () => {
 ipcMain.handle('minimize-window', () => mainWindow.minimize())
 ipcMain.handle('close-window',    () => mainWindow.hide())   // hides to tray
 ipcMain.handle('quit-app',        () => { forceQuit = true; app.quit() })
+
+// Slim overlay mode
+ipcMain.handle('set-slim-mode', (event, isSlim) => {
+  if (isSlim) {
+    mainWindow.setSize(400, 180)
+  } else {
+    mainWindow.setSize(400, 660)
+  }
+  return true
+})
 
 // Opacity
 ipcMain.handle('set-opacity', (event, value) => {
