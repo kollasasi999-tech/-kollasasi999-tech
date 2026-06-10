@@ -59,8 +59,15 @@ const btnCodeMode      = document.getElementById('btnCodeMode')
 const btnExport        = document.getElementById('btnExport')
 const btnMode          = document.getElementById('btnMode')
 const listenTimer      = document.getElementById('listenTimer')
+const deliveryStats    = document.getElementById('deliveryStats')
 const followupRow      = document.getElementById('followupRow')
 const followupChips    = document.getElementById('followupChips')
+const btnGenQuestions  = document.getElementById('btnGenQuestions')
+const btnQBank         = document.getElementById('btnQBank')
+const btnQBankBack     = document.getElementById('btnQBankBack')
+const qbankPanel       = document.getElementById('qbankPanel')
+const qbankList        = document.getElementById('qbankList')
+const qbankMeta        = document.getElementById('qbankMeta')
 const codingPanel      = document.getElementById('codingPanel')
 const btnCapture       = document.getElementById('btnCapture')
 const capturePreview   = document.getElementById('capturePreview')
@@ -103,6 +110,15 @@ const answerModes = [
 let answerModeIdx  = 0
 let listenStart    = null
 let timerInterval  = null
+
+// Delivery coaching state
+let fillerCounts   = {}   // { um: 3, uh: 1 }
+let totalFillers   = 0
+let lastWPM        = 0
+
+// Question bank
+let questionBank   = []
+const FILLER_RE    = /\b(um+|uh+|hmm+|er+)\b/gi
 
 /* ── Init ── */
 window.addEventListener('DOMContentLoaded', async () => {
@@ -496,11 +512,11 @@ function cycleOpacity() {
 }
 
 /* ── Toast ── */
-function showToast(msg) {
+function showToast(msg, duration = 1800) {
   toast.textContent = msg
   toast.classList.add('show')
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800)
+  toastTimer = setTimeout(() => toast.classList.remove('show'), duration)
 }
 
 /* ── Speech Recognition ── */
@@ -517,6 +533,11 @@ function startListening() {
   recognition.lang           = langSelect.value || 'en-US'
   finalText                  = ''
 
+  // Reset delivery stats
+  fillerCounts = {}
+  totalFillers = 0
+  lastWPM      = 0
+
   recognition.onstart = () => {
     isListening = true
     btnListen.classList.add('active')
@@ -526,7 +547,8 @@ function startListening() {
     waves.style.display = 'flex'
     // Start timer
     listenStart = Date.now()
-    listenTimer.style.display = 'inline'
+    listenTimer.style.display   = 'inline'
+    deliveryStats.style.display = 'inline'
     clearInterval(timerInterval)
     timerInterval = setInterval(() => {
       const s = Math.floor((Date.now() - listenStart) / 1000)
@@ -535,16 +557,32 @@ function startListening() {
   }
 
   recognition.onresult = (event) => {
-    let interim = ''
+    let interim  = ''
+    let newFinal = ''
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const t = event.results[i][0].transcript
-      if (event.results[i].isFinal) finalText += t + ' '
+      if (event.results[i].isFinal) { finalText += t + ' '; newFinal += t + ' ' }
       else interim = t
     }
 
+    // Count filler words from newly finalized text only
+    if (newFinal) {
+      const hits = newFinal.match(FILLER_RE) || []
+      hits.forEach(h => {
+        const key = h.replace(/(.)\1+/g, '$1').toLowerCase()  // "umm" → "um"
+        fillerCounts[key] = (fillerCounts[key] || 0) + 1
+        totalFillers++
+      })
+    }
+
+    // WPM from total words ÷ elapsed minutes
+    const words   = (finalText + interim).trim().split(/\s+/).filter(w => w)
+    const elapsed = (Date.now() - listenStart) / 60000
+    lastWPM = elapsed > 0.08 ? Math.round(words.length / elapsed) : 0
+    updateDeliveryStats()
+
     const display = finalText + interim
     if (display.trim()) {
-      // Set as plain text (user can then edit in the contenteditable box)
       transcriptBox.textContent = display
       transcriptBox.scrollTop   = transcriptBox.scrollHeight
     }
@@ -578,13 +616,26 @@ function stopListening() {
   isListening = false
   clearTimeout(silenceTimer)
   clearInterval(timerInterval)
-  listenTimer.style.display = 'none'
+  listenTimer.style.display   = 'none'
+  deliveryStats.style.display = 'none'
   if (recognition) { recognition.stop(); recognition = null }
   btnListen.classList.remove('active')
   btnListenTxt.textContent = 'Start Listening'
   micIcon.textContent = '🎤'
   waves.style.display = 'none'
   if (!isProcessing) setStatus('ready', 'Ready — click Start to listen')
+
+  // Post-session delivery summary (only if significant speech happened)
+  if (totalFillers > 0 || lastWPM > 0) {
+    const parts = []
+    if (lastWPM > 0) parts.push(`${lastWPM} wpm`)
+    if (totalFillers > 0) {
+      const top = Object.entries(fillerCounts).sort((a, b) => b[1] - a[1])
+        .slice(0, 3).map(([w, c]) => `${w}×${c}`).join(' ')
+      parts.push(`fillers: ${top}`)
+    }
+    showToast('Session — ' + parts.join(' · '), 3500)
+  }
 }
 
 /* ── Claude call ── */
@@ -647,6 +698,97 @@ async function triggerFollowups(question, answer) {
 function clearFollowups() {
   followupRow.style.display = 'none'
   followupChips.innerHTML   = ''
+}
+
+/* ── Delivery Stats (WPM + fillers) ── */
+function updateDeliveryStats() {
+  if (!isListening) return
+
+  const wpmColor = lastWPM === 0 ? '' : lastWPM < 110 || lastWPM > 185 ? '#f59e0b' : '#22c55e'
+  const wpmPart  = lastWPM > 0
+    ? `<span style="color:${wpmColor};font-weight:700">${lastWPM}wpm</span>`
+    : ''
+
+  let fillerPart = ''
+  if (totalFillers > 0) {
+    const top = Object.entries(fillerCounts)
+      .sort((a, b) => b[1] - a[1]).slice(0, 2)
+      .map(([w, c]) => `${w}×${c}`).join(' ')
+    const color = totalFillers > 5 ? '#f04444' : totalFillers > 2 ? '#f59e0b' : '#8888aa'
+    fillerPart = `<span style="color:${color}">· ${top}</span>`
+  }
+
+  deliveryStats.innerHTML = [wpmPart, fillerPart].filter(Boolean).join(' ')
+}
+
+/* ── Question Bank ── */
+btnGenQuestions.addEventListener('click', async () => {
+  const jd   = jobDescInput.value.trim()
+  const role = jobRoleInput.value.trim()
+  if (!jd) { showToast('Paste a job description first'); return }
+
+  btnGenQuestions.textContent = '⏳ Generating...'
+  btnGenQuestions.disabled    = true
+
+  const result = await window.electronAPI.generateQuestions({ jobDescription: jd, jobRole: role })
+
+  btnGenQuestions.textContent = '🎯 Generate 15 Interview Questions'
+  btnGenQuestions.disabled    = false
+
+  if (!result.success) { showToast('⚠ ' + (result.error || 'Generation failed')); return }
+
+  questionBank = result.text
+    .split('\n')
+    .map(q => q.replace(/^[\d\.\-\*]+\s*/, '').trim())
+    .filter(q => q.length > 10)
+    .slice(0, 15)
+
+  showToast(`${questionBank.length} questions generated!`)
+
+  // Auto-open the question bank panel
+  settingsOpen = false
+  settingsPanel.classList.remove('open')
+  showQBankPanel()
+})
+
+btnQBank.addEventListener('click', () => {
+  if (!questionBank.length) {
+    showToast('Generate questions first — paste a JD in Settings')
+    return
+  }
+  showQBankPanel()
+})
+
+btnQBankBack.addEventListener('click', hideQBankPanel)
+
+function showQBankPanel() {
+  renderQBankList()
+  qbankPanel.classList.add('open')
+}
+
+function hideQBankPanel() {
+  qbankPanel.classList.remove('open')
+}
+
+function renderQBankList() {
+  const role = jobRoleInput.value.trim()
+  qbankMeta.textContent = role ? `${questionBank.length} questions for: ${role}` : `${questionBank.length} questions`
+
+  qbankList.innerHTML = questionBank.map((q, i) => `
+    <div class="qbank-item" data-i="${i}">
+      <span class="qbank-num">${i + 1}</span>
+      <span class="qbank-text">${escapeHtml(q)}</span>
+    </div>
+  `).join('')
+
+  qbankList.querySelectorAll('.qbank-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const q = questionBank[parseInt(el.dataset.i)]
+      transcriptBox.textContent = q
+      hideQBankPanel()
+      sendToClaude(q)
+    })
+  })
 }
 
 /* ── Export Session Notes ── */

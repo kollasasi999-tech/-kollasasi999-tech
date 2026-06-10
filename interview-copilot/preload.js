@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   exportNotes: (data) => ipcRenderer.invoke('export-notes', data),
   getFollowups: (data) => ipcRenderer.invoke('get-followups', data),
+  generateQuestions: (data) => ipcRenderer.invoke('generate-questions', data),
 
   removeListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)

@@ -50,6 +50,7 @@
         <div class="field">
           <label>Job Context <span class="optional">(edit after fetch)</span></label>
           <textarea id="jobDescInput" placeholder="Paste job description, or fetch it from a URL above..."></textarea>
+          <button class="btn-gen-questions" id="btnGenQuestions">🎯 Generate 15 Interview Questions</button>
         </div>
         <div class="field">
           <label>Resume <span class="optional">(personalises answers)</span></label>
@@ -79,6 +80,7 @@
       <div class="status-dot" id="statusDot"></div>
       <span class="status-text" id="statusText">Ready — click Start to listen</span>
       <span class="listen-timer" id="listenTimer" style="display:none">00:00</span>
+      <span class="delivery-stats" id="deliveryStats" style="display:none"></span>
       <div class="waves" id="waves" style="display:none">
         <div class="wave-bar"></div>
         <div class="wave-bar"></div>
@@ -149,7 +151,10 @@
     <div class="section">
       <div class="section-header">
         <span class="section-label">Detected Question <span class="edit-hint">✏ editable</span></span>
-        <button class="btn-action" id="btnAsk">↑ Ask Claude</button>
+        <div class="question-header-right">
+          <button class="btn-action" id="btnQBank" title="Open question bank">🎯 Q-Bank</button>
+          <button class="btn-action" id="btnAsk">↑ Ask Claude</button>
+        </div>
       </div>
       <div class="text-box editable-box" id="transcriptBox" contenteditable="true" spellcheck="false">
         <span class="hint">Start listening — questions will appear here automatically...</span>
@@ -257,6 +262,18 @@
           <button class="btn-save" id="btnMockRestart">New Session</button>
           <button class="btn-action" id="btnMockDone">Close</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Question Bank Panel -->
+    <div class="qbank-panel" id="qbankPanel">
+      <div class="qbank-header">
+        <span class="section-label">🎯 Question Bank</span>
+        <button class="btn-action" id="btnQBankBack">← Back</button>
+      </div>
+      <div class="qbank-meta" id="qbankMeta"></div>
+      <div class="qbank-list" id="qbankList">
+        <span class="hint" style="padding:12px;display:block">Generate questions from a job description in Settings...</span>
       </div>
     </div>
 

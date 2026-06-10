@@ -442,6 +442,111 @@ input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent2); }
 }
 .btn-quit:hover { background: var(--red); color: #fff; }
 
+/* ── Delivery Stats (WPM + filler words) ── */
+.delivery-stats {
+  font-size: 11px;
+  font-family: 'Menlo', 'Consolas', monospace;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+/* ── Generate Questions Button ── */
+.btn-gen-questions {
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px;
+  background: var(--bg3);
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  color: var(--accent2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-gen-questions:hover { background: var(--accent); color: #fff; border-style: solid; }
+.btn-gen-questions:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Question Section Header ── */
+.question-header-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── Question Bank Panel ── */
+.qbank-panel {
+  position: absolute;
+  inset: 46px 0 0 0;
+  background: var(--bg);
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  gap: 8px;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+}
+.qbank-panel.open { transform: translateX(0); }
+
+.qbank-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.qbank-meta {
+  font-size: 10px;
+  color: var(--text2);
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
+.qbank-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qbank-list::-webkit-scrollbar { width: 4px; }
+.qbank-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.qbank-item {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  transition: border-color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.qbank-item:hover { border-color: var(--accent); background: var(--bg3); }
+
+.qbank-num {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 5px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.qbank-text {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
 /* ── Listen Timer ── */
 .listen-timer {
   font-size: 11px;

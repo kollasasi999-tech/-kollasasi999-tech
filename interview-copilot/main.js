@@ -362,6 +362,31 @@ ipcMain.handle('fetch-job-url', async (event, url) => {
   }
 })
 
+// Generate a tailored question bank from the job description
+ipcMain.handle('generate-questions', async (event, { jobDescription, jobRole }) => {
+  if (!settings.apiKey) return { error: 'API key not set' }
+  const client = new Anthropic({ apiKey: settings.apiKey })
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 900,
+      messages: [{
+        role: 'user',
+        content: `Generate exactly 15 likely interview questions for this position. Include 5 behavioral (Tell me about a time...), 6 technical/role-specific, and 4 situational (What would you do if...) questions. Make them specific to the job description — not generic templates.
+
+Job Role: ${jobRole || 'Not specified'}
+Job Description:
+${jobDescription}
+
+Output ONLY the 15 questions, one per line. No numbering, no category labels, no extra text.`,
+      }],
+    })
+    return { text: msg.content[0].text, success: true }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
 // Follow-up question suggestions (non-streaming, fast Haiku call)
 ipcMain.handle('get-followups', async (event, { question, answer }) => {
   if (!settings.apiKey) return { error: 'API key not set' }
