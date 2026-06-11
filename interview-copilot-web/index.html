@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Copilot — Free AI Interview Assistant (Parakeet AI Alternative)</title>
+  <meta name="description" content="Free, open-source AI interview copilot. Real-time answers from Claude, GPT, or Gemini. Job-URL scraping, 20+ languages, coding screen capture. Bring your own API key — no subscription, no signup, no credits." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo-dot"></span>
+        <h1>Interview Copilot</h1>
+        <span class="badge">FREE</span>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="live">🎙️ Live</button>
+        <button class="tab" data-tab="questions">❓ Questions</button>
+        <button class="tab" data-tab="stories">⭐ Stories</button>
+        <button class="tab" data-tab="mock">🎯 Mock</button>
+        <button class="tab" data-tab="settings">⚙️ Setup</button>
+      </nav>
+    </header>
+
+    <!-- Banner shown until an API key is set -->
+    <div class="setup-banner" id="setupBanner">
+      👋 Welcome! Add an API key (Claude, OpenAI, or Gemini) in <b>⚙️ Setup</b> to get started.
+      Keys are stored only in your browser — there is no server, no signup, no credit system.
+    </div>
+
+    <main class="main">
+
+      <!-- LIVE TAB -->
+      <section class="panel active" id="panel-live">
+        <div class="live-controls">
+          <textarea id="questionInput" placeholder="Type or paste the interviewer's question... or use the mic 🎤" rows="2"></textarea>
+          <div class="live-buttons">
+            <button class="btn btn-mic" id="btnMic" title="Listen via microphone (auto-answers after 2.5s silence)">🎤</button>
+            <button class="btn btn-primary" id="btnAsk">Answer</button>
+          </div>
+        </div>
+        <div class="live-row">
+          <div class="answer-mode">
+            <label><input type="radio" name="answerMode" value="concise" checked /> Concise</label>
+            <label><input type="radio" name="answerMode" value="detailed" /> Detailed</label>
+            <label><input type="radio" name="answerMode" value="bullets" /> Bullets</label>
+          </div>
+          <button class="btn" id="btnCoding" title="Share your screen — AI reads the coding problem and solves it">📸 Coding Mode</button>
+        </div>
+        <div class="answer-box" id="answerBox">
+          <p class="placeholder">Your AI-generated answer will stream here in real-time...</p>
+        </div>
+      </section>
+
+      <!-- QUESTIONS TAB -->
+      <section class="panel" id="panel-questions">
+        <p class="panel-desc">Generates 15 likely interview questions from your job description (set it in ⚙️ Setup).</p>
+        <button class="btn btn-primary" id="btnGenQuestions">🎯 Generate 15 Questions</button>
+        <div class="answer-box" id="questionsBox">
+          <p class="placeholder">Questions will appear here. Click any question to practice it in the Live tab.</p>
+        </div>
+      </section>
+
+      <!-- STORIES TAB -->
+      <section class="panel" id="panel-stories">
+        <p class="panel-desc">Mines STAR-format stories from your resume (paste it in ⚙️ Setup). Use these for "Tell me about a time..." questions.</p>
+        <button class="btn btn-primary" id="btnMineStories">⚡ Mine Story Bank</button>
+        <div class="answer-box" id="storiesBox">
+          <p class="placeholder">Your story bank will appear here.</p>
+        </div>
+      </section>
+
+      <!-- MOCK TAB -->
+      <section class="panel" id="panel-mock">
+        <p class="panel-desc">Practice with an AI interviewer. It asks questions, you answer, it scores you with STAR feedback.</p>
+        <div class="mock-chat" id="mockChat"></div>
+        <div class="mock-controls">
+          <textarea id="mockInput" placeholder="Your answer..." rows="2"></textarea>
+          <div class="mock-buttons">
+            <button class="btn btn-primary" id="btnMockSend">Send</button>
+            <button class="btn" id="btnMockStart">Start New Mock</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS TAB -->
+      <section class="panel" id="panel-settings">
+
+        <div class="field">
+          <label>AI Provider</label>
+          <select id="providerSelect">
+            <option value="anthropic" selected>Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="gemini">Google Gemini</option>
+          </select>
+        </div>
+
+        <div class="field" id="keyFieldAnthropic">
+          <label>Anthropic API Key <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">(get one here)</a></label>
+          <input type="password" id="apiKeyAnthropic" placeholder="sk-ant-api03-..." />
+        </div>
+        <div class="field hidden" id="keyFieldOpenai">
+          <label>OpenAI API Key <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">(get one here)</a></label>
+          <input type="password" id="apiKeyOpenai" placeholder="sk-..." />
+        </div>
+        <div class="field hidden" id="keyFieldGemini">
+          <label>Gemini API Key <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">(get one here — Gemini has a generous free tier)</a></label>
+          <input type="password" id="apiKeyGemini" placeholder="AIza..." />
+        </div>
+
+        <div class="field">
+          <label>Model</label>
+          <select id="modelSelect"></select>
+        </div>
+
+        <div class="field">
+          <label>Answer Language 🌍</label>
+          <select id="langSelect">
+            <option value="en-US" selected>English</option>
+            <option value="es-ES">Español (Spanish)</option>
+            <option value="hi-IN">हिन्दी (Hindi)</option>
+            <option value="te-IN">తెలుగు (Telugu)</option>
+            <option value="ta-IN">தமிழ் (Tamil)</option>
+            <option value="fr-FR">Français (French)</option>
+            <option value="de-DE">Deutsch (German)</option>
+            <option value="pt-BR">Português (Portuguese)</option>
+            <option value="it-IT">Italiano (Italian)</option>
+            <option value="nl-NL">Nederlands (Dutch)</option>
+            <option value="pl-PL">Polski (Polish)</option>
+            <option value="ru-RU">Русский (Russian)</option>
+            <option value="uk-UA">Українська (Ukrainian)</option>
+            <option value="ar-SA">العربية (Arabic)</option>
+            <option value="zh-CN">中文 (Chinese)</option>
+            <option value="ja-JP">日本語 (Japanese)</option>
+            <option value="ko-KR">한국어 (Korean)</option>
+            <option value="vi-VN">Tiếng Việt (Vietnamese)</option>
+            <option value="id-ID">Bahasa Indonesia</option>
+            <option value="tr-TR">Türkçe (Turkish)</option>
+          </select>
+          <p class="hint">Sets both the mic recognition language and the language answers are written in.</p>
+        </div>
+
+        <div class="field">
+          <label>Job Role <span class="optional">(optional)</span></label>
+          <input type="text" id="jobRoleInput" placeholder="e.g. AI Engineer" />
+        </div>
+
+        <div class="field">
+          <label>Job Posting URL <span class="optional">(auto-extracts the description)</span></label>
+          <div class="url-row">
+            <input type="url" id="jobUrlInput" placeholder="https://company.com/careers/role..." />
+            <button class="btn" id="btnFetchUrl">Fetch</button>
+          </div>
+          <span class="fetch-status" id="fetchStatus"></span>
+        </div>
+
+        <div class="field">
+          <label>Job Description <span class="optional">(edit after fetch, or paste manually)</span></label>
+          <textarea id="jobDescInput" rows="5" placeholder="Paste the job description here — answers get tailored to it..."></textarea>
+        </div>
+
+        <div class="field">
+          <label>Your Resume <span class="optional">(paste as text)</span></label>
+          <textarea id="resumeInput" rows="6" placeholder="Paste your resume text here — answers will reference your real experience..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" id="btnSaveSettings">Save Settings</button>
+        <span class="save-status" id="saveStatus"></span>
+
+        <div class="settings-footer">
+          <p>💡 <b>Cost transparency:</b> a full 45-minute interview costs roughly $0.10–$0.30 in API usage billed directly to your own key. Gemini's free tier can even make it $0. No markup, no credits, no subscription.</p>
+          <p>🔓 <a href="https://github.com/kollasasi999-tech/-kollasasi999-tech" target="_blank" rel="noopener">Open source on GitHub</a> — audit the code yourself. Built by <a href="https://github.com/kollasasi999-tech" target="_blank" rel="noopener">Kolla Sasi Kumar</a>.</p>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <span>Free forever · BYOK · No signup · No tracking · 20+ languages · <a href="https://github.com/kollasasi999-tech/-kollasasi999-tech" target="_blank" rel="noopener">GitHub</a></span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
