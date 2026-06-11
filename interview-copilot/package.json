@@ -1,0 +1,98 @@
+{
+  "name": "interview-copilot",
+  "version": "1.1.0",
+  "description": "Real-time AI interview assistant powered by Anthropic Claude",
+  "main": "main.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js --dev",
+    "make-icon": "node scripts/make-icon.js",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "electron-updater": "^6.3.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@electron/notarize": "^2.3.0",
+    "electron": "^35.7.5",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.kollasasi.interview-copilot",
+    "productName": "Interview Copilot",
+    "copyright": "Copyright © 2025 Kolla Sasi Kumar",
+    "publish": {
+      "provider": "github",
+      "owner": "kollasasi999-tech",
+      "repo": "-kollasasi999-tech",
+      "releaseType": "release"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "assets/**",
+      "node_modules/**",
+      "!node_modules/electron/**",
+      "!dist/**"
+    ],
+    "mac": {
+      "icon": "assets/icon.png",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "afterSign": "scripts/notarize.js",
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "dmg": {
+      "title": "Interview Copilot ${version}"
+    }
+  },
+  "author": "Kolla Sasi Kumar <kollasasi999@gmail.com>",
+  "license": "MIT"
+}
