@@ -4,8 +4,8 @@
   "description": "Real-time AI interview assistant powered by Anthropic Claude",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js --dev",
     "make-icon": "node scripts/make-icon.js",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac",
@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@electron/notarize": "^2.3.0",
-    "electron": "^35.0.0",
+    "electron": "^35.7.5",
     "electron-builder": "^24.13.3"
   },
   "build": {
@@ -52,20 +52,36 @@
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ]
     },
     "afterSign": "scripts/notarize.js",
     "win": {
       "icon": "assets/icon.png",
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
       "icon": "assets/icon.png",
       "target": [
-        { "target": "AppImage", "arch": ["x64"] }
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "category": "Office"
     },
