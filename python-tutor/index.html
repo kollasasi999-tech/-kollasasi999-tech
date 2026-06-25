@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🐍 Python Tutor — learn Python, ask Claude</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel2: #1f2430;
+    --ink: #e8eaf0;
+    --muted: #9aa3b2;
+    --accent: #4f9cf9;
+    --accent2: #d97757; /* Claude terracotta */
+    --green: #5ad19a;
+    --border: #2a3040;
+    --code: #11141c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  header {
+    padding: 2.2rem 1.25rem 1.4rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: radial-gradient(1200px 300px at 50% -120px, #1b2333, transparent);
+  }
+  header h1 { margin: 0 0 .35rem; font-size: 1.9rem; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 1.25rem; }
+
+  /* Ask Claude panel */
+  .ask {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem;
+    margin-bottom: 1.6rem;
+  }
+  .ask h2 { margin: 0 0 .25rem; font-size: 1.15rem; }
+  .ask .sub { color: var(--muted); font-size: .92rem; margin: 0 0 .9rem; }
+  textarea {
+    width: 100%;
+    min-height: 92px;
+    resize: vertical;
+    background: var(--code);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .75rem .85rem;
+    font: inherit;
+    font-size: .98rem;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: .7rem; }
+  button.primary {
+    background: var(--accent2);
+    color: #1b1106;
+    border: none;
+    border-radius: 10px;
+    padding: .7rem 1.15rem;
+    font-size: .98rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button.primary:hover { filter: brightness(1.06); }
+  .hint { color: var(--muted); font-size: .82rem; }
+  .badge {
+    display: inline-block;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--green);
+    border-radius: 999px;
+    padding: .15rem .6rem;
+    font-size: .74rem;
+    font-weight: 700;
+  }
+
+  /* Lessons */
+  h2.section { margin: 1.8rem 0 .8rem; font-size: 1.2rem; }
+  .lesson {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .lesson summary {
+    cursor: pointer;
+    padding: .9rem 1.1rem;
+    font-weight: 600;
+    list-style: none;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .lesson summary::-webkit-details-marker { display: none; }
+  .lesson summary .chev { color: var(--muted); transition: transform .2s; }
+  .lesson[open] summary .chev { transform: rotate(90deg); }
+  .lesson .body { padding: 0 1.1rem 1.1rem; }
+  .lesson p { margin: .3rem 0 .7rem; color: #cdd3df; }
+  pre {
+    background: var(--code);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    overflow-x: auto;
+    margin: 0 0 .6rem;
+  }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .9rem; }
+  pre code { color: #d6e2ff; }
+  .lesson .askmini {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    border-radius: 8px;
+    padding: .4rem .75rem;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .lesson .askmini:hover { background: var(--panel2); }
+
+  footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 2rem 1rem 3rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐍 Python Tutor</h1>
+  <p>Learn Python here — and when you get stuck, ask Claude using your subscription.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- Ask Claude -->
+  <section class="ask">
+    <span class="badge">✓ uses your Claude subscription · no API bill</span>
+    <h2 style="margin-top:.6rem;">Got a doubt? Ask Claude.</h2>
+    <p class="sub">
+      Type your Python question and hit <strong>Ask Claude</strong>. It opens
+      <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> in a
+      new tab with your question ready to send — covered by the Claude plan you
+      already pay for. Nothing is billed per message.
+    </p>
+    <textarea id="q" placeholder="e.g. Why does my for-loop skip the last item? Here's my code: ..."></textarea>
+    <div class="row">
+      <button class="primary" id="askBtn">Ask Claude →</button>
+      <span class="hint">Opens claude.ai · your subscription · prompts Claude to tutor you in Python</span>
+    </div>
+  </section>
+
+  <!-- Lessons -->
+  <h2 class="section">Starter lessons</h2>
+  <p style="color:var(--muted); margin-top:-.4rem;">
+    Open a topic, read the example, then hit “Ask Claude about this” to go deeper.
+  </p>
+
+  <details class="lesson">
+    <summary>1 · Variables &amp; types <span class="chev">▸</span></summary>
+    <div class="body">
+      <p>Python figures out the type for you — no need to declare it.</p>
+      <pre><code>name = "Ada"          # str
+age = 36              # int
+height = 1.70         # float
+is_coder = True       # bool
+
+print(f"{name} is {age} years old")</code></pre>
+      <button class="askmini" data-q="Explain Python variables and types like a tutor. Walk me through str, int, float, bool with tiny examples, and give me one practice exercise.">Ask Claude about this</button>
+    </div>
+  </details>
+
+  <details class="lesson">
+    <summary>2 · Lists vs. tuples <span class="chev">▸</span></summary>
+    <div class="body">
+      <p>Lists can change; tuples can’t. Use a tuple when the data is fixed.</p>
+      <pre><code>fruits = ["apple", "banana"]   # list — mutable
+fruits.append("cherry")        # ok
+
+point = (3, 4)                 # tuple — immutable
+# point[0] = 9                 # TypeError!</code></pre>
+      <button class="askmini" data-q="Tutor me on the difference between lists and tuples in Python — when to use each, with small examples, then quiz me.">Ask Claude about this</button>
+    </div>
+  </details>
+
+  <details class="lesson">
+    <summary>3 · Loops <span class="chev">▸</span></summary>
+    <div class="body">
+      <p>Use <code>for</code> to repeat over items, <code>range()</code> for counts.</p>
+      <pre><code>for fruit in ["apple", "banana"]:
+    print(fruit)
+
+for i in range(3):     # 0, 1, 2
+    print(i)</code></pre>
+      <button class="askmini" data-q="Teach me Python for-loops and while-loops as a tutor: examples, common mistakes (like off-by-one), and a small exercise.">Ask Claude about this</button>
+    </div>
+  </details>
+
+  <details class="lesson">
+    <summary>4 · Functions <span class="chev">▸</span></summary>
+    <div class="body">
+      <p>Bundle reusable logic with <code>def</code>. Return a value with <code>return</code>.</p>
+      <pre><code>def greet(name, excited=False):
+    msg = f"Hello, {name}"
+    return msg + "!" if excited else msg
+
+print(greet("Sam", excited=True))   # Hello, Sam!</code></pre>
+      <button class="askmini" data-q="Tutor me on Python functions: parameters, default arguments, return values, and scope. Use small examples and give me a practice task.">Ask Claude about this</button>
+    </div>
+  </details>
+
+  <details class="lesson">
+    <summary>5 · Dictionaries <span class="chev">▸</span></summary>
+    <div class="body">
+      <p>Key → value lookups. Fast and everywhere in Python.</p>
+      <pre><code>user = {"name": "Ada", "age": 36}
+print(user["name"])          # Ada
+user["email"] = "ada@x.io"   # add a key
+
+for key, value in user.items():
+    print(key, "=", value)</code></pre>
+      <button class="askmini" data-q="Teach me Python dictionaries as a tutor: creating, reading, updating, looping, and the .get() method. Small examples plus an exercise.">Ask Claude about this</button>
+    </div>
+  </details>
+
+  <footer>
+    A tutor that costs nothing extra to ask — questions open in
+    <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> on your existing plan.<br/>
+    Built for learning Python. No API key required.
+  </footer>
+</div>
+
+<script>
+  // Wraps the learner's question in a short tutor instruction, then opens
+  // claude.ai with it pre-filled. This runs on the user's Claude subscription —
+  // there is no API call and nothing is billed per message.
+  const PREAMBLE =
+    "You are my patient Python tutor. Explain clearly with short runnable " +
+    "examples, give hints before full answers, and end with a tiny exercise. " +
+    "My question:\n\n";
+
+  function askClaude(text) {
+    const q = (text || "").trim();
+    if (!q) {
+      document.getElementById("q").focus();
+      return;
+    }
+    const url = "https://claude.ai/new?q=" + encodeURIComponent(PREAMBLE + q);
+    window.open(url, "_blank", "noopener");
+  }
+
+  document.getElementById("askBtn").addEventListener("click", () => {
+    askClaude(document.getElementById("q").value);
+  });
+
+  // Ctrl/Cmd + Enter in the textarea also sends.
+  document.getElementById("q").addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      askClaude(document.getElementById("q").value);
+    }
+  });
+
+  // Per-lesson "Ask Claude about this" buttons.
+  document.querySelectorAll(".askmini").forEach((btn) => {
+    btn.addEventListener("click", () => askClaude(btn.dataset.q));
+  });
+</script>
+</body>
+</html>
