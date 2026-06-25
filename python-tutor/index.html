@@ -3,271 +3,1232 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🐍 Python Tutor — learn Python, ask Claude</title>
+<title>Python Quest — Learn Python free, offline, in your browser</title>
 <style>
-  :root {
-    --bg: #0f1117;
-    --panel: #171a23;
-    --panel2: #1f2430;
-    --ink: #e8eaf0;
-    --muted: #9aa3b2;
-    --accent: #4f9cf9;
-    --accent2: #d97757; /* Claude terracotta */
-    --green: #5ad19a;
-    --border: #2a3040;
-    --code: #11141c;
+  :root{
+    --night-0:#0c0d2b; --night-1:#15123f; --night-2:#1d1850;
+    --surface:#221c57; --surface-soft:#2a2466; --ink:#090a1c;
+    --cream:#f4eddd; --cream-dim:#bdb6d8;
+    --saffron:#f2a93b; --saffron-soft:#f6c878;
+    --jade:#74d6c3; --lotus:#c9a7f0; --coral:#f0856f;
+    --hair:rgba(244,237,221,0.12);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,"Cascadia Code",Consolas,monospace;
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--ink);
-    line-height: 1.6;
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, #2a2068 0%, transparent 55%),
+      radial-gradient(900px 600px at 0% 110%, #241a5a 0%, transparent 50%),
+      linear-gradient(160deg, var(--night-0), var(--night-1) 60%, var(--night-2));
+    color:var(--cream); font-family:var(--sans); line-height:1.55; min-height:100vh;
+    -webkit-font-smoothing:antialiased;
   }
-  header {
-    padding: 2.2rem 1.25rem 1.4rem;
-    text-align: center;
-    border-bottom: 1px solid var(--border);
-    background: radial-gradient(1200px 300px at 50% -120px, #1b2333, transparent);
-  }
-  header h1 { margin: 0 0 .35rem; font-size: 1.9rem; }
-  header p { margin: 0; color: var(--muted); }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 1.25rem; }
+  .sky{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;opacity:.5;}
+  .star.big{width:3px;height:3px;box-shadow:0 0 6px 1px rgba(246,200,120,.8);background:var(--saffron-soft);}
+  @keyframes twinkle{0%,100%{opacity:.25}50%{opacity:.9}}
+  .wrap{position:relative;z-index:1;max-width:740px;margin:0 auto;padding:22px 16px 60px;}
 
-  /* Ask Claude panel */
-  .ask {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.2rem;
-    margin-bottom: 1.6rem;
-  }
-  .ask h2 { margin: 0 0 .25rem; font-size: 1.15rem; }
-  .ask .sub { color: var(--muted); font-size: .92rem; margin: 0 0 .9rem; }
-  textarea {
-    width: 100%;
-    min-height: 92px;
-    resize: vertical;
-    background: var(--code);
-    color: var(--ink);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: .75rem .85rem;
-    font: inherit;
-    font-size: .98rem;
-  }
-  textarea:focus { outline: none; border-color: var(--accent); }
-  .row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: .7rem; }
-  button.primary {
-    background: var(--accent2);
-    color: #1b1106;
-    border: none;
-    border-radius: 10px;
-    padding: .7rem 1.15rem;
-    font-size: .98rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  button.primary:hover { filter: brightness(1.06); }
-  .hint { color: var(--muted); font-size: .82rem; }
-  .badge {
-    display: inline-block;
-    background: var(--panel2);
-    border: 1px solid var(--border);
-    color: var(--green);
-    border-radius: 999px;
-    padding: .15rem .6rem;
-    font-size: .74rem;
-    font-weight: 700;
-  }
+  header.top{text-align:center;margin-bottom:16px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--saffron);opacity:.85;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,9vw,48px);margin:6px 0 4px;letter-spacing:.5px;}
+  h1 .glow{color:var(--saffron-soft);}
+  .sub{color:var(--cream-dim);font-size:14px;max-width:40ch;margin:0 auto;}
 
-  /* Lessons */
-  h2.section { margin: 1.8rem 0 .8rem; font-size: 1.2rem; }
-  .lesson {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    margin-bottom: 1rem;
-    overflow: hidden;
-  }
-  .lesson summary {
-    cursor: pointer;
-    padding: .9rem 1.1rem;
-    font-weight: 600;
-    list-style: none;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .lesson summary::-webkit-details-marker { display: none; }
-  .lesson summary .chev { color: var(--muted); transition: transform .2s; }
-  .lesson[open] summary .chev { transform: rotate(90deg); }
-  .lesson .body { padding: 0 1.1rem 1.1rem; }
-  .lesson p { margin: .3rem 0 .7rem; color: #cdd3df; }
-  pre {
-    background: var(--code);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: .85rem 1rem;
-    overflow-x: auto;
-    margin: 0 0 .6rem;
-  }
-  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .9rem; }
-  pre code { color: #d6e2ff; }
-  .lesson .askmini {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--accent2);
-    border-radius: 8px;
-    padding: .4rem .75rem;
-    font-size: .85rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .lesson .askmini:hover { background: var(--panel2); }
+  .pybanner{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--jade);background:var(--surface);border:1px solid rgba(116,214,195,.3);border-radius:10px;padding:8px 12px;margin:14px 0;}
 
-  footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 2rem 1rem 3rem; }
-  a { color: var(--accent); }
+  .toolbar{display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;}
+  .pill{font-family:var(--sans);font-size:12.5px;font-weight:600;border:1px solid var(--hair);background:var(--surface);color:var(--cream-dim);border-radius:999px;padding:7px 14px;cursor:pointer;}
+  .pill.active{background:var(--saffron);color:var(--night-0);border-color:var(--saffron);}
+
+  .path-card{background:linear-gradient(180deg,var(--surface),rgba(34,28,87,.6));border:1px solid var(--hair);border-radius:18px;padding:14px 12px 12px;margin-bottom:18px;}
+  .path-head{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 4px;}
+  .path-head .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--cream-dim);}
+  .path-head .count{font-family:var(--serif);font-size:15px;color:var(--saffron-soft);}
+  .chapters{display:flex;gap:14px;overflow-x:auto;padding:8px 2px 6px;scrollbar-width:none;}
+  .chapters::-webkit-scrollbar{display:none;}
+  .chapter{flex:0 0 auto;}
+  .chapter .ch-name{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim);margin:0 0 4px 2px;white-space:nowrap;opacity:.8;}
+  .ch-nodes{display:flex;gap:0;}
+  .node{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;width:46px;position:relative;}
+  .node .line{position:absolute;top:18px;left:-23px;width:46px;height:2px;background:var(--hair);z-index:0;}
+  .node.first .line{display:none;}
+  .node.done .line{background:linear-gradient(90deg,var(--saffron),var(--saffron-soft));}
+  .dot{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--surface-soft);border:1.5px solid var(--hair);color:var(--cream-dim);font-family:var(--serif);font-size:14px;z-index:1;cursor:default;transition:transform .15s ease;}
+  .node.unlocked .dot{cursor:pointer;color:var(--cream);border-color:rgba(246,200,120,.5);}
+  .node.unlocked .dot:hover{transform:translateY(-2px);}
+  .node.current .dot{border-color:var(--saffron);color:var(--night-0);background:var(--saffron);box-shadow:0 0 0 4px rgba(242,169,59,.18),0 0 18px rgba(242,169,59,.5);animation:pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(242,169,59,.16),0 0 16px rgba(242,169,59,.45)}50%{box-shadow:0 0 0 7px rgba(242,169,59,.10),0 0 26px rgba(242,169,59,.65)}}
+  .node.done .dot{background:linear-gradient(160deg,var(--saffron),#d98a23);border-color:var(--saffron);color:var(--night-0);}
+  .node.locked .dot{opacity:.4;}
+
+  .lesson{background:linear-gradient(180deg,var(--surface),rgba(29,24,80,.7));border:1px solid var(--hair);border-radius:20px;padding:20px 17px;box-shadow:0 16px 40px -24px rgba(0,0,0,.8);}
+  .l-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--saffron);}
+  .l-title{font-family:var(--serif);font-size:26px;font-weight:600;margin:4px 0 10px;}
+  .l-teach{color:var(--cream);font-size:15.5px;}
+  .l-teach p{margin:0 0 10px;}
+  .l-teach b{color:var(--saffron-soft);font-weight:600;}
+  .l-teach code{font-family:var(--mono);font-size:13.5px;background:rgba(9,10,28,.7);padding:1px 6px;border-radius:5px;color:var(--jade);}
+
+  .block-label{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--cream-dim);margin:18px 0 7px;}
+  .challenge{background:rgba(201,167,240,.10);border:1px solid rgba(201,167,240,.25);border-radius:12px;padding:11px 13px;font-size:14.5px;color:var(--cream);}
+  .challenge b{color:var(--lotus);}
+
+  .editor-shell{background:var(--ink);border:1px solid rgba(244,237,221,.10);border-radius:13px;overflow:hidden;margin-top:11px;}
+  .editor-bar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid rgba(244,237,221,.07);}
+  .editor-bar .d{width:10px;height:10px;border-radius:50%;}
+  .editor-bar .r{background:#ff6b6b;}.editor-bar .y{background:#ffce5b;}.editor-bar .g{background:#74d6c3;}
+  .editor-bar .fname{margin-left:6px;font-family:var(--mono);font-size:11px;color:var(--cream-dim);}
+  textarea.code{width:100%;border:0;outline:0;resize:vertical;min-height:150px;background:transparent;color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.7;padding:13px 14px;display:block;tab-size:4;}
+  textarea.code::selection{background:rgba(242,169,59,.3);}
+
+  .controls{display:flex;gap:10px;margin-top:13px;flex-wrap:wrap;}
+  button{font-family:var(--sans);font-size:14.5px;font-weight:600;border:0;border-radius:11px;padding:11px 18px;cursor:pointer;transition:transform .1s ease,filter .15s ease;}
+  button:active{transform:translateY(1px);}
+  .btn-run{background:var(--surface-soft);color:var(--cream);border:1px solid rgba(116,214,195,.4);}
+  .btn-run:hover{filter:brightness(1.15);}
+  .btn-check{background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);}
+  .btn-check:hover{filter:brightness(1.06);}
+  .btn-next{background:linear-gradient(160deg,var(--jade),#48b6a2);color:var(--night-0);}
+  .btn-ghost{background:transparent;color:var(--cream-dim);border:1px solid var(--hair);font-weight:500;}
+
+  .output{margin-top:13px;border-radius:12px;border:1px solid var(--hair);background:rgba(9,10,28,.6);padding:12px 14px;font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;color:var(--cream);min-height:20px;}
+  .output .ph{color:var(--cream-dim);font-style:italic;}
+  .output.err{border-color:rgba(240,133,111,.5);background:rgba(240,133,111,.08);color:var(--coral);}
+
+  .feedback{margin-top:13px;border-radius:12px;padding:12px 14px;font-size:14.5px;display:none;}
+  .feedback.show{display:block;}
+  .feedback.win{background:rgba(116,214,195,.12);border:1px solid rgba(116,214,195,.4);color:var(--cream);}
+  .feedback.win b{color:var(--jade);}
+  .feedback.tryagain{background:rgba(242,169,59,.10);border:1px solid rgba(242,169,59,.35);color:var(--cream);}
+  .feedback.tryagain b{color:var(--saffron-soft);}
+
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding:0 4px;}
+  .footer small{color:var(--cream-dim);font-size:11.5px;}
+  .footer .reset{background:none;border:0;color:var(--cream-dim);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;font-weight:500;}
+  .fab{position:fixed;right:16px;bottom:16px;z-index:50;background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);border-radius:999px;padding:12px 18px;font-weight:700;box-shadow:0 12px 28px -8px rgba(0,0,0,.7);font-size:14.5px;}
+  .helper-panel{position:fixed;right:14px;bottom:74px;z-index:51;width:min(360px,calc(100vw - 28px));height:min(70vh,540px);background:linear-gradient(180deg,var(--surface),var(--night-1));border:1px solid var(--hair);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.85);}
+  .helper-head{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--hair);}
+  .helper-head b{font-family:var(--serif);font-size:17px;color:var(--saffron-soft);}
+  .helper-sub{font-size:10.5px;color:var(--cream-dim);font-family:var(--mono);letter-spacing:.04em;}
+  .helper-close{background:none;color:var(--cream-dim);font-size:16px;padding:4px 8px;cursor:pointer;}
+  .helper-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+  .msg{max-width:86%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5;}
+  .msg.bot{align-self:flex-start;background:var(--surface-soft);border:1px solid var(--hair);color:var(--cream);border-bottom-left-radius:4px;}
+  .msg.user{align-self:flex-end;background:rgba(201,167,240,.18);border:1px solid rgba(201,167,240,.35);color:var(--cream);border-bottom-right-radius:4px;}
+  .msg .c{font-family:var(--mono);font-size:12.5px;background:rgba(9,10,28,.6);padding:1px 5px;border-radius:5px;color:var(--jade);}
+  .helper-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 14px 10px;}
+  .chip{background:rgba(116,214,195,.10);border:1px solid rgba(116,214,195,.3);color:var(--cream);border-radius:999px;padding:7px 11px;font-size:12px;cursor:pointer;}
+  /* Ask Claude (your subscription) bar */
+  .helper-claude-bar{padding:0 14px 10px;}
+  .claude-btn{width:100%;background:linear-gradient(160deg,#d97757,#c25e3f);color:#1b1106;font-weight:700;border-radius:11px;padding:10px 12px;font-size:13.5px;cursor:pointer;}
+  .claude-btn:hover{filter:brightness(1.06);}
+  .claude-note{font-size:10.5px;color:var(--cream-dim);text-align:center;margin-top:5px;}
+  .helper-input{display:flex;gap:8px;padding:11px;border-top:1px solid var(--hair);}
+  .helper-input input{flex:1;background:var(--ink);border:1px solid var(--hair);border-radius:10px;color:var(--cream);padding:10px 12px;font-family:var(--sans);font-size:14px;outline:none;}
+  .helper-input button{background:var(--saffron);color:var(--night-0);font-weight:700;border-radius:10px;padding:10px 14px;cursor:pointer;}
+  .ai-setup{padding:13px 15px;border-bottom:1px solid var(--hair);max-height:62%;overflow-y:auto;}
+  .ai-title{font-family:var(--serif);font-size:16px;color:var(--saffron-soft);margin:0 0 6px;}
+  .ai-note{font-size:11.5px;color:var(--cream-dim);margin:0 0 8px;line-height:1.5;}
+  .ai-steps{font-size:12.5px;color:var(--cream);margin:0 0 10px;padding-left:18px;}
+  .ai-steps li{margin-bottom:3px;}
+  #aiKey{width:100%;background:var(--ink);border:1px solid var(--hair);border-radius:10px;color:var(--cream);padding:10px 12px;font-family:var(--mono);font-size:13px;outline:none;margin-bottom:9px;}
+  .ai-btns{display:flex;gap:8px;}
+  .ai-btns button{padding:9px 14px;font-size:13.5px;}
+  @media(min-width:560px){ .node{width:50px;} .node .line{left:-25px;width:50px;} }
 </style>
 </head>
 <body>
-<header>
-  <h1>🐍 Python Tutor</h1>
-  <p>Learn Python here — and when you get stuck, ask Claude using your subscription.</p>
-</header>
-
+<div class="sky" id="sky"></div>
 <div class="wrap">
+  <header class="top">
+    <div class="kicker">Free · offline · no account needed</div>
+    <h1>Python <span class="glow">Quest</span></h1>
+    <p class="sub">Type a little code, press Run, watch Python answer. Light a star, unlock the next.</p>
+  </header>
 
-  <!-- Ask Claude -->
-  <section class="ask">
-    <span class="badge">✓ uses your Claude subscription · no API bill</span>
-    <h2 style="margin-top:.6rem;">Got a doubt? Ask Claude.</h2>
-    <p class="sub">
-      Type your Python question and hit <strong>Ask Claude</strong>. It opens
-      <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> in a
-      new tab with your question ready to send — covered by the Claude plan you
-      already pay for. Nothing is billed per message.
-    </p>
-    <textarea id="q" placeholder="e.g. Why does my for-loop skip the last item? Here's my code: ..."></textarea>
-    <div class="row">
-      <button class="primary" id="askBtn">Ask Claude →</button>
-      <span class="hint">Opens claude.ai · your subscription · prompts Claude to tutor you in Python</span>
+  <div class="pybanner" id="pybanner"><span>✦</span><span>Ready. Runs right here in your browser — free, and works offline. Share it with anyone.</span></div>
+
+  <div class="toolbar">
+    <button class="pill active" id="tabLessons">Lessons</button>
+    <button class="pill" id="tabPlay">✦ Free Play</button>
+  </div>
+
+  <div id="lessonsView">
+    <div class="path-card">
+      <div class="path-head">
+        <span class="lbl">Your sky map</span>
+        <span class="count" id="progressCount">0 of 24 stars</span>
+      </div>
+      <div class="chapters" id="chapters"></div>
     </div>
-  </section>
+    <main class="lesson" id="lesson"></main>
+  </div>
 
-  <!-- Lessons -->
-  <h2 class="section">Starter lessons</h2>
-  <p style="color:var(--muted); margin-top:-.4rem;">
-    Open a topic, read the example, then hit “Ask Claude about this” to go deeper.
-  </p>
+  <div id="playView" style="display:none;">
+    <main class="lesson">
+      <div class="l-eyebrow">Free Play</div>
+      <div class="l-title">Your Python Sandbox</div>
+      <div class="l-teach"><p>Write <b>any</b> Python you like and run it. No rules, no checks — just you and the language. This is how real engineers experiment.</p></div>
+      <div class="editor-shell">
+        <div class="editor-bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fname">sandbox.py</span></div>
+        <textarea class="code" id="playCode" spellcheck="false">name = "Sasi"
+for i in range(1, 4):
+    print(f"{i}. Hello, {name}!")</textarea>
+      </div>
+      <div class="controls"><button class="btn-run" id="playRun">▶ Run</button><button class="btn-ghost" id="playClear">Clear</button></div>
+      <div class="output" id="playOut"><span class="ph">Press Run to see what your code does…</span></div>
+    </main>
+  </div>
 
-  <details class="lesson">
-    <summary>1 · Variables &amp; types <span class="chev">▸</span></summary>
-    <div class="body">
-      <p>Python figures out the type for you — no need to declare it.</p>
-      <pre><code>name = "Ada"          # str
-age = 36              # int
-height = 1.70         # float
-is_coder = True       # bool
+  <div class="footer">
+    <small>Built-in Python — no internet required.</small>
+    <button class="reset" id="resetBtn">Start over</button>
+  </div>
+</div>
 
-print(f"{name} is {age} years old")</code></pre>
-      <button class="askmini" data-q="Explain Python variables and types like a tutor. Walk me through str, int, float, bool with tiny examples, and give me one practice exercise.">Ask Claude about this</button>
+<button id="helperFab" class="fab">💬 Ask</button>
+<div id="helperPanel" class="helper-panel" style="display:none;">
+  <div class="helper-head">
+    <div><b>Doubt Helper</b><div class="helper-sub" id="helperMode">free · built-in helper</div></div>
+    <div style="display:flex;gap:4px;align-items:center;">
+      <button id="helperSettings" class="helper-close" title="Connect a free AI">⚙</button>
+      <button id="helperClose" class="helper-close">✕</button>
     </div>
-  </details>
-
-  <details class="lesson">
-    <summary>2 · Lists vs. tuples <span class="chev">▸</span></summary>
-    <div class="body">
-      <p>Lists can change; tuples can’t. Use a tuple when the data is fixed.</p>
-      <pre><code>fruits = ["apple", "banana"]   # list — mutable
-fruits.append("cherry")        # ok
-
-point = (3, 4)                 # tuple — immutable
-# point[0] = 9                 # TypeError!</code></pre>
-      <button class="askmini" data-q="Tutor me on the difference between lists and tuples in Python — when to use each, with small examples, then quiz me.">Ask Claude about this</button>
-    </div>
-  </details>
-
-  <details class="lesson">
-    <summary>3 · Loops <span class="chev">▸</span></summary>
-    <div class="body">
-      <p>Use <code>for</code> to repeat over items, <code>range()</code> for counts.</p>
-      <pre><code>for fruit in ["apple", "banana"]:
-    print(fruit)
-
-for i in range(3):     # 0, 1, 2
-    print(i)</code></pre>
-      <button class="askmini" data-q="Teach me Python for-loops and while-loops as a tutor: examples, common mistakes (like off-by-one), and a small exercise.">Ask Claude about this</button>
-    </div>
-  </details>
-
-  <details class="lesson">
-    <summary>4 · Functions <span class="chev">▸</span></summary>
-    <div class="body">
-      <p>Bundle reusable logic with <code>def</code>. Return a value with <code>return</code>.</p>
-      <pre><code>def greet(name, excited=False):
-    msg = f"Hello, {name}"
-    return msg + "!" if excited else msg
-
-print(greet("Sam", excited=True))   # Hello, Sam!</code></pre>
-      <button class="askmini" data-q="Tutor me on Python functions: parameters, default arguments, return values, and scope. Use small examples and give me a practice task.">Ask Claude about this</button>
-    </div>
-  </details>
-
-  <details class="lesson">
-    <summary>5 · Dictionaries <span class="chev">▸</span></summary>
-    <div class="body">
-      <p>Key → value lookups. Fast and everywhere in Python.</p>
-      <pre><code>user = {"name": "Ada", "age": 36}
-print(user["name"])          # Ada
-user["email"] = "ada@x.io"   # add a key
-
-for key, value in user.items():
-    print(key, "=", value)</code></pre>
-      <button class="askmini" data-q="Teach me Python dictionaries as a tutor: creating, reading, updating, looping, and the .get() method. Small examples plus an exercise.">Ask Claude about this</button>
-    </div>
-  </details>
-
-  <footer>
-    A tutor that costs nothing extra to ask — questions open in
-    <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> on your existing plan.<br/>
-    Built for learning Python. No API key required.
-  </footer>
+  </div>
+  <div id="aiSetup" class="ai-setup" style="display:none;">
+    <p class="ai-title">Want a real AI answer?</p>
+    <p class="ai-note"><b>Easiest:</b> use the <b>✦ Ask Claude</b> button below — it opens claude.ai with your question ready, answered on the <b>Claude subscription you already pay for</b>. No key, nothing billed per message.</p>
+    <p class="ai-note">Or, for answers <b>inline</b> without leaving the page, plug in a free Google AI (Gemini) key:</p>
+    <ol class="ai-steps"><li>Open <span class="c">aistudio.google.com/app/apikey</span></li><li>Click <b>Create API key</b> (it's free)</li><li>Paste it below and save</li></ol>
+    <input id="aiKey" type="password" placeholder="Paste your free Gemini key…" autocomplete="off" />
+    <div class="ai-btns"><button id="aiSave" class="btn-check">Save &amp; connect</button><button id="aiRemove" class="btn-ghost">Remove</button></div>
+    <p class="ai-note" style="margin-top:9px;">The Gemini option needs internet. Your key stays on your device — it is never put inside the shared file.</p>
+  </div>
+  <div class="helper-msgs" id="helperMsgs"></div>
+  <div class="helper-claude-bar">
+    <button id="helperClaude" class="claude-btn">✦ Ask Claude on your subscription →</button>
+    <div class="claude-note">Opens claude.ai with your question · covered by your plan · no per-message bill</div>
+  </div>
+  <div class="helper-chips" id="helperChips"></div>
+  <div class="helper-input">
+    <input id="helperText" type="text" placeholder="Type your doubt…" autocomplete="off" />
+    <button id="helperSend">Send</button>
+  </div>
 </div>
 
 <script>
-  // Wraps the learner's question in a short tutor instruction, then opens
-  // claude.ai with it pre-filled. This runs on the user's Claude subscription —
-  // there is no API call and nothing is billed per message.
-  const PREAMBLE =
-    "You are my patient Python tutor. Explain clearly with short runnable " +
-    "examples, give hints before full answers, and end with a tiny exercise. " +
-    "My question:\n\n";
+/* mini-py.js — a tiny Python interpreter in pure JS for a beginner course.
+   Supports: print, variables, f-strings, + - * / %, comparisons, and/or/not,
+   lists, indexing, .append, len, dicts, .items, .get, range, for, while,
+   if/elif/else, def/return (with default args), .upper/.lower, comments. */
 
-  function askClaude(text) {
-    const q = (text || "").trim();
-    if (!q) {
-      document.getElementById("q").focus();
+function runPython(src){
+  const out=[];
+  try{
+    const logical=toLogicalLines(src);
+    const prog=parseBlock(logical,{i:0},-1);
+    const G=Object.create(null);
+    execBlock(prog,G,G,out);
+    return {out:out.join(""),err:null};
+  }catch(e){
+    if(e&&e.__pyerr) return {out:out.join(""),err:e.message};
+    return {out:out.join(""),err:(e&&e.message)?e.message:String(e)};
+  }
+}
+function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
+
+/* ---------- logical lines (merge multiline brackets, strip comments) ---------- */
+function toLogicalLines(src){
+  const phys=src.replace(/\r\n/g,"\n").replace(/\t/g,"    ").split("\n");
+  const res=[];
+  let i=0;
+  while(i<phys.length){
+    let raw=phys[i];
+    const indent=raw.length-raw.trimStart().length;
+    let {text,depth,open}=scanLine(raw);
+    let buf=text;
+    while(open && i+1<phys.length){
+      i++;
+      const nxt=scanLine(phys[i]);
+      buf+=" "+nxt.text.trim();
+      open=nxt.openFrom(depth);
+      depth=nxt.depthFrom(depth);
+    }
+    if(buf.trim().length>0) res.push({indent,text:buf});
+    i++;
+  }
+  return res;
+}
+/* scanLine returns the comment-stripped text plus bracket bookkeeping helpers */
+function scanLine(line){
+  let s="",depth=0,inStr=false,q="",esc=false;
+  for(let k=0;k<line.length;k++){
+    const c=line[k];
+    if(inStr){
+      s+=c;
+      if(esc){esc=false;}
+      else if(c==="\\"){esc=true;}
+      else if(c===q){inStr=false;}
+      continue;
+    }
+    if(c==="'"||c==='"'){inStr=true;q=c;s+=c;continue;}
+    if(c==="#"){break;}
+    if(c==="("||c==="["||c==="{")depth++;
+    if(c===")"||c==="]"||c==="}")depth--;
+    s+=c;
+  }
+  const open=depth>0;
+  return {
+    text:s,
+    depth,
+    open,
+    openFrom:(d)=> (d+depth)>0,
+    depthFrom:(d)=> d+depth
+  };
+}
+
+/* ---------- block / statement parser (indentation based) ---------- */
+function parseBlock(lines,st,parentIndent){
+  const body=[];
+  if(st.i>=lines.length) return body;
+  const indent=lines[st.i].indent;
+  if(indent<=parentIndent) return body;
+  while(st.i<lines.length && lines[st.i].indent===indent){
+    body.push(parseStatement(lines,st,indent));
+  }
+  return body;
+}
+function parseStatement(lines,st,indent){
+  const line=lines[st.i];
+  const text=line.text.trim();
+  // compound
+  let m;
+  if((m=/^if\s+(.*):$/.exec(text))){
+    st.i++;
+    const cond=parseExpr(m[1]);
+    const bodyT=parseBlock(lines,st,indent);
+    const branches=[{cond,body:bodyT}];
+    let els=null;
+    while(st.i<lines.length && lines[st.i].indent===indent){
+      const t=lines[st.i].text.trim();
+      let em;
+      if((em=/^elif\s+(.*):$/.exec(t))){ st.i++; branches.push({cond:parseExpr(em[1]),body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); break; }
+      else break;
+    }
+    return {t:"if",branches,els};
+  }
+  if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){
+    st.i++;
+    const targets=m[1].split(",").map(s=>s.trim());
+    const iter=parseExpr(m[2]);
+    const body=parseBlock(lines,st,indent);
+    return {t:"for",targets,iter,body};
+  }
+  if((m=/^while\s+(.*):$/.exec(text))){
+    st.i++;
+    const cond=parseExpr(m[1]);
+    const body=parseBlock(lines,st,indent);
+    return {t:"while",cond,body};
+  }
+  if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){
+    st.i++;
+    const params=parseParams(m[2]);
+    const body=parseBlock(lines,st,indent);
+    return {t:"def",name:m[1],params,body};
+  }
+  if((m=/^return\b(.*)$/.exec(text))){
+    st.i++;
+    const ex=m[1].trim();
+    return {t:"return",expr:ex?parseExpr(ex):{t:"none"}};
+  }
+  // simple: assignment or expression
+  st.i++;
+  const eq=findTopAssign(text);
+  if(eq>=0){
+    const target=text.slice(0,eq).trim();
+    const expr=parseExpr(text.slice(eq+1).trim());
+    return {t:"assign",target,expr};
+  }
+  return {t:"expr",expr:parseExpr(text)};
+}
+function parseParams(s){
+  s=s.trim(); if(!s) return [];
+  return splitTop(s,",").map(p=>{
+    const e=findTopAssign(p);
+    if(e>=0) return {name:p.slice(0,e).trim(),def:parseExpr(p.slice(e+1).trim())};
+    return {name:p.trim(),def:null};
+  });
+}
+/* split a string by a separator char, ignoring separators inside (), [], {} or strings */
+function splitTop(s,sep){
+  const parts=[]; let depth=0,inStr=false,q="",esc=false,cur="";
+  for(let k=0;k<s.length;k++){
+    const c=s[k];
+    if(inStr){ cur+=c; if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+    if(c==="'"||c==='"'){inStr=true;q=c;cur+=c;continue;}
+    if(c==="("||c==="["||c==="{"){depth++;cur+=c;continue;}
+    if(c===")"||c==="]"||c==="}"){depth--;cur+=c;continue;}
+    if(c===sep && depth===0){ parts.push(cur); cur=""; continue; }
+    cur+=c;
+  }
+  if(cur.trim().length) parts.push(cur);
+  return parts;
+}
+
+/* find a top-level single '=' that's not ==, >=, <=, != */
+function findTopAssign(text){
+  let depth=0,inStr=false,q="",esc=false;
+  for(let k=0;k<text.length;k++){
+    const c=text[k];
+    if(inStr){ if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+    if(c==="'"||c==='"'){inStr=true;q=c;continue;}
+    if(c==="("||c==="["||c==="{")depth++;
+    else if(c===")"||c==="]"||c==="}")depth--;
+    else if(c==="=" && depth===0){
+      const prev=text[k-1], next=text[k+1];
+      if(next==="=") {k++;continue;}
+      if(prev==="="||prev==="!"||prev===">"||prev==="<") continue;
+      return k;
+    }
+  }
+  return -1;
+}
+
+/* ---------- expression tokenizer + parser ---------- */
+function tokenize(s){
+  const toks=[]; let k=0;
+  const isId=c=>/[A-Za-z_]/.test(c), isIdc=c=>/[A-Za-z0-9_]/.test(c), isD=c=>/[0-9]/.test(c);
+  while(k<s.length){
+    const c=s[k];
+    if(c===" "||c==="\t"){k++;continue;}
+    // f-string
+    if((c==="f"||c==="F") && (s[k+1]==='"'||s[k+1]==="'")){
+      const q=s[k+1]; let j=k+2,val="",esc=false;
+      while(j<s.length){const d=s[j];if(esc){val+=d;esc=false;}else if(d==="\\"){val+=d;esc=true;}else if(d===q){break;}else val+=d;j++;}
+      toks.push({t:"fstr",v:val}); k=j+1; continue;
+    }
+    if(c==='"'||c==="'"){
+      const q=c; let j=k+1,val="",esc=false;
+      while(j<s.length){const d=s[j];if(esc){val+=unesc(d);esc=false;}else if(d==="\\"){esc=true;}else if(d===q){break;}else val+=d;j++;}
+      toks.push({t:"str",v:val}); k=j+1; continue;
+    }
+    if(isD(c)||(c==="."&&isD(s[k+1]))){
+      let j=k,num="";while(j<s.length&&/[0-9.]/.test(s[j])){num+=s[j];j++;}
+      toks.push({t:"num",v:parseFloat(num)}); k=j; continue;
+    }
+    if(isId(c)){
+      let j=k,id="";while(j<s.length&&isIdc(s[j])){id+=s[j];j++;}
+      if(id==="True")toks.push({t:"bool",v:true});
+      else if(id==="False")toks.push({t:"bool",v:false});
+      else if(id==="None")toks.push({t:"none"});
+      else if(id==="and"||id==="or"||id==="not"||id==="in")toks.push({t:"kw",v:id});
+      else toks.push({t:"name",v:id});
+      k=j; continue;
+    }
+    const two=s.slice(k,k+2);
+    if(["==","!=",">=","<="].includes(two)){toks.push({t:"op",v:two});k+=2;continue;}
+    if("+-*/%<>()[]{}:,.".includes(c)){toks.push({t:"op",v:c});k++;continue;}
+    throw pyError("SyntaxError: unexpected character '"+c+"'");
+  }
+  return toks;
+}
+function unesc(d){return d==="n"?"\n":d==="t"?"\t":d;}
+
+function parseExpr(str){
+  const toks=tokenize(str);
+  const p={toks,i:0};
+  const node=parseOr(p);
+  if(p.i<toks.length) throw pyError("SyntaxError: unexpected token");
+  return node;
+}
+function peek(p){return p.toks[p.i];}
+function eat(p,v){const t=p.toks[p.i];if(!t||(v&&!(t.v===v||t.t===v)))throw pyError("SyntaxError near '"+(t?t.v:"end")+"'");p.i++;return t;}
+function parseOr(p){let l=parseAnd(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="or"){p.i++;l={t:"bin",op:"or",l,r:parseAnd(p)};}return l;}
+function parseAnd(p){let l=parseNot(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="and"){p.i++;l={t:"bin",op:"and",l,r:parseNot(p)};}return l;}
+function parseNot(p){if(peek(p)&&peek(p).t==="kw"&&peek(p).v==="not"){p.i++;return {t:"unary",op:"not",e:parseNot(p)};}return parseCmp(p);}
+function parseCmp(p){let l=parseAdd(p);while(peek(p)&&((peek(p).t==="op"&&["<",">","==","!=",">=","<="].includes(peek(p).v))||(peek(p).t==="kw"&&peek(p).v==="in"))){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseAdd(p)};}return l;}
+function parseAdd(p){let l=parseMul(p);while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="+"||peek(p).v==="-")){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseMul(p)};}return l;}
+function parseMul(p){let l=parseUnary(p);while(peek(p)&&peek(p).t==="op"&&["*","/","%"].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseUnary(p)};}return l;}
+function parseUnary(p){if(peek(p)&&peek(p).t==="op"&&peek(p).v==="-"){p.i++;return {t:"unary",op:"-",e:parseUnary(p)};}return parsePostfix(p);}
+function parsePostfix(p){
+  let e=parsePrimary(p);
+  while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="."||peek(p).v==="("||peek(p).v==="[")){
+    const op=peek(p).v;
+    if(op==="."){p.i++;const nm=eat(p,"name").v;e={t:"attr",obj:e,name:nm};}
+    else if(op==="("){p.i++;const args=[];if(!(peek(p)&&peek(p).v===")")){args.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;args.push(parseOr(p));}}eat(p,")");e={t:"call",fn:e,args};}
+    else {p.i++;const idx=parseOr(p);eat(p,"]");e={t:"index",obj:e,idx};}
+  }
+  return e;
+}
+function parsePrimary(p){
+  const t=peek(p);
+  if(!t)throw pyError("SyntaxError: unexpected end");
+  if(t.t==="num"){p.i++;return {t:"num",v:t.v};}
+  if(t.t==="str"){p.i++;return {t:"str",v:t.v};}
+  if(t.t==="fstr"){p.i++;return {t:"fstr",v:t.v};}
+  if(t.t==="bool"){p.i++;return {t:"bool",v:t.v};}
+  if(t.t==="none"){p.i++;return {t:"none"};}
+  if(t.t==="name"){p.i++;return {t:"name",v:t.v};}
+  if(t.t==="op"&&t.v==="("){p.i++;const e=parseOr(p);eat(p,")");return e;}
+  if(t.t==="op"&&t.v==="["){p.i++;const items=[];if(!(peek(p)&&peek(p).v==="]")){items.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="]")break;items.push(parseOr(p));}}eat(p,"]");return {t:"list",items};}
+  if(t.t==="op"&&t.v==="{"){p.i++;const pairs=[];if(!(peek(p)&&peek(p).v==="}")){do{if(peek(p)&&peek(p).v==="}")break;const k=parseOr(p);eat(p,":");const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&&peek(p).v===","&&(p.i++,true));}eat(p,"}");return {t:"dict",pairs};}
+  throw pyError("SyntaxError near '"+t.v+"'");
+}
+
+/* ---------- evaluator ---------- */
+const RETURN={};
+function execBlock(stmts,scope,G,out){
+  for(const s of stmts) execStmt(s,scope,G,out);
+}
+function execStmt(s,scope,G,out){
+  switch(s.t){
+    case "assign":{
+      const val=evalExpr(s.expr,scope,G);
+      assignTarget(s.target,val,scope,G);
       return;
     }
-    const url = "https://claude.ai/new?q=" + encodeURIComponent(PREAMBLE + q);
-    window.open(url, "_blank", "noopener");
-  }
-
-  document.getElementById("askBtn").addEventListener("click", () => {
-    askClaude(document.getElementById("q").value);
-  });
-
-  // Ctrl/Cmd + Enter in the textarea also sends.
-  document.getElementById("q").addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      askClaude(document.getElementById("q").value);
+    case "expr": evalExpr(s.expr,scope,G); return;
+    case "if":{
+      for(const b of s.branches){ if(truthy(evalExpr(b.cond,scope,G))){ execBlock(b.body,scope,G,out); return; } }
+      if(s.els) execBlock(s.els,scope,G,out);
+      return;
     }
+    case "for":{
+      const it=iterate(evalExpr(s.iter,scope,G));
+      for(const item of it){
+        bindTargets(s.targets,item,scope,G);
+        execBlock(s.body,scope,G,out);
+      }
+      return;
+    }
+    case "while":{
+      let guard=0;
+      while(truthy(evalExpr(s.cond,scope,G))){
+        execBlock(s.body,scope,G,out);
+        if(++guard>100000) throw pyError("RuntimeError: loop ran too long (possible infinite loop)");
+      }
+      return;
+    }
+    case "def":{
+      scope[s.name]={__fn:true,params:s.params,body:s.body,closure:scope};
+      return;
+    }
+    case "return":{
+      const v=evalExpr(s.expr,scope,G);
+      throw {__ret:true,value:v};
+    }
+  }
+}
+function assignTarget(target,val,scope,G){
+  // only NAME supported as assignment target in this course
+  if(/^[A-Za-z_]\w*$/.test(target)){ scope[target]=val; return; }
+  throw pyError("SyntaxError: cannot assign to '"+target+"'");
+}
+function bindTargets(targets,item,scope,G){
+  if(targets.length===1){ scope[targets[0]]=item; }
+  else {
+    if(!Array.isArray(item)||item.length!==targets.length) throw pyError("ValueError: cannot unpack");
+    targets.forEach((t,idx)=>scope[t]=item[idx]);
+  }
+}
+function lookup(name,scope,G){
+  if(name in scope) return scope[name];
+  if(name in G) return G[name];
+  throw pyError("NameError: name '"+name+"' is not defined");
+}
+function evalExpr(n,scope,G){
+  switch(n.t){
+    case "num": return n.v;
+    case "str": return n.v;
+    case "bool": return n.v;
+    case "none": return null;
+    case "fstr": return evalFString(n.v,scope,G);
+    case "name": return lookup(n.v,scope,G);
+    case "list": return n.items.map(x=>evalExpr(x,scope,G));
+    case "dict":{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+    case "unary":{
+      const v=evalExpr(n.e,scope,G);
+      if(n.op==="-") return -v;
+      if(n.op==="not") return !truthy(v);
+      return;
+    }
+    case "bin": return evalBin(n,scope,G);
+    case "index":{
+      const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
+      if(Array.isArray(o)){ let idx=i<0?o.length+i:i; if(idx<0||idx>=o.length) throw pyError("IndexError: list index out of range"); return o[idx]; }
+      if(o instanceof Map){ if(!o.has(i)) throw pyError("KeyError: "+pyRepr(i)); return o.get(i); }
+      if(typeof o==="string"){ let idx=i<0?o.length+i:i; return o[idx]; }
+      throw pyError("TypeError: not indexable");
+    }
+    case "attr": return {__bound:true,obj:evalExpr(n.obj,scope,G),name:n.name};
+    case "call": return evalCall(n,scope,G);
+  }
+}
+function evalBin(n,scope,G){
+  const op=n.op;
+  if(op==="and"){const l=evalExpr(n.l,scope,G);return truthy(l)?evalExpr(n.r,scope,G):l;}
+  if(op==="or"){const l=evalExpr(n.l,scope,G);return truthy(l)?l:evalExpr(n.r,scope,G);}
+  const a=evalExpr(n.l,scope,G), b=evalExpr(n.r,scope,G);
+  switch(op){
+    case "+":
+      if(typeof a==="string"||typeof b==="string"){ if(typeof a!=="string"||typeof b!=="string") throw pyError("TypeError: cannot add string and number"); return a+b; }
+      if(Array.isArray(a)&&Array.isArray(b)) return a.concat(b);
+      return a+b;
+    case "-": return a-b;
+    case "*":
+      if(typeof a==="string"&&typeof b==="number") return a.repeat(b);
+      if(typeof a==="number"&&typeof b==="string") return b.repeat(a);
+      return a*b;
+    case "/": return a/b;
+    case "%": return ((a%b)+b)%b;
+    case "<": return a<b; case ">": return a>b;
+    case "<=": return a<=b; case ">=": return a>=b;
+    case "==": return pyEq(a,b); case "!=": return !pyEq(a,b);
+    case "in":{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b==="string") return b.includes(a); return false; }
+  }
+}
+function evalCall(n,scope,G){
+  // method call?
+  if(n.fn.t==="attr"){
+    const obj=evalExpr(n.fn.obj,scope,G);
+    const name=n.fn.name;
+    const args=n.args.map(a=>evalExpr(a,scope,G));
+    return callMethod(obj,name,args);
+  }
+  // builtin or user function
+  if(n.fn.t==="name"){
+    const name=n.fn.v;
+    const args=n.args.map(a=>evalExpr(a,scope,G));
+    if(name==="print"){ G.__out.push(args.map(pyStr).join(" ")+"\n"); return null; }
+    if(name==="len"){ const x=args[0]; if(Array.isArray(x)||typeof x==="string")return x.length; if(x instanceof Map)return x.size; throw pyError("TypeError: object has no len()"); }
+    if(name==="range"){ let a=0,b,step=1; if(args.length===1){b=args[0];}else{a=args[0];b=args[1];if(args.length>2)step=args[2];} const r=[]; if(step>0)for(let i=a;i<b;i+=step)r.push(i); else for(let i=a;i>b;i+=step)r.push(i); return r; }
+    if(name==="str"){ return pyStr(args[0]); }
+    if(name==="int"){ return Math.trunc(Number(args[0])); }
+    if(name==="float"){ return Number(args[0]); }
+    if(name==="sum"){ return (args[0]||[]).reduce((x,y)=>x+y,0); }
+    // user function
+    const fn=lookup(name,scope,G);
+    return callUser(fn,args,G);
+  }
+  // fallback: evaluate fn then call
+  const fn=evalExpr(n.fn,scope,G);
+  const args=n.args.map(a=>evalExpr(a,scope,G));
+  return callUser(fn,args,G);
+}
+function callUser(fn,args,G){
+  if(!fn||!fn.__fn) throw pyError("TypeError: object is not callable");
+  const local=Object.create(null);
+  fn.params.forEach((p,idx)=>{
+    if(idx<args.length) local[p.name]=args[idx];
+    else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G);
+    else throw pyError("TypeError: missing argument '"+p.name+"'");
   });
+  try{ execBlock(fn.body,local,G,G.__out); }
+  catch(e){ if(e&&e.__ret) return e.value; throw e; }
+  return null;
+}
+function callMethod(obj,name,args){
+  if(Array.isArray(obj)){
+    if(name==="append"){ obj.push(args[0]); return null; }
+    if(name==="pop"){ return obj.pop(); }
+    if(name==="count"){ return obj.filter(x=>pyEq(x,args[0])).length; }
+    throw pyError("AttributeError: list has no method '"+name+"'");
+  }
+  if(obj instanceof Map){
+    if(name==="items"){ return Array.from(obj.entries()).map(([k,v])=>[k,v]); }
+    if(name==="keys"){ return Array.from(obj.keys()); }
+    if(name==="values"){ return Array.from(obj.values()); }
+    if(name==="get"){ return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); }
+    throw pyError("AttributeError: dict has no method '"+name+"'");
+  }
+  if(typeof obj==="string"){
+    if(name==="upper")return obj.toUpperCase();
+    if(name==="lower")return obj.toLowerCase();
+    if(name==="title")return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase());
+    if(name==="strip")return obj.trim();
+    if(name==="capitalize")return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase();
+    throw pyError("AttributeError: str has no method '"+name+"'");
+  }
+  throw pyError("AttributeError: no method '"+name+"'");
+}
 
-  // Per-lesson "Ask Claude about this" buttons.
-  document.querySelectorAll(".askmini").forEach((btn) => {
-    btn.addEventListener("click", () => askClaude(btn.dataset.q));
+/* f-strings: parse {expr} parts and evaluate */
+function evalFString(raw,scope,G){
+  let res="",i=0;
+  while(i<raw.length){
+    const c=raw[i];
+    if(c==="{"){
+      if(raw[i+1]==="{"){res+="{";i+=2;continue;}
+      let j=i+1,depth=1,ex="";
+      while(j<raw.length&&depth>0){const d=raw[j];if(d==="{")depth++;else if(d==="}"){depth--;if(depth===0)break;}ex+=d;j++;}
+      res+=pyStr(evalExpr(parseExpr(ex),scope,G));
+      i=j+1;
+    } else if(c==="}"){ if(raw[i+1]==="}"){res+="}";i+=2;continue;} i++; }
+    else { res+=c; i++; }
+  }
+  return res;
+}
+
+/* helpers */
+function truthy(v){ if(v===null||v===false)return false; if(v===0||v==="")return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
+function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((x,i)=>pyEq(x,b[i])); return a===b; }
+function pyStr(v){
+  if(v===null) return "None";
+  if(v===true) return "True";
+  if(v===false) return "False";
+  if(typeof v==="number") return Number.isInteger(v)?String(v):String(v);
+  if(typeof v==="string") return v;
+  if(Array.isArray(v)) return "["+v.map(pyRepr).join(", ")+"]";
+  if(v instanceof Map) return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}";
+  if(v&&v.__fn) return "<function>";
+  return String(v);
+}
+function pyRepr(v){ if(typeof v==="string")return "'"+v+"'"; return pyStr(v); }
+function iterate(v){
+  if(Array.isArray(v)) return v;
+  if(typeof v==="string") return v.split("");
+  if(v instanceof Map) return Array.from(v.keys());
+  throw pyError("TypeError: object is not iterable");
+}
+
+/* wire print output through G.__out */
+const _origRun=runPython;
+function runPythonWrapped(src){
+  const out=[];
+  try{
+    const logical=toLogicalLines(src);
+    const prog=parseBlock(logical,{i:0},-1);
+    const G=Object.create(null);
+    G.__out=out;
+    execBlock(prog,G,G,out);
+    return {out:out.join(""),err:null};
+  }catch(e){
+    if(e&&e.__ret) return {out:out.join(""),err:null};
+    if(e&&e.__pyerr) return {out:out.join(""),err:e.message};
+    return {out:out.join(""),err:(e&&e.message)?e.message:String(e)};
+  }
+}
+
+
+</script>
+<script>
+/* ===================== CURRICULUM ===================== */
+const CH=["1 · First Light","2 · Collections","3 · Logic & Flow","4 · Functions","5 · Real Programs","6 · Going Further"];
+const L=[
+{ch:0,title:"Make Python Talk",
+ teach:`<p>The first magic word is <code>print()</code>. Whatever goes <b>inside the quotes</b>, Python says on screen.</p><p>Press <b>Run</b>. Then change the words to print <b>your own name</b>.</p>`,
+ challenge:`Make Python print <b>your name</b>. Example: <code>print("I am Sasi")</code>`,
+ starter:`print("Namaste! I am Siva Baba.")`,
+ check:(o)=> o.trim().length>0?{ok:true}:{ok:false,msg:"Put some words inside the quotes and press Run."}},
+
+{ch:0,title:"Boxes That Hold Things",
+ teach:`<p>A <b>variable</b> is a labelled box. Put something in once, use the label anytime.</p><p>Here <code>planet</code> holds "Mars". Run it, then make your own box.</p>`,
+ challenge:`Make a box called <code>sign</code> with your zodiac sign, then <code>print(sign)</code>.`,
+ starter:`planet = "Mars"\nprint(planet)`,
+ check:(o,c)=> (c.includes("=")&&c.includes("print(")&&o.trim().length>0)?{ok:true}:{ok:false,msg:'Make a box with =, then print it. Like  sign = "Leo"  then  print(sign)'}},
+
+{ch:0,title:"Glue Words Together",
+ teach:`<p>Put a little <b>f</b> before the quotes and wrap a box in <code>{ }</code> to mix words and boxes in one line.</p>`,
+ challenge:`Print a sentence with your sign in it using the <code>f"... {sign} ..."</code> trick.`,
+ starter:`sign = "Leo"\nprint(f"My sign is {sign}")`,
+ check:(o,c)=> ((c.includes('f"')||c.includes("f'"))&&c.includes("{")&&o.trim().length>0)?{ok:true}:{ok:false,msg:"Keep the f before the quotes and wrap your box in { }."}},
+
+{ch:0,title:"Python the Calculator",
+ teach:`<p>Python does maths with <code>+</code> <code>-</code> <code>*</code> (times) <code>/</code> (divide).</p><p>This works out days in 10 years. Run it, then solve the challenge.</p>`,
+ challenge:`How many days are in <b>25 years</b>? Change it to <code>25 * 365</code> and print the answer. (Should be 9125.)`,
+ starter:`days = 10 * 365\nprint(days)`,
+ check:(o)=> o.trim()==="9125"?{ok:true}:{ok:false,msg:"Try 25 * 365, and print it. The answer is 9125."}},
+
+{ch:1,title:"A Backpack of Things",
+ teach:`<p>A <b>list</b> holds many things in order, inside <code>[ ]</code>. Python counts from <b>0</b>: first is <code>[0]</code>, second <code>[1]</code>…</p>`,
+ challenge:`Print the <b>third</b> planet. Counting starts at 0, so the third is index <code>[2]</code>.`,
+ starter:`planets = ["Sun", "Moon", "Mars"]\nprint(planets[0])`,
+ check:(o)=> o.trim()==="Mars"?{ok:true}:{ok:false,msg:"The third item is index [2]. Try planets[2] — it should print Mars."}},
+
+{ch:1,title:"Growing a List",
+ teach:`<p><code>.append()</code> adds to a list. <code>len()</code> counts how many things are in it.</p>`,
+ challenge:`Append <b>one more</b> planet so the list has 4, then print <code>len(planets)</code> (should be 4).`,
+ starter:`planets = ["Sun", "Moon"]\nplanets.append("Mars")\nprint(len(planets))`,
+ check:(o)=> o.trim()==="4"?{ok:true}:{ok:false,msg:"Add one more .append(...) line, then print len(planets). It should be 4."}},
+
+{ch:1,title:"Labels on Boxes",
+ teach:`<p>A <b>dictionary</b> pairs a label with a value, inside <code>{ }</code>. Look things up by their label.</p>`,
+ challenge:`Print the English name for <b>Simha</b> using <code>signs["Simha"]</code>.`,
+ starter:`signs = {"Mesha": "Aries", "Simha": "Leo"}\nprint(signs["Mesha"])`,
+ check:(o)=> o.trim()==="Leo"?{ok:true}:{ok:false,msg:'Look up "Simha" instead of "Mesha". It should print Leo.'}},
+
+{ch:1,title:"Walking Through a Dictionary",
+ teach:`<p>A loop can visit every pair. <code>.items()</code> gives you each label and value together.</p>`,
+ challenge:`Add <b>one more</b> sign to the dictionary, then run — all pairs should print.`,
+ starter:`signs = {"Mesha": "Aries", "Simha": "Leo"}\nfor telugu, english in signs.items():\n    print(telugu, "=", english)`,
+ check:(o)=> o.trim().split("\n").filter(x=>x.trim()).length>=3?{ok:true}:{ok:false,msg:"Add a third sign inside { }, so three lines print."}},
+
+{ch:2,title:"True or False",
+ teach:`<p>Comparisons give back <b>True</b> or <b>False</b>: <code>></code> <code><</code> <code>>=</code> <code>==</code> (equal).</p>`,
+ challenge:`Make Python print <b>True</b> for whether 7 is greater than 3. (Use <code>print(7 > 3)</code>.)`,
+ starter:`age = 18\nprint(age >= 18)`,
+ check:(o)=> o.trim()==="True"?{ok:true}:{ok:false,msg:"Try print(7 > 3) — it should print True."}},
+
+{ch:2,title:"Making Choices",
+ teach:`<p><code>if</code> runs when something is true, <code>elif</code> checks the next case, <code>else</code> catches the rest. Mind the spaces (indent) — Python needs them.</p>`,
+ challenge:`Change <code>score</code> so Python prints <b>"Great"</b>.`,
+ starter:`score = 5\nif score >= 8:\n    print("Great")\nelif score >= 5:\n    print("Good")\nelse:\n    print("Keep going")`,
+ check:(o)=> o.trim()==="Great"?{ok:true}:{ok:false,msg:"Set score to 8 or more so the first branch runs."}},
+
+{ch:2,title:"Counting With range()",
+ teach:`<p><code>range(n)</code> counts from 0 up to n−1. A <b>for loop</b> repeats once for each number.</p>`,
+ challenge:`Make it print <b>5 stars</b> — "Star 0" through "Star 4". (Use <code>range(5)</code>.)`,
+ starter:`for i in range(3):\n    print("Star", i)`,
+ check:(o)=>{const ln=o.trim().split("\n").filter(x=>x.trim());return (ln.length>=5&&o.includes("Star 4"))?{ok:true}:{ok:false,msg:"Use range(5) so it prints Star 0 up to Star 4 — five lines."};}},
+
+{ch:2,title:"Looping Until Done",
+ teach:`<p>A <b>while loop</b> keeps going as long as something stays true. Great for countdowns.</p>`,
+ challenge:`Start the countdown from <b>5</b> instead of 3, then run.`,
+ starter:`count = 3\nwhile count > 0:\n    print(count)\n    count = count - 1\nprint("Liftoff!")`,
+ check:(o)=> (o.includes("5")&&o.includes("Liftoff!"))?{ok:true}:{ok:false,msg:"Set count = 5 to start. Keep the Liftoff! line."}},
+
+{ch:2,title:"Loops + Choices Together",
+ teach:`<p>Combine them: loop through numbers and decide something each time. <code>%</code> gives the remainder — <code>n % 2 == 0</code> means "even".</p>`,
+ challenge:`Change the range so it checks <b>1 to 10</b>. (Use <code>range(1, 11)</code>.)`,
+ starter:`for n in range(1, 6):\n    if n % 2 == 0:\n        print(n, "is even")\n    else:\n        print(n, "is odd")`,
+ check:(o)=> o.trim().split("\n").filter(x=>x.trim()).length>=10?{ok:true}:{ok:false,msg:"Use range(1, 11) so all numbers 1–10 are checked (10 lines)."}},
+
+{ch:3,title:"Your Own Magic Spell",
+ teach:`<p>A <b>function</b> is your own command. <code>def</code>ine it once, then <b>call</b> it anytime. <code>return</code> hands back an answer.</p>`,
+ challenge:`Call <code>greet</code> with a <b>different name</b> and print the result.`,
+ starter:`def greet(name):\n    return f"Namaste, {name}!"\n\nprint(greet("Sasi"))`,
+ check:(o)=> o.toLowerCase().includes("namaste")?{ok:true}:{ok:false,msg:'Call greet("...") with a name and print it.'}},
+
+{ch:3,title:"Inputs and Answers",
+ teach:`<p>Functions can take more than one input and give back a result you can use.</p>`,
+ challenge:`Use the function to add <b>10 and 15</b> and print it (should be 25).`,
+ starter:`def add(a, b):\n    return a + b\n\nprint(add(2, 3))`,
+ check:(o)=> o.trim()==="25"?{ok:true}:{ok:false,msg:"Call add(10, 15) and print it — the answer is 25."}},
+
+{ch:3,title:"Smart Defaults",
+ teach:`<p>An input can have a <b>default</b>. If you don't pass it, the default is used.</p>`,
+ challenge:`Call <code>horoscope</code> for <b>your sign</b> with <b>your own mood</b>.`,
+ starter:`def horoscope(sign, mood="calm"):\n    return f"{sign} feels {mood} today"\n\nprint(horoscope("Leo"))\nprint(horoscope("Aries", "bold"))`,
+ check:(o)=> o.toLowerCase().includes("feels")?{ok:true}:{ok:false,msg:'Call horoscope("YourSign", "yourmood") and print it.'}},
+
+{ch:3,title:"Functions Working Together",
+ teach:`<p>Real programs are many small functions teaming up. <code>.upper()</code> shouts text; a function can do maths.</p>`,
+ challenge:`Make <code>double(50)</code> and <code>shout("go")</code> both print. (Expect 100 and GO.)`,
+ starter:`def double(x):\n    return x * 2\n\ndef shout(text):\n    return text.upper()\n\nprint(shout("ready"))\nprint(double(21))`,
+ check:(o)=> (o.includes("100")&&o.includes("GO"))?{ok:true}:{ok:false,msg:'Call double(50) and shout("go") and print both — you should see 100 and GO.'}},
+
+{ch:4,title:"Build a Horoscope Maker",
+ teach:`<p>Now everything together: a function + a dictionary + a loop = a real little app that gives each sign a message.</p>`,
+ challenge:`Add <b>your sign</b> and a message to the <code>messages</code> dictionary <b>and</b> to the <code>signs</code> list, then run.`,
+ starter:`def message_for(sign):\n    messages = {\n        "Leo": "Your fire shines today.",\n        "Aries": "Be bold and begin.",\n        "Scorpio": "Trust your instincts.",\n    }\n    return messages.get(sign, "The stars are quiet for you today.")\n\nsigns = ["Leo", "Aries", "Scorpio"]\nfor s in signs:\n    print(f"{s}: {message_for(s)}")`,
+ check:(o)=> o.trim().split("\n").filter(x=>x.trim()).length>=3?{ok:true}:{ok:false,msg:"Keep the loop printing each sign and its message — at least 3 lines."}},
+
+{ch:4,title:"Your First Real Program",
+ teach:`<p>The finish line. This program takes people and their numbers, decides something about each, and reports back — using boxes, a dictionary, a loop, a function, and an <code>if</code>. That's a complete program.</p>`,
+ challenge:`Add <b>yourself</b> (a name and a number) to the <code>people</code> dictionary, then run. Your report should appear!`,
+ starter:`def lucky_report(name, number):\n    if number % 2 == 0:\n        kind = "even and balanced"\n    else:\n        kind = "odd and bold"\n    return f"{name}, your number {number} is {kind}."\n\npeople = {"Sasi": 7, "Ravi": 4}\nfor name, num in people.items():\n    print(lucky_report(name, num))`,
+ check:(o)=> o.trim().split("\n").filter(x=>x.trim()).length>=3?{ok:true}:{ok:false,msg:"Add a third person to the people dictionary so three reports print."}},
+
+{ch:5,title:"Notes to Yourself",
+ teach:`<p>A <code>#</code> starts a <b>comment</b> — a note for humans that Python ignores. Use them to remember what your code does.</p>`,
+ challenge:`Add your <b>own comment</b> line (starting with <code>#</code>) above the print, then run. The output stays the same.`,
+ starter:`# this line is a note, Python ignores it\nname = "Sasi"\nprint(name)  # this prints the name`,
+ check:(o,c)=> (c.includes("#")&&o.trim().length>0)?{ok:true}:{ok:false,msg:"Add a line starting with # above your print, then run."}},
+
+{ch:5,title:"Shouting and Whispering",
+ teach:`<p>Text has handy tools. <code>.upper()</code> SHOUTS it, <code>.lower()</code> whispers it.</p>`,
+ challenge:`Print your name in <b>ALL CAPS</b> using <code>.upper()</code>.`,
+ starter:`word = "namaste"\nprint(word.upper())`,
+ check:(o)=> (o.trim().length>0 && o.trim()===o.trim().toUpperCase() && /[A-Z]/.test(o))?{ok:true}:{ok:false,msg:'Use .upper() on a word, like print("sasi".upper()) — it should come out in CAPS.'}},
+
+{ch:5,title:"Counting Things",
+ teach:`<p>You can mix words, boxes, and <code>len()</code> in one print to make a neat sentence.</p>`,
+ challenge:`Add one more mantra to the list, then run — it should say you have <b>4</b>.`,
+ starter:`mantras = ["Om", "Shanti", "Hari"]\nprint("You have", len(mantras), "mantras")`,
+ check:(o)=> o.includes("4")?{ok:true}:{ok:false,msg:"Add one more item inside the [ ] list so len() becomes 4."}},
+
+{ch:5,title:"Your Daily Planner",
+ teach:`<p>One more real program: a planner that turns a dictionary of days and tasks into a tidy printed list, using a function and a loop.</p>`,
+ challenge:`Add <b>two more days</b> with tasks to the <code>week</code> dictionary, then run.`,
+ starter:`def plan(day, task):\n    return f"{day}: {task}"\n\nweek = {"Mon": "Learn print", "Tue": "Learn loops"}\nfor day, task in week.items():\n    print(plan(day, task))`,
+ check:(o)=> o.trim().split("\n").filter(x=>x.trim()).length>=4?{ok:true}:{ok:false,msg:"Add two more days inside the week dictionary so four lines print."}}
+];
+
+/* ===================== STATE ===================== */
+const KEY="python-quest-v3";
+let state={unlocked:1,done:[],current:1};
+let currentTab="lessons";
+
+/* ---- Storage that works BOTH inside claude.ai artifacts AND as a downloaded/
+   shared file. Tries localStorage first (so progress persists offline), then
+   falls back to the artifact's window.storage, then to in-memory. ---- */
+const Store=(function(){
+  const mem={};
+  const hasLS=(()=>{try{localStorage.setItem("__pq_t","1");localStorage.removeItem("__pq_t");return true;}catch(e){return false;}})();
+  const hasWS=(typeof window!=="undefined"&&window.storage&&typeof window.storage.get==="function");
+  return {
+    async get(k){
+      if(hasLS){const v=localStorage.getItem(k);return v==null?null:{value:v};}
+      if(hasWS){try{return await window.storage.get(k);}catch(e){}}
+      return (k in mem)?{value:mem[k]}:null;
+    },
+    async set(k,v){
+      if(hasLS){try{localStorage.setItem(k,v);return;}catch(e){}}
+      if(hasWS){try{return await window.storage.set(k,v);}catch(e){}}
+      mem[k]=v;
+    }
+  };
+})();
+
+/* starfield */
+(function(){const s=document.getElementById("sky");let h="";for(let i=0;i<70;i++){const big=Math.random()<.18;const d=(2+Math.random()*3).toFixed(2);h+=`<span class="star ${big?'big':''}" style="left:${(Math.random()*100).toFixed(2)}%;top:${(Math.random()*100).toFixed(2)}%;animation:twinkle ${d}s ease-in-out ${(Math.random()*3).toFixed(2)}s infinite"></span>`;}s.innerHTML=h;})();
+
+/* ===================== STORAGE ===================== */
+async function loadState(){try{const r=await Store.get(KEY);if(r&&r.value){const s=JSON.parse(r.value);if(s&&s.unlocked)state=s;}}catch(e){}}
+async function saveState(){try{await Store.set(KEY,JSON.stringify(state));}catch(e){}}
+
+/* the interpreter is built in above as runPythonWrapped */
+function runCode(code){ return runPythonWrapped(code); }
+
+/* ===================== TABS ===================== */
+function setTab(t){
+  currentTab=t;
+  document.getElementById("tabLessons").classList.toggle("active",t==="lessons");
+  document.getElementById("tabPlay").classList.toggle("active",t==="play");
+  document.getElementById("lessonsView").style.display=t==="lessons"?"":"none";
+  document.getElementById("playView").style.display=t==="play"?"":"none";
+}
+document.getElementById("tabLessons").addEventListener("click",()=>setTab("lessons"));
+document.getElementById("tabPlay").addEventListener("click",()=>setTab("play"));
+
+/* ===================== RENDER MAP ===================== */
+function renderMap(){
+  document.getElementById("progressCount").textContent=`${state.done.length} of ${L.length} stars`;
+  const groups={};
+  L.forEach((l,i)=>{ (groups[l.ch]=groups[l.ch]||[]).push(i+1); });
+  let html="";
+  Object.keys(groups).forEach(ch=>{
+    html+=`<div class="chapter"><div class="ch-name">${CH[ch]}</div><div class="ch-nodes">`;
+    groups[ch].forEach((n,idx)=>{
+      const done=state.done.includes(n), unlocked=n<=state.unlocked, current=n===state.current;
+      let cls="node"+(idx===0?" first":"")+(done?" done":"")+(current?" current":"")+(unlocked?" unlocked":" locked");
+      const face=done?"★":(unlocked?n:"·");
+      html+=`<div class="${cls}" data-n="${n}"><span class="line"></span><div class="dot">${face}</div></div>`;
+    });
+    html+=`</div></div>`;
   });
+  const wrap=document.getElementById("chapters");
+  wrap.innerHTML=html;
+  wrap.querySelectorAll(".node").forEach(node=>{
+    const n=parseInt(node.dataset.n,10);
+    if(n<=state.unlocked) node.addEventListener("click",()=>{state.current=n;renderAll();});
+  });
+}
+
+/* ===================== RENDER LESSON ===================== */
+function renderLesson(){
+  const i=state.current-1, l=L[i], el=document.getElementById("lesson");
+  el.innerHTML=`
+    <div class="l-eyebrow">Chapter ${CH[l.ch]} · Lesson ${state.current} of ${L.length}</div>
+    <div class="l-title">${l.title}</div>
+    <div class="l-teach">${l.teach}</div>
+    <div class="block-label"><span>✎</span> Your turn</div>
+    <div class="challenge">${l.challenge}</div>
+    <div class="editor-shell">
+      <div class="editor-bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fname">quest.py</span></div>
+      <textarea class="code" id="code" spellcheck="false">${esc(l.starter)}</textarea>
+    </div>
+    <div class="controls">
+      <button class="btn-run" id="runBtn">▶ Run</button>
+      <button class="btn-check" id="checkBtn">Check my answer</button>
+      <button class="btn-ghost" id="resetCodeBtn">Reset code</button>
+    </div>
+    <div class="output" id="output"><span class="ph">Press Run to see what your code does…</span></div>
+    <div class="feedback" id="feedback"></div>`;
+  bindEditor("code");
+  document.getElementById("runBtn").addEventListener("click",onRun);
+  document.getElementById("checkBtn").addEventListener("click",onCheck);
+  document.getElementById("resetCodeBtn").addEventListener("click",()=>{document.getElementById("code").value=l.starter;document.getElementById("output").innerHTML='<span class="ph">Press Run to see what your code does…</span>';hideFeedback();});
+}
+
+function bindEditor(id){
+  const t=document.getElementById(id);
+  t.addEventListener("keydown",e=>{
+    if(e.key==="Tab"){e.preventDefault();const s=t.selectionStart,en=t.selectionEnd;t.value=t.value.slice(0,s)+"    "+t.value.slice(en);t.selectionStart=t.selectionEnd=s+4;}
+  });
+}
+
+function showOut(elId,res){
+  const o=document.getElementById(elId);
+  if(res.err){o.className="output err";o.textContent="🤔 Python got confused:\n"+res.err+"\n\nTip: check spelling, and that every ( ) \" and { } has a matching partner.";}
+  else{o.className="output";o.textContent=res.out.trim().length?res.out:"(Python ran, but nothing printed. Did you use print()?)";}
+}
+
+function onRun(){ showOut("output",runCode(document.getElementById("code").value)); }
+
+function onCheck(){
+  const l=L[state.current-1], code=document.getElementById("code").value;
+  const res=runCode(code);
+  showOut("output",res);
+  if(res.err){showFeedback("tryagain","<b>Almost!</b> Fix the small error shown above, then check again. Every coder hits these.");return;}
+  const r=l.check(res.out,code);
+  if(r.ok) winLesson(); else showFeedback("tryagain","<b>So close!</b> "+r.msg);
+}
+
+function winLesson(){
+  const n=state.current;
+  if(!state.done.includes(n)) state.done.push(n);
+  if(n+1>state.unlocked && n<L.length) state.unlocked=n+1;
+  saveState(); renderMap();
+  const last=n===L.length;
+  const fb=document.getElementById("feedback");fb.className="feedback win show";
+  fb.innerHTML=(last
+    ?`<b>⭐ All ${L.length} stars lit — you did it!</b> You can now use variables, lists, dictionaries, loops, and functions together to build real programs. That's the foundation every AI engineer stands on. Next stop: pandas and real data.`
+    :"<b>⭐ Star lit!</b> You've got this one. The next lesson is unlocked.")
+    +(last?"":` <div style="margin-top:11px;"><button class="btn-next" id="nextBtn">Next lesson →</button></div>`);
+  if(!last) document.getElementById("nextBtn").addEventListener("click",()=>{state.current=n+1;renderAll();window.scrollTo({top:0,behavior:"smooth"});});
+}
+
+/* ===================== FREE PLAY ===================== */
+bindEditor("playCode");
+document.getElementById("playRun").addEventListener("click",()=>{ showOut("playOut",runCode(document.getElementById("playCode").value)); });
+document.getElementById("playClear").addEventListener("click",()=>{document.getElementById("playCode").value="";document.getElementById("playOut").innerHTML='<span class="ph">Press Run to see what your code does…</span>';});
+
+/* ===================== HELPERS ===================== */
+function showFeedback(t,h){const fb=document.getElementById("feedback");if(fb){fb.className="feedback "+t+" show";fb.innerHTML=h;}}
+function hideFeedback(){const fb=document.getElementById("feedback");if(fb){fb.className="feedback";fb.innerHTML="";}}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function renderAll(){renderMap();renderLesson();}
+
+document.getElementById("resetBtn").addEventListener("click",async()=>{state={unlocked:1,done:[],current:1};await saveState();renderAll();window.scrollTo({top:0,behavior:"smooth"});});
+
+/* ===================== DOUBT HELPER (free, offline, built-in) ===================== */
+const KB=[
+ {keys:["quote","quotes",'print "',"prints the word","print the word","the word","shows the word","printing the word","literal","showed the word","word instead","not the value","value not","why name"],
+  a:`This catches <b>everyone</b>! <b>Quotes mean "these exact letters." No quotes means "look inside the box."</b><br>• <span class='c'>print("sign")</span> → prints the word <b>sign</b><br>• <span class='c'>print(sign)</span> → prints what's inside, like <b>cancer</b><br>So to show cancer: <span class='c'>sign = "cancer"</span> then <span class='c'>print(sign)</span> — no quotes.`},
+ {keys:["nameerror","not defined","is not defined","undefined name"],
+  a:`<b>NameError</b> means Python doesn't recognise a word — usually a typo or wrong capital letter. Python treats <span class='c'>Sign</span> and <span class='c'>sign</span> as different boxes. Check the spelling matches exactly, and that you made the box before using it.`},
+ {keys:["syntaxerror","syntax error","invalid syntax","syntax"],
+  a:`<b>SyntaxError</b> is a typo in the structure. Most often a missing <span class='c'>)</span>, a missing <span class='c'>"</span>, or a missing <span class='c'>:</span> at the end of an <span class='c'>if</span>/<span class='c'>for</span>/<span class='c'>def</span> line. Check brackets and quotes come in pairs.`},
+ {keys:["indexerror","index error","out of range","index out"],
+  a:`<b>IndexError</b> means you asked for an item that isn't there. Counting starts at <b>0</b>, so a list of 3 has only indexes 0, 1, 2.`},
+ {keys:["keyerror","key error","key not"],
+  a:`<b>KeyError</b> means that label isn't in the dictionary. Check the spelling of the key, or use <span class='c'>.get(key, "default")</span> which returns a fallback instead of crashing.`},
+ {keys:["typeerror","type error","cannot add","not callable","not iterable","not subscriptable"],
+  a:`<b>TypeError</b> means you mixed types that don't fit together — like adding a number to a word: <span class='c'>"age " + 5</span> fails. Turn the number into text first: <span class='c'>"age " + str(5)</span>. Or use an f-string: <span class='c'>f"age {5}"</span>.`},
+ {keys:["valueerror","value error","cannot unpack","unpack"],
+  a:`<b>ValueError</b> often means the number of things didn't match — e.g. <span class='c'>for a, b in ...</span> needs each item to have exactly 2 parts. Check your loop targets match the data.`},
+ {keys:["attributeerror","attribute error","has no attribute","no method"],
+  a:`<b>AttributeError</b> means you used a tool that doesn't exist for that thing — like calling <span class='c'>.append()</span> on a word. Lists have <span class='c'>.append()</span>; words have <span class='c'>.upper()</span>. Check the type matches the tool.`},
+ {keys:["zerodivision","divide by zero","division by zero"],
+  a:`<b>ZeroDivisionError</b> — you can't divide by 0 in maths or in Python. Make sure the bottom number is never 0.`},
+ {keys:["indent","indentation","spaces","tab","expected an indented","whitespace","spacing"],
+  a:`Python uses <b>spaces</b> to know what's inside an <span class='c'>if</span>, <span class='c'>for</span>, or <span class='c'>def</span>. The lines inside need <b>4 spaces</b> in front, all even. Uneven or missing spaces cause errors.`},
+ {keys:["colon",":","end of line","missing colon"],
+  a:`Lines that open a block — <span class='c'>if</span>, <span class='c'>elif</span>, <span class='c'>else</span>, <span class='c'>for</span>, <span class='c'>while</span>, <span class='c'>def</span> — must end with a <b>colon</b> <span class='c'>:</span>. Then the next lines are indented 4 spaces.`},
+ {keys:["==","equal","compare","comparison","double equal","equals"],
+  a:`Two different jobs:<br>• <span class='c'>=</span> puts a value in a box: <span class='c'>age = 18</span><br>• <span class='c'>==</span> checks if two things are equal: <span class='c'>if age == 18:</span><br>Inside an <span class='c'>if</span>, always use <b>==</b>.`},
+ {keys:["f-string","fstring","f string",'f"',"curly","f'","format"],
+  a:`An <b>f-string</b> mixes words and boxes. Put <span class='c'>f</span> before the quotes and wrap the box in <span class='c'>{ }</span>:<br><span class='c'>print(f"My sign is {sign}")</span>`},
+ {keys:["variable","what is a box","make a box","assign","store"],
+  a:`A <b>variable</b> is a box that holds a value. <span class='c'>name = "Sasi"</span> puts Sasi in the box. Later <span class='c'>print(name)</span> shows Sasi. The box name goes on the left of <span class='c'>=</span>.`},
+ {keys:["dictionary","dict","label","look up","key value","key-value"],
+  a:`A <b>dictionary</b> pairs labels with values inside <span class='c'>{ }</span>: <span class='c'>signs = {"Simha": "Leo"}</span>. Look one up with <span class='c'>signs["Simha"]</span> → Leo. Loop all pairs with <span class='c'>.items()</span>.`},
+ {keys:["list","third item","second item","first item","array","make a list"],
+  a:`A <b>list</b> holds many things in order inside <span class='c'>[ ]</span>: <span class='c'>planets = ["Sun", "Moon"]</span>. Counting starts at 0, so <span class='c'>planets[0]</span> is the first, <span class='c'>planets[1]</span> the second.`},
+ {keys:["append","add to list","add item","add to","adding to","put in list"],
+  a:`<span class='c'>mylist.append("x")</span> adds <span class='c'>x</span> to the end of the list. Run it once per new item.`},
+ {keys:["len","count","how many","length"],
+  a:`<span class='c'>len(thing)</span> counts items: <span class='c'>len([1,2,3])</span> is 3, and <span class='c'>len("hi")</span> is 2 (the letters).`},
+ {keys:["range","counting","count up"],
+  a:`<span class='c'>range(n)</span> counts from 0 up to n−1. <span class='c'>range(5)</span> gives 0,1,2,3,4. <span class='c'>range(1, 6)</span> gives 1,2,3,4,5.`},
+ {keys:["for loop","for ","loops","repeat","iterate","go through"],
+  a:`A <b>for loop</b> repeats once for each item. <span class='c'>for p in planets:</span> visits every planet. End the line with <span class='c'>:</span> and indent the inside 4 spaces.`},
+ {keys:["while"],
+  a:`A <b>while loop</b> repeats as long as something stays true. Make sure something <b>changes</b> inside (like <span class='c'>count = count - 1</span>), or it never stops!`},
+ {keys:["function","def ","return","def(","def call"],
+  a:`A <b>function</b> is your own command. <span class='c'>def greet(name):</span> defines it, <span class='c'>return</span> hands back an answer, and <span class='c'>greet("Sasi")</span> runs it. Call it as many times as you like.`},
+ {keys:["upper","lower","caps","shout","capital"],
+  a:`Text tools: <span class='c'>"hi".upper()</span> → HI (shout), <span class='c'>"HI".lower()</span> → hi (whisper), <span class='c'>"hi".title()</span> → Hi.`},
+ {keys:["comment","#","note","hash"],
+  a:`A <span class='c'>#</span> starts a <b>comment</b> — a note for humans that Python ignores. <span class='c'>print(name)  # shows the name</span>. Great for reminding yourself what code does.`},
+ {keys:["boolean","true","false","bool"],
+  a:`<b>True</b> and <b>False</b> are Python's yes/no values. Comparisons make them: <span class='c'>7 > 3</span> is <span class='c'>True</span>. They control <span class='c'>if</span> statements.`},
+ {keys:["and","or","not","both","either"],
+  a:`Combine conditions: <span class='c'>and</span> needs both true, <span class='c'>or</span> needs at least one true, <span class='c'>not</span> flips it. Example: <span class='c'>if age >= 18 and country == "US":</span>`},
+ {keys:["plus","add","concatenate","join words","combine words"],
+  a:`<span class='c'>+</span> joins two words: <span class='c'>"Hello " + name</span>. But you can't <span class='c'>+</span> a word and a number directly — wrap the number in <span class='c'>str(...)</span> or use an f-string.`},
+ {keys:["math","calculate","plus minus","arithmetic","multiply","divide","modulo","remainder"],
+  a:`Maths: <span class='c'>+</span> add, <span class='c'>-</span> subtract, <span class='c'>*</span> times, <span class='c'>/</span> divide, <span class='c'>%</span> remainder. <span class='c'>10 % 3</span> is 1. <span class='c'>n % 2 == 0</span> checks "even".`},
+ {keys:["string","integer","number type","what is a string","data type","types"],
+  a:`Two common types: a <b>string</b> is text in quotes (<span class='c'>"hi"</span>), an <b>integer</b> is a whole number (<span class='c'>5</span>). Mixing them needs <span class='c'>str()</span> or an f-string.`},
+ {keys:["input","ask the user","type in"],
+  a:`Normally Python uses <span class='c'>input()</span> to ask the user a question — but this practice playground can't pause for typing, so stick to fixed values (like <span class='c'>name = "Sasi"</span>) for now. You'll use <span class='c'>input()</span> when you run Python on your own computer.`},
+ {keys:["import","module","library","package"],
+  a:`<span class='c'>import</span> brings in extra tools, like <span class='c'>import math</span>. You don't need it yet — but later, libraries like <b>pandas</b> are how AI engineers handle data. One step at a time!`},
+ {keys:["run","run code","run button","how do i run","play"],
+  a:`Press the <b>▶ Run</b> button under the code to see your output. Press <b>Check my answer</b> to test the challenge and light up a star.`},
+ {keys:["next lesson","move on","unlock","next star","continue"],
+  a:`Finish the challenge and press <b>Check my answer</b>. When it's right, a star lights up and the <b>Next lesson →</b> button appears. You can also tap any unlocked star on the sky map.`},
+ {keys:["save","progress","saved","lost my place","come back"],
+  a:`Your progress saves automatically as you light stars, so you can close it and come back where you left off. The <b>Start over</b> link resets everything.`},
+ {keys:["share","send","free","offline","internet"],
+  a:`Yes — this whole thing runs inside the file, free and offline. Send it to anyone with a browser and they can learn too, no account needed.`},
+ {keys:["error","wrong","not working","broken","problem"],
+  a:`Paste the code (or the red error message) right here and I'll point at the likely cause. Common ones: a missing <span class='c'>:</span>, a missing <span class='c'>)</span> or <span class='c'>"</span>, a typo in a name, or quotes where you didn't mean them.`},
+ {keys:["how much","percent","percentage","how far"],
+  a:`These 24 lessons give you about <b>15–20%</b> of Python — but the most important part that everything else is built on.`},
+ {keys:["what is python","why python"],
+  a:`Python is a friendly language for telling computers what to do. It's the <b>#1 language for AI</b> — you're learning the real thing.`},
+ {keys:["ai engineer","machine learning","next step","after this","pandas"],
+  a:`After these basics, the path is: <b>pandas</b> (handling data) → calling AI models → building apps. These lessons are the foundation that makes all of that easy. Finish the 24 stars first.`},
+ {keys:["stuck","help","understand","confused","doubt","lost","don't get"],
+  a:`No worries — that's exactly how learning works! Tell me which word or line is confusing, or paste the code here and I'll point at the problem. You can also re-read the blue <b>"Your turn"</b> box slowly.`},
+ {keys:["thank","thanks","awesome","cool","nice","love"],
+  a:`You're doing great — keep lighting those stars! ⭐ Ask me anytime a doubt pops up.`},
+ {keys:["hi","hey","hello","namaste","yo"],
+  a:`Namaste! I'm your built-in helper. Ask me about <b>quotes, print, variables, lists, loops, functions</b>, any <b>error</b>, or paste your code and I'll spot the problem.`},
+];
+const FALLBACK=`I didn't quite catch that one. I'm a built-in helper, so I'm best with the basics — try asking about <b>quotes, print, variables, lists, dictionaries, loops, functions</b>, or paste your <b>code/error</b>. For trickier things, tap <b>✦ Ask Claude</b> below — it sends your question to Claude on your subscription. 🌟`;
+const CHIPS=["Why did it print the word, not the value?","== vs = ?","What does my error mean?","How do I add to a list?","I'm stuck"];
+
+/* code doctor: if the message looks like pasted code, spot a likely mistake */
+function codeDoctor(raw){
+  const looksCode = /print\(|=|\(|\[|\n|:/.test(raw) && /[A-Za-z]/.test(raw);
+  if(!looksCode) return null;
+  const code=raw;
+  const dq=(code.match(/"/g)||[]).length;
+  if(dq%2===1) return `It looks like a <b>quote is missing its partner</b>. Every <span class='c'>"</span> needs a matching <span class='c'>"</span> to close the text. Add the missing one.`;
+  const op=(code.match(/\(/g)||[]).length, cp=(code.match(/\)/g)||[]).length;
+  if(op!==cp && (op>0||cp>0)) return `A <b>bracket isn't closed</b>: you have ${op} <span class='c'>(</span> and ${cp} <span class='c'>)</span>. Every <span class='c'>(</span> needs a <span class='c'>)</span>.`;
+  const assigns=[...code.matchAll(/([A-Za-z_]\w*)\s*=\s*/g)].map(m=>m[1]);
+  const pm=code.match(/print\(\s*["']([A-Za-z_]\w*)["']\s*\)/);
+  if(pm && assigns.includes(pm[1])) return `You wrote <span class='c'>print("${pm[1]}")</span> with quotes, so Python prints the word <b>${pm[1]}</b>. To show what's <b>inside</b> the box, remove the quotes: <span class='c'>print(${pm[1]})</span>.`;
+  const colonMsg=t=>`The line <span class='c'>${t}</span> needs a <b>colon</b> <span class='c'>:</span> at the end. Lines that open a block (if, for, while, def) always end with :.`;
+  const lines=code.split("\n");
+  for(const ln of lines){ const t=ln.trim();
+    if(/^for\s+[\w ,]+\s+in\s+.+/.test(t) && !t.endsWith(":")) return colonMsg(t);
+    if(/^def\s+\w+\s*\(.*\)\s*$/.test(t)) return colonMsg(t);
+    if(/^(if|elif|while)\s+.*[=<>()0-9].*/.test(t) && !t.endsWith(":")) return colonMsg(t);
+  }
+  for(const ln of lines){ const t=ln.trim(); if(/^(if|elif|while)\b/.test(t) && /[^=!<>]=[^=]/.test(t)) return `Inside an <span class='c'>if</span>, use <b>==</b> to compare, not a single =. (<span class='c'>=</span> stores a value; <span class='c'>==</span> checks equality.)`; }
+  return null;
+}
+
+function helperAnswer(raw){
+  const doc=codeDoctor(raw);
+  if(doc) return doc;
+  const text=" "+raw.toLowerCase().replace(/[^a-z0-9"'%#={}\[\]() ]/g," ").replace(/\s+/g," ")+" ";
+  let best=null,bestScore=0;
+  for(const e of KB){
+    let score=0;
+    for(const k of e.keys){
+      const key=k.toLowerCase();
+      if(key.length<=3){ if(text.includes(" "+key+" ")) score+=1; }
+      else { if(text.includes(key)) score+=Math.min(3,1+Math.floor(key.length/5)); }
+    }
+    if(score>bestScore){bestScore=score;best=e;}
+  }
+  return best?best.a:FALLBACK;
+}
+
+function helperAdd(role,html){
+  const box=document.getElementById("helperMsgs");
+  const d=document.createElement("div"); d.className="msg "+role; d.innerHTML=html; box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+  return d;
+}
+
+/* ---- Ask Claude on the user's subscription (no API key, no per-message bill) ----
+   Builds a tutor prompt that includes the doubt + the code they're working on,
+   opens claude.ai with it pre-filled, and copies it to the clipboard as a
+   fallback in case the pre-fill doesn't carry over. */
+let lastQuestion="";
+function currentCode(){
+  const id = currentTab==="play" ? "playCode" : "code";
+  const el=document.getElementById(id);
+  return el && el.value ? el.value.trim() : "";
+}
+function buildClaudePrompt(q){
+  let p="You are my patient Python tutor. I'm a beginner learning the basics "
+    +"(print, variables, f-strings, lists, dictionaries, loops, functions). "
+    +"Answer simply in a few sentences with a tiny example, and end with one small tip.\n\n"
+    +"My question: "+q;
+  const code=currentCode();
+  if(code) p+="\n\nHere is the code I'm working on right now:\n```python\n"+code+"\n```";
+  return p;
+}
+function askClaude(){
+  const input=document.getElementById("helperText");
+  let q=(input && input.value.trim()) || lastQuestion || "";
+  if(!q){
+    if(input) input.focus();
+    helperAdd("bot","Type your doubt above first, then tap <b>✦ Ask Claude</b> — it'll open claude.ai (your subscription) with your question ready.");
+    return;
+  }
+  const prompt=buildClaudePrompt(q);
+  try{ if(navigator.clipboard) navigator.clipboard.writeText(prompt); }catch(e){}
+  window.open("https://claude.ai/new?q="+encodeURIComponent(prompt),"_blank","noopener");
+  helperAdd("user",esc(q));
+  helperAdd("bot","Opening <b>claude.ai</b> on your subscription with your question ready ✦<br><span style='font-size:11px;color:var(--cream-dim)'>(I also copied it to your clipboard — if the box is empty, just paste. Nothing is billed per message.)</span>");
+  if(input) input.value="";
+}
+
+/* optional free AI (Google Gemini) — user pastes their own free key */
+let AIKEY="";
+async function loadKey(){ try{const r=await Store.get("pq-aikey"); if(r&&r.value) AIKEY=r.value;}catch(e){} updateModeUI(); }
+function updateModeUI(){ const m=document.getElementById("helperMode"); if(m){ m.textContent=AIKEY?"AI connected ✓ · real answers":"free · built-in helper"; m.style.color=AIKEY?"var(--jade)":""; } }
+function formatAI(t){ let s=esc(t); s=s.replace(/```[a-z]*\n?/gi,"").replace(/`([^`]+)`/g,'<span class="c">$1</span>'); s=s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>'); s=s.replace(/\n/g,'<br>'); return s; }
+async function callAI(q){
+  const sys="You are a warm, patient Python tutor for an absolute beginner who is learning print, variables, f-strings, lists, dictionaries, loops, and functions. Answer in 2 to 5 short sentences, simple words, with a tiny code example when useful. Be encouraging. Use backticks around code.";
+  const url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+encodeURIComponent(AIKEY);
+  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:sys+"\n\nStudent question: "+q}]}]})});
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data=await res.json();
+  const t=data&&data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
+  if(!t) throw new Error("empty reply");
+  return t;
+}
+
+function helperAsk(q){
+  lastQuestion=q;
+  helperAdd("user",esc(q));
+  if(AIKEY){
+    const d=helperAdd("bot","<i>thinking…</i>");
+    callAI(q).then(t=>{ d.innerHTML=formatAI(t); document.getElementById("helperMsgs").scrollTop=1e9; })
+      .catch(()=>{ d.innerHTML=helperAnswer(q)+'<br><br><span style="font-size:11px;color:var(--cream-dim)">(couldn\'t reach the AI just now — used the built-in helper. Check your internet, or that the key is correct.)</span>'; document.getElementById("helperMsgs").scrollTop=1e9; });
+  } else {
+    setTimeout(()=>helperAdd("bot",helperAnswer(q)),160);
+  }
+}
+function helperOpen(){
+  document.getElementById("helperPanel").style.display="flex";
+  const box=document.getElementById("helperMsgs");
+  if(!box.dataset.seeded){
+    box.dataset.seeded="1";
+    helperAdd("bot","Namaste! I'm your free built-in helper. 🌟 Ask me about quotes, print, lists, loops, functions, or paste your code and I'll spot the mistake. For a full answer from real Claude, tap <b>✦ Ask Claude</b> — it uses the subscription you already pay for.");
+    const chips=document.getElementById("helperChips");
+    chips.innerHTML="";
+    CHIPS.forEach(c=>{const b=document.createElement("button");b.className="chip";b.textContent=c;b.addEventListener("click",()=>helperAsk(c));chips.appendChild(b);});
+  }
+}
+document.getElementById("helperFab").addEventListener("click",helperOpen);
+document.getElementById("helperClose").addEventListener("click",()=>{document.getElementById("helperPanel").style.display="none";});
+document.getElementById("helperClaude").addEventListener("click",askClaude);
+document.getElementById("helperSend").addEventListener("click",()=>{const t=document.getElementById("helperText");if(t.value.trim()){helperAsk(t.value.trim());t.value="";}});
+document.getElementById("helperText").addEventListener("keydown",e=>{if(e.key==="Enter"){const t=e.target;if(t.value.trim()){helperAsk(t.value.trim());t.value="";}}});
+document.getElementById("helperSettings").addEventListener("click",()=>{const s=document.getElementById("aiSetup");const show=s.style.display==="none";s.style.display=show?"block":"none";if(show)document.getElementById("aiKey").value=AIKEY;});
+document.getElementById("aiSave").addEventListener("click",async()=>{const k=document.getElementById("aiKey").value.trim();AIKEY=k;try{await Store.set("pq-aikey",k);}catch(e){}document.getElementById("aiSetup").style.display="none";updateModeUI();helperAdd("bot",k?"Inline AI connected! 🌟 Ask me anything — I'll answer right here. (For Claude on your subscription, use ✦ Ask Claude anytime.)":"No key entered — staying on the free built-in helper.");});
+document.getElementById("aiRemove").addEventListener("click",async()=>{AIKEY="";try{await Store.set("pq-aikey","");}catch(e){}document.getElementById("aiKey").value="";document.getElementById("aiSetup").style.display="none";updateModeUI();helperAdd("bot","Key removed — back to the free built-in helper.");});
+
+/* ===================== BOOT ===================== */
+(async function(){ await loadState(); renderAll(); await loadKey(); })();
+
 </script>
 </body>
 </html>
