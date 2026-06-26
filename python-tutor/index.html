@@ -140,6 +140,8 @@
   .ai-btns button{padding:9px 14px;font-size:13.5px;}
   @media(min-width:560px){ .node{width:50px;} .node .line{left:-25px;width:50px;} }
 </style>
+<!-- Free Llama AI for the in-app chatbot — no API key (loads only when online). -->
+<script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
 <div class="sky" id="sky"></div>
@@ -200,13 +202,13 @@ for i in range(1, 4):
     </div>
   </div>
   <div id="aiSetup" class="ai-setup" style="display:none;">
-    <p class="ai-title">Want a real AI answer?</p>
-    <p class="ai-note"><b>Easiest:</b> use the <b>✦ Ask Claude</b> button below — it opens claude.ai with your question ready, answered on the <b>Claude subscription you already pay for</b>. No key, nothing billed per message.</p>
-    <p class="ai-note">Or, for answers <b>inline</b> without leaving the page, plug in a free Google AI (Gemini) key:</p>
-    <ol class="ai-steps"><li>Open <span class="c">aistudio.google.com/app/apikey</span></li><li>Click <b>Create API key</b> (it's free)</li><li>Paste it below and save</li></ol>
-    <input id="aiKey" type="password" placeholder="Paste your free Gemini key…" autocomplete="off" />
-    <div class="ai-btns"><button id="aiSave" class="btn-check">Save &amp; connect</button><button id="aiRemove" class="btn-ghost">Remove</button></div>
-    <p class="ai-note" style="margin-top:9px;">The Gemini option needs internet. Your key stays on your device — it is never put inside the shared file.</p>
+    <p class="ai-title">Your AI tutor 🦙</p>
+    <p class="ai-note">This chat is powered by a <b>free Llama AI</b> — <b>no API key needed</b>. Just type your doubt and Send. (When online, it may ask you to sign in once with a free Puter account; that's free too.)</p>
+    <p class="ai-note"><b>Optional — faster, no sign-in:</b> add a free <b>Groq</b> key (no credit card):</p>
+    <ol class="ai-steps"><li>Open <span class="c">console.groq.com/keys</span></li><li>Click <b>Create API Key</b> (free, no card)</li><li>Paste it below and save</li></ol>
+    <input id="aiKey" type="password" placeholder="Optional free Groq key…" autocomplete="off" />
+    <div class="ai-btns"><button id="aiSave" class="btn-check">Save</button><button id="aiRemove" class="btn-ghost">Remove</button></div>
+    <p class="ai-note" style="margin-top:9px;">Needs internet for AI answers. Any key stays on your device — never written into the shared file. ✦ Ask Claude still works on your subscription.</p>
   </div>
   <div class="helper-msgs" id="helperMsgs"></div>
   <div class="helper-claude-bar">
@@ -215,7 +217,7 @@ for i in range(1, 4):
   </div>
   <div class="helper-chips" id="helperChips"></div>
   <div class="helper-input">
-    <input id="helperText" type="text" placeholder="Type your doubt…" autocomplete="off" />
+    <input id="helperText" type="text" placeholder="Ask the AI your Python doubt…" autocomplete="off" />
     <button id="helperSend">Send</button>
   </div>
 </div>
@@ -1192,39 +1194,73 @@ function askClaude(){
   if(input) input.value="";
 }
 
-/* optional free AI (Google Gemini) — user pastes their own free key */
-let AIKEY="";
-async function loadKey(){ try{const r=await Store.get("pq-aikey"); if(r&&r.value) AIKEY=r.value;}catch(e){} updateModeUI(); }
-function updateModeUI(){ const m=document.getElementById("helperMode"); if(m){ m.textContent=AIKEY?"AI connected ✓ · real answers":"free · built-in helper"; m.style.color=AIKEY?"var(--jade)":""; } }
+/* ---- Free Llama AI assistant ----
+   Primary: Puter.js (no API key — runs Llama in the cloud for you, free).
+   Optional: a free Groq key (no credit card) for faster, no-login answers.
+   Offline / on failure: falls back to the instant built-in helper. */
+let GROQKEY="";
+const PUTER_MODELS=["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", null]; // null => Puter's default model
+async function loadKey(){ try{const r=await Store.get("pq-groqkey"); if(r&&r.value) GROQKEY=r.value;}catch(e){} updateModeUI(); }
+function updateModeUI(){
+  const m=document.getElementById("helperMode");
+  if(m){ m.textContent = GROQKEY ? "Llama AI ✓ · Groq (free)" : "free Llama AI · no key"; m.style.color="var(--jade)"; }
+}
 function formatAI(t){ let s=esc(t); s=s.replace(/```[a-z]*\n?/gi,"").replace(/`([^`]+)`/g,'<span class="c">$1</span>'); s=s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>'); s=s.replace(/\n/g,'<br>'); return s; }
-async function callAI(q){
-  const sys="You are a warm, patient Python tutor for an absolute beginner who is learning print, variables, f-strings, lists, dictionaries, loops, and functions. Answer in 2 to 5 short sentences, simple words, with a tiny code example when useful. Be encouraging. Use backticks around code.";
-  const url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+encodeURIComponent(AIKEY);
-  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:sys+"\n\nStudent question: "+q}]}]})});
+
+/* Pull the text out of whatever shape Puter returns */
+function puterText(r){
+  if(r==null) return "";
+  if(typeof r==="string") return r;
+  if(r.message){ const c=r.message.content; if(typeof c==="string") return c; if(Array.isArray(c)) return c.map(x=>(x&&(x.text||x.content))||"").join(""); }
+  if(typeof r.text==="string") return r.text;
+  if(typeof r.content==="string") return r.content;
+  return "";
+}
+async function callGroq(prompt){
+  const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+GROQKEY},
+    body:JSON.stringify({model:"llama-3.1-8b-instant",temperature:0.3,max_tokens:700,messages:[{role:"user",content:prompt}]})
+  });
   if(!res.ok) throw new Error("HTTP "+res.status);
-  const data=await res.json();
-  const t=data&&data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
+  const d=await res.json();
+  const t=d&&d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   if(!t) throw new Error("empty reply");
   return t;
+}
+async function callPuter(prompt){
+  if(!(window.puter&&puter.ai&&puter.ai.chat)) throw new Error("puter unavailable");
+  let lastErr=null;
+  for(const m of PUTER_MODELS){
+    try{
+      const r=await puter.ai.chat(prompt, m?{model:m}:{});
+      const t=puterText(r);
+      if(t&&t.trim()) return t.trim();
+    }catch(e){ lastErr=e; }
+  }
+  throw lastErr||new Error("no reply");
+}
+async function answerWithAI(q){
+  const prompt=buildClaudePrompt(q); // reuse the rich tutor prompt (lesson + code + run result)
+  if(GROQKEY){ try{ return await callGroq(prompt); }catch(e){} }
+  return await callPuter(prompt);
 }
 
 function helperAsk(q){
   lastQuestion=q;
   helperAdd("user",esc(q));
-  if(AIKEY){
-    const d=helperAdd("bot","<i>thinking…</i>");
-    callAI(q).then(t=>{ d.innerHTML=formatAI(t); document.getElementById("helperMsgs").scrollTop=1e9; })
-      .catch(()=>{ d.innerHTML=helperAnswer(q)+'<br><br><span style="font-size:11px;color:var(--cream-dim)">(couldn\'t reach the AI just now — used the built-in helper. Check your internet, or that the key is correct.)</span>'; document.getElementById("helperMsgs").scrollTop=1e9; });
-  } else {
-    setTimeout(()=>helperAdd("bot",helperAnswer(q)),160);
-  }
+  const d=helperAdd("bot","<i>🦙 Llama is thinking…</i>");
+  const box=document.getElementById("helperMsgs");
+  answerWithAI(q)
+    .then(t=>{ d.innerHTML=formatAI(t); box.scrollTop=1e9; })
+    .catch(()=>{ d.innerHTML=helperAnswer(q)+'<br><br><span style="font-size:11px;color:var(--cream-dim)">(That was my quick built-in answer — the free Llama AI needs internet, and may ask you to sign in to a free account the first time. You can also tap ✦ Ask Claude.)</span>'; box.scrollTop=1e9; });
 }
 function helperOpen(){
   document.getElementById("helperPanel").style.display="flex";
   const box=document.getElementById("helperMsgs");
   if(!box.dataset.seeded){
     box.dataset.seeded="1";
-    helperAdd("bot","Namaste! I'm your free built-in helper. 🌟 Ask me about quotes, print, lists, loops, functions, or paste your code and I'll spot the mistake. For a full answer from real Claude, tap <b>✦ Ask Claude</b> — it uses the subscription you already pay for.");
+    helperAdd("bot","Namaste! I'm your <b>Llama AI</b> tutor — free, no API key. 🦙 Ask me any Python doubt and I'll answer right here. (First time online, it may pop up a quick free sign-in.) Offline, I'll still give quick built-in answers, and ✦ Ask Claude uses your subscription.");
     const chips=document.getElementById("helperChips");
     chips.innerHTML="";
     CHIPS.forEach(c=>{const b=document.createElement("button");b.className="chip";b.textContent=c;b.addEventListener("click",()=>helperAsk(c));chips.appendChild(b);});
@@ -1235,9 +1271,9 @@ document.getElementById("helperClose").addEventListener("click",()=>{document.ge
 document.getElementById("helperClaude").addEventListener("click",askClaude);
 document.getElementById("helperSend").addEventListener("click",()=>{const t=document.getElementById("helperText");if(t.value.trim()){helperAsk(t.value.trim());t.value="";}});
 document.getElementById("helperText").addEventListener("keydown",e=>{if(e.key==="Enter"){const t=e.target;if(t.value.trim()){helperAsk(t.value.trim());t.value="";}}});
-document.getElementById("helperSettings").addEventListener("click",()=>{const s=document.getElementById("aiSetup");const show=s.style.display==="none";s.style.display=show?"block":"none";if(show)document.getElementById("aiKey").value=AIKEY;});
-document.getElementById("aiSave").addEventListener("click",async()=>{const k=document.getElementById("aiKey").value.trim();AIKEY=k;try{await Store.set("pq-aikey",k);}catch(e){}document.getElementById("aiSetup").style.display="none";updateModeUI();helperAdd("bot",k?"Inline AI connected! 🌟 Ask me anything — I'll answer right here. (For Claude on your subscription, use ✦ Ask Claude anytime.)":"No key entered — staying on the free built-in helper.");});
-document.getElementById("aiRemove").addEventListener("click",async()=>{AIKEY="";try{await Store.set("pq-aikey","");}catch(e){}document.getElementById("aiKey").value="";document.getElementById("aiSetup").style.display="none";updateModeUI();helperAdd("bot","Key removed — back to the free built-in helper.");});
+document.getElementById("helperSettings").addEventListener("click",()=>{const s=document.getElementById("aiSetup");const show=s.style.display==="none";s.style.display=show?"block":"none";if(show)document.getElementById("aiKey").value=GROQKEY;});
+document.getElementById("aiSave").addEventListener("click",async()=>{const k=document.getElementById("aiKey").value.trim();GROQKEY=k;try{await Store.set("pq-groqkey",k);}catch(e){}document.getElementById("aiSetup").style.display="none";updateModeUI();helperAdd("bot",k?"Groq key saved — Llama answers will be faster and need no sign-in. 🦙":"No key — still using the free built-in Llama AI.");});
+document.getElementById("aiRemove").addEventListener("click",async()=>{GROQKEY="";try{await Store.set("pq-groqkey","");}catch(e){}document.getElementById("aiKey").value="";document.getElementById("aiSetup").style.display="none";updateModeUI();helperAdd("bot","Groq key removed — back to the free built-in Llama AI.");});
 
 /* ===================== BOOT ===================== */
 (async function(){ await loadState(); renderAll(); await loadKey(); })();

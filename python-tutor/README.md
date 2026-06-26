@@ -34,19 +34,25 @@ they can learn too, no account needed.
 - **Free Play sandbox** to experiment with your own code.
 - **Doubt Helper** (the 💬 Ask button) — see below.
 
-## The Doubt Helper — three ways to get unstuck
+## The Doubt Helper — a free AI tutor, right in the app
+
+Tap **💬 Ask** (bottom-right), type a Python doubt, and a **free Llama AI**
+answers **inline** — no paid API key. It automatically sees the lesson you're on,
+the challenge, your code, and your latest run result, so its answers fit exactly
+what you're doing.
 
 | Level | What it is | Needs |
 |---|---|---|
-| **✦ Ask Claude** | Opens **claude.ai** with your question **and your current code** pre-filled, answered on the **Claude subscription you already pay for**. | A Claude Pro/Max plan. **No API key. Nothing billed per message.** |
-| Built-in helper | Instant offline answers to common doubts + an error-spotter that reads your pasted code. | Nothing — works offline. |
-| Inline Gemini (optional) | Answers inside the panel without leaving the page. Tap ⚙ to add a free Google AI key. | A free Gemini key + internet. |
+| **Free Llama AI (default)** | A real AI tutor answering **inside the chat box**, free. Powered by Puter — runs Llama in the cloud for you with **no API key**. It may ask you to sign in once with a free account. | Internet. **No paid key.** |
+| Optional Groq key | Faster answers with no sign-in. Tap ⚙ → paste a **free Groq key** (console.groq.com, no credit card). | A free Groq key + internet. |
+| Built-in helper | Instant offline answers to common doubts + an error-spotter that reads your code. | Nothing — works offline. |
+| ✦ Ask Claude | Opens **claude.ai** with your question + code pre-filled, on the **Claude subscription you already pay for**. | A Claude plan. No key, no per-message bill. |
 
-**Why "Ask Claude" works this way:** your Claude *subscription* (claude.ai) and
-the Claude *API* are billed separately — the subscription can't authenticate a
-script or a web page directly. So the Doubt Helper sends your question **to
-claude.ai**, where your subscription covers it. It also copies the question to
-your clipboard as a fallback, in case the pre-fill doesn't carry over.
+**Note on Claude vs. a free key:** a Claude *subscription* can't power an
+in-page chatbot (subscriptions only work on claude.ai). For real AI answers
+*inside* the app for free, the Doubt Helper uses **Llama** instead — that's what
+the default mode does. ✦ Ask Claude remains for when you want Claude itself on
+your plan.
 
 ## Notes
 
