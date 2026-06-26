@@ -211,7 +211,7 @@ for i in range(1, 4):
   <div class="helper-msgs" id="helperMsgs"></div>
   <div class="helper-claude-bar">
     <button id="helperClaude" class="claude-btn">✦ Ask Claude on your subscription →</button>
-    <div class="claude-note">Opens claude.ai with your question · covered by your plan · no per-message bill</div>
+    <div class="claude-note">Sends your question + this lesson + your code to claude.ai · on your plan · no per-message bill</div>
   </div>
   <div class="helper-chips" id="helperChips"></div>
   <div class="helper-input">
@@ -964,6 +964,7 @@ function bindEditor(id){
 }
 
 function showOut(elId,res){
+  lastRun=res;
   const o=document.getElementById(elId);
   if(res.err){o.className="output err";o.textContent="🤔 Python got confused:\n"+res.err+"\n\nTip: check spelling, and that every ( ) \" and { } has a matching partner.";}
   else{o.className="output";o.textContent=res.out.trim().length?res.out:"(Python ran, but nothing printed. Did you use print()?)";}
@@ -1149,18 +1150,30 @@ function helperAdd(role,html){
    opens claude.ai with it pre-filled, and copies it to the clipboard as a
    fallback in case the pre-fill doesn't carry over. */
 let lastQuestion="";
+let lastRun=null; // {out, err} from the most recent Run / Check
+function stripHTML(h){const d=document.createElement("div");d.innerHTML=h;return (d.textContent||"").replace(/\s+/g," ").trim();}
 function currentCode(){
   const id = currentTab==="play" ? "playCode" : "code";
   const el=document.getElementById(id);
   return el && el.value ? el.value.trim() : "";
 }
+/* Build a fully-loaded tutor prompt so Claude can answer the instant the tab
+   opens: the doubt + the lesson + the challenge + the code + the run result. */
 function buildClaudePrompt(q){
-  let p="You are my patient Python tutor. I'm a beginner learning the basics "
-    +"(print, variables, f-strings, lists, dictionaries, loops, functions). "
-    +"Answer simply in a few sentences with a tiny example, and end with one small tip.\n\n"
-    +"My question: "+q;
+  let p="You are my patient Python tutor inside a beginner Python learning app. "
+    +"I'm just learning the basics (print, variables, f-strings, lists, dictionaries, "
+    +"loops, functions). Answer simply in a few short sentences with a tiny example, "
+    +"and end with one small tip.\n\nMy question: "+q;
+  if(currentTab==="lessons" && L[state.current-1]){
+    const l=L[state.current-1];
+    p+="\n\nI'm on the lesson \""+l.title+"\". The task is: "+stripHTML(l.challenge);
+  }
   const code=currentCode();
   if(code) p+="\n\nHere is the code I'm working on right now:\n```python\n"+code+"\n```";
+  if(lastRun){
+    if(lastRun.err) p+="\n\nWhen I run it, I get this error:\n"+lastRun.err;
+    else if(lastRun.out && lastRun.out.trim()) p+="\n\nWhen I run it, it prints:\n"+lastRun.out.trim();
+  }
   return p;
 }
 function askClaude(){
