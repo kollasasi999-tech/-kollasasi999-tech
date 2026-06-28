@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guess the Output — 50 beginner Python puzzles</title>
+<style>
+  :root{
+    --night-0:#0c0d2b; --night-1:#15123f; --night-2:#1d1850;
+    --surface:#221c57; --surface-soft:#2a2466; --ink:#090a1c;
+    --cream:#f4eddd; --cream-dim:#bdb6d8;
+    --saffron:#f2a93b; --saffron-soft:#f6c878;
+    --jade:#74d6c3; --lotus:#c9a7f0; --coral:#f0856f;
+    --hair:rgba(244,237,221,0.12);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, #2a2068 0%, transparent 55%),
+      radial-gradient(900px 600px at 0% 110%, #241a5a 0%, transparent 50%),
+      linear-gradient(160deg, var(--night-0), var(--night-1) 60%, var(--night-2));
+    color:var(--cream); font-family:var(--sans); line-height:1.55; min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:22px 16px 60px;}
+  header.top{text-align:center;margin-bottom:14px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--saffron);opacity:.85;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,8vw,40px);margin:6px 0 4px;}
+  h1 .glow{color:var(--saffron-soft);}
+  .sub{color:var(--cream-dim);font-size:13.5px;max-width:42ch;margin:0 auto;}
+  .nav{display:flex;justify-content:center;gap:8px;margin:12px 0 16px;flex-wrap:wrap;}
+  .pill{font-size:12.5px;font-weight:600;border:1px solid var(--hair);background:var(--surface);color:var(--cream-dim);border-radius:999px;padding:7px 14px;cursor:pointer;text-decoration:none;display:inline-block;}
+  .pill:hover{color:var(--cream);}
+
+  .bar-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .bar{flex:1;height:9px;border-radius:999px;background:var(--surface);overflow:hidden;border:1px solid var(--hair);}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--saffron),var(--saffron-soft));transition:width .3s ease;}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--cream-dim);white-space:nowrap;}
+  .score{color:var(--jade);font-weight:700;}
+
+  .card{background:linear-gradient(180deg,var(--surface),rgba(29,24,80,.7));border:1px solid var(--hair);border-radius:20px;padding:20px 17px;box-shadow:0 16px 40px -24px rgba(0,0,0,.8);}
+  .qlabel{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--saffron);margin-bottom:9px;}
+  .ask{font-size:15px;color:var(--cream);margin:0 0 10px;}
+  .ask b{color:var(--saffron-soft);}
+
+  .editor{background:var(--ink);border:1px solid rgba(244,237,221,.10);border-radius:13px;overflow:hidden;}
+  .ebar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid rgba(244,237,221,.07);}
+  .ebar .d{width:10px;height:10px;border-radius:50%;}
+  .ebar .r{background:#ff6b6b;}.ebar .y{background:#ffce5b;}.ebar .g{background:#74d6c3;}
+  .ebar .fn{margin-left:6px;font-family:var(--mono);font-size:11px;color:var(--cream-dim);}
+  pre.code{margin:0;padding:14px 15px;font-family:var(--mono);font-size:14px;line-height:1.7;color:#e9e3ff;white-space:pre;overflow-x:auto;tab-size:4;}
+
+  .alabel{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim);margin:16px 0 7px;}
+  textarea.ans{width:100%;min-height:60px;resize:vertical;background:var(--ink);border:1px solid var(--hair);border-radius:11px;color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.6;padding:11px 13px;outline:none;}
+  textarea.ans:focus{border-color:var(--saffron);}
+
+  .controls{display:flex;gap:10px;margin-top:13px;flex-wrap:wrap;}
+  button{font-family:var(--sans);font-size:14.5px;font-weight:600;border:0;border-radius:11px;padding:11px 18px;cursor:pointer;transition:transform .1s ease,filter .15s ease;}
+  button:active{transform:translateY(1px);}
+  .btn-check{background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);}
+  .btn-next{background:linear-gradient(160deg,var(--jade),#48b6a2);color:var(--night-0);}
+  .btn-ghost{background:transparent;color:var(--cream-dim);border:1px solid var(--hair);font-weight:500;}
+
+  .fb{margin-top:13px;border-radius:12px;padding:12px 14px;font-size:14.5px;display:none;}
+  .fb.show{display:block;}
+  .fb.win{background:rgba(116,214,195,.12);border:1px solid rgba(116,214,195,.4);}
+  .fb.win b{color:var(--jade);}
+  .fb.miss{background:rgba(240,133,111,.10);border:1px solid rgba(240,133,111,.4);}
+  .fb.miss b{color:var(--coral);}
+  .fb.almost{background:rgba(242,169,59,.10);border:1px solid rgba(242,169,59,.4);}
+  .fb.almost b{color:var(--saffron-soft);}
+  .fb .real{display:block;margin-top:7px;font-family:var(--mono);font-size:13.5px;background:rgba(9,10,28,.55);border-radius:8px;padding:8px 10px;color:var(--cream);white-space:pre-wrap;}
+  .fb .why{margin-top:8px;font-size:13.5px;color:var(--cream-dim);}
+  .fb .why b{color:var(--lotus);}
+
+  .result{text-align:center;}
+  .result .big{font-family:var(--serif);font-size:54px;color:var(--saffron-soft);margin:6px 0;}
+  .result p{color:var(--cream-dim);}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding:0 4px;}
+  .footer small{color:var(--cream-dim);font-size:11.5px;}
+  .footer .reset{background:none;border:0;color:var(--cream-dim);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">50 beginner puzzles</div>
+    <h1>Guess the <span class="glow">Output</span></h1>
+    <p class="sub">Read the Python code. Type what it will print. I'll tell you if you're right.</p>
+  </header>
+
+  <div class="nav">
+    <a class="pill" href="index.html">← Lessons &amp; AI tutor</a>
+    <button class="pill" id="shuffleBtn">🔀 Shuffle</button>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="meta"><span id="qcount">1 / 50</span> · <span class="score" id="score">0 ✓</span></div>
+  </div>
+
+  <main class="card" id="card"></main>
+
+  <div class="footer">
+    <small>Type the output exactly as Python would print it.</small>
+    <button class="reset" id="restartBtn">Restart</button>
+  </div>
+</div>
+
+<script>
+/* ===== 50 beginner "predict the output" questions ===== */
+const Q=[
+ {code:`print("Hello, World!")`, out:`Hello, World!`, why:`print() shows whatever is inside the quotes.`},
+ {code:`print(2 + 3 * 4)`, out:`14`, why:`Multiplication happens before addition: 3*4 = 12, then +2.`},
+ {code:`print(10 / 2)`, out:`5.0`, why:`A single / always gives a float in Python, so 5.0 (not 5).`},
+ {code:`print(10 // 3)`, out:`3`, why:`// is floor division — it throws away the remainder.`},
+ {code:`print(10 % 3)`, out:`1`, why:`% gives the remainder: 10 = 3*3 + 1.`},
+ {code:`print(2 ** 5)`, out:`32`, why:`** means "to the power of": 2*2*2*2*2 = 32.`},
+ {code:`print("ab" * 3)`, out:`ababab`, why:`A string times a number repeats it.`},
+ {code:`print("Py" + "thon")`, out:`Python`, why:`+ joins (concatenates) two strings.`},
+ {code:`x = 5\ny = 2\nprint(x - y)`, out:`3`, why:`The boxes hold 5 and 2, so 5 - 2 = 3.`},
+ {code:`name = "Sasi"\nprint(f"Hi {name}")`, out:`Hi Sasi`, why:`An f-string drops the box's value into the { }.`},
+ {code:`print(len("python"))`, out:`6`, why:`len() counts the letters: p-y-t-h-o-n.`},
+ {code:`word = "hello"\nprint(word[0])`, out:`h`, why:`Indexing starts at 0, so [0] is the first letter.`},
+ {code:`word = "hello"\nprint(word[-1])`, out:`o`, why:`[-1] means the last item.`},
+ {code:`word = "python"\nprint(word[1:4])`, out:`yth`, why:`Slicing [1:4] takes index 1,2,3 (4 is not included).`},
+ {code:`print("HELLO".lower())`, out:`hello`, why:`.lower() makes every letter lowercase.`},
+ {code:`print("hello".upper())`, out:`HELLO`, why:`.upper() makes every letter uppercase.`},
+ {code:`nums = [1, 2, 3]\nprint(len(nums))`, out:`3`, why:`len() counts items in the list.`},
+ {code:`nums = [10, 20, 30]\nprint(nums[1])`, out:`20`, why:`[1] is the second item (counting from 0).`},
+ {code:`nums = [1, 2]\nnums.append(3)\nprint(nums)`, out:`[1, 2, 3]`, why:`.append() adds 3 to the end of the list.`},
+ {code:`print(sum([1, 2, 3, 4]))`, out:`10`, why:`sum() adds every number in the list.`},
+ {code:`for i in range(3):\n    print(i)`, out:`0\n1\n2`, why:`range(3) gives 0, 1, 2 — each printed on its own line.`},
+ {code:`for i in range(1, 4):\n    print(i)`, out:`1\n2\n3`, why:`range(1, 4) starts at 1 and stops before 4.`},
+ {code:`print(3 > 2)`, out:`True`, why:`3 is greater than 2, so the comparison is True.`},
+ {code:`print(5 == 5)`, out:`True`, why:`== checks equality; 5 equals 5.`},
+ {code:`print(5 != 5)`, out:`False`, why:`!= means "not equal"; 5 IS equal to 5, so False.`},
+ {code:`print(2 > 3)`, out:`False`, why:`2 is not greater than 3.`},
+ {code:`x = 7\nif x > 5:\n    print("big")\nelse:\n    print("small")`, out:`big`, why:`7 > 5 is True, so the if-branch runs.`},
+ {code:`x = 3\nif x > 5:\n    print("big")\nelse:\n    print("small")`, out:`small`, why:`3 > 5 is False, so the else-branch runs.`},
+ {code:`print(True and False)`, out:`False`, why:`"and" needs BOTH to be True.`},
+ {code:`print(True or False)`, out:`True`, why:`"or" needs at least ONE to be True.`},
+ {code:`print(not True)`, out:`False`, why:`"not" flips True into False.`},
+ {code:`print("a" in "cat")`, out:`True`, why:`The letter "a" is inside "cat".`},
+ {code:`print("z" in "cat")`, out:`False`, why:`There is no "z" in "cat".`},
+ {code:`print(bool(0))`, out:`False`, why:`0 counts as False in Python.`},
+ {code:`print(bool(1))`, out:`True`, why:`Any non-zero number counts as True.`},
+ {code:`print(int("5") + 3)`, out:`8`, why:`int("5") turns the text "5" into the number 5, then +3.`},
+ {code:`print(str(5) + "5")`, out:`55`, why:`str(5) makes "5", then "5" + "5" joins to "55".`},
+ {code:`print(float(3))`, out:`3.0`, why:`float() turns 3 into a decimal, 3.0.`},
+ {code:`d = {"a": 1, "b": 2}\nprint(d["a"])`, out:`1`, why:`Looking up the key "a" gives its value, 1.`},
+ {code:`d = {"x": 10}\nd["y"] = 20\nprint(len(d))`, out:`2`, why:`After adding "y", the dictionary has 2 pairs.`},
+ {code:`count = 0\nwhile count < 3:\n    count = count + 1\nprint(count)`, out:`3`, why:`The loop runs until count reaches 3, then stops.`},
+ {code:`total = 0\nfor n in [1, 2, 3]:\n    total = total + n\nprint(total)`, out:`6`, why:`It adds 1+2+3 step by step into total.`},
+ {code:`print("Hello"[0:2])`, out:`He`, why:`Slicing [0:2] takes index 0 and 1.`},
+ {code:`print(7 // 2, 7 % 2)`, out:`3 1`, why:`7 // 2 is 3 (whole part), 7 % 2 is 1 (remainder).`},
+ {code:`print(min(4, 9, 2))`, out:`2`, why:`min() returns the smallest value.`},
+ {code:`print(max(4, 9, 2))`, out:`9`, why:`max() returns the largest value.`},
+ {code:`print(abs(-8))`, out:`8`, why:`abs() removes the minus sign (absolute value).`},
+ {code:`print(round(3.7))`, out:`4`, why:`round() rounds 3.7 to the nearest whole number, 4.`},
+ {code:`nums = [1, 2, 3, 4]\nprint(nums[-1])`, out:`4`, why:`[-1] is the last item in the list.`},
+ {code:`s = "banana"\nprint(s.count("a"))`, out:`3`, why:`.count("a") counts how many times "a" appears.`}
+];
+
+/* ===== state ===== */
+let order=Q.map((_,i)=>i);
+let pos=0, score=0, answered=false;
+
+function norm(s){
+  return String(s).replace(/\r/g,"")
+    .split("\n").map(x=>x.replace(/[ \t]+/g," ").trim())
+    .join("\n").replace(/\n+$/,"").replace(/^\n+/,"");
+}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function updateBar(){
+  document.getElementById("barFill").style.width=(pos/Q.length*100)+"%";
+  document.getElementById("qcount").textContent=(pos+1)+" / "+Q.length;
+  document.getElementById("score").textContent=score+" ✓";
+}
+
+function render(){
+  if(pos>=Q.length){ renderResult(); return; }
+  answered=false;
+  const q=Q[order[pos]];
+  updateBar();
+  document.getElementById("card").innerHTML=`
+    <div class="qlabel">Puzzle ${pos+1} of ${Q.length}</div>
+    <div class="ask">What will this code <b>print</b>?</div>
+    <div class="editor">
+      <div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">guess.py</span></div>
+      <pre class="code">${esc(q.code)}</pre>
+    </div>
+    <div class="alabel"><span>⌨</span> Your answer</div>
+    <textarea class="ans" id="ans" spellcheck="false" placeholder="Type exactly what gets printed…"></textarea>
+    <div class="controls">
+      <button class="btn-check" id="checkBtn">Check</button>
+      <button class="btn-ghost" id="revealBtn">Reveal</button>
+      <button class="btn-ghost" id="skipBtn">Skip →</button>
+    </div>
+    <div class="fb" id="fb"></div>`;
+  const ans=document.getElementById("ans");
+  ans.focus();
+  ans.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){ check(); } });
+  document.getElementById("checkBtn").addEventListener("click",check);
+  document.getElementById("revealBtn").addEventListener("click",reveal);
+  document.getElementById("skipBtn").addEventListener("click",next);
+}
+
+function showFb(kind,html){
+  const fb=document.getElementById("fb");
+  fb.className="fb "+kind+" show";
+  fb.innerHTML=html;
+}
+function realBlock(q){
+  return `<span class="real">${esc(q.out)}</span><div class="why"><b>Why:</b> ${esc(q.why)}</div>`;
+}
+function lockAndNext(){
+  answered=true;
+  document.getElementById("checkBtn").style.display="none";
+  document.getElementById("revealBtn").style.display="none";
+  const skip=document.getElementById("skipBtn");
+  skip.textContent="Next →"; skip.className="btn-next";
+}
+
+function check(){
+  if(answered) return;
+  const q=Q[order[pos]];
+  const user=norm(document.getElementById("ans").value);
+  const expect=norm(q.out);
+  if(user===expect){
+    score++; updateBar();
+    showFb("win","<b>✓ Correct!</b> Nice — that's exactly right."+realBlock(q));
+    lockAndNext();
+  } else if(user.toLowerCase()===expect.toLowerCase() && user.length){
+    showFb("almost","<b>So close!</b> Right letters, wrong capitalisation. Python prints it like this:"+realBlock(q));
+    lockAndNext();
+  } else {
+    showFb("miss","<b>Not quite.</b> The real output is:"+realBlock(q));
+    lockAndNext();
+  }
+}
+function reveal(){
+  if(answered) return;
+  const q=Q[order[pos]];
+  showFb("almost","<b>Answer:</b>"+realBlock(q));
+  lockAndNext();
+}
+function next(){ pos++; render(); }
+
+function renderResult(){
+  updateBar();
+  document.getElementById("barFill").style.width="100%";
+  const pct=Math.round(score/Q.length*100);
+  let line= pct>=90?"Outstanding — you really read code like Python does! 🌟"
+          : pct>=70?"Great work! You've got the basics solid."
+          : pct>=50?"Good progress — review the ones you missed and go again."
+          : "Every coder starts here. Run it again — you'll climb fast.";
+  document.getElementById("card").innerHTML=`
+    <div class="result">
+      <div class="qlabel" style="text-align:center;">Quiz complete</div>
+      <div class="big">${score}/${Q.length}</div>
+      <p>${pct}% correct</p>
+      <p>${line}</p>
+      <div class="controls" style="justify-content:center;margin-top:14px;">
+        <button class="btn-check" id="againBtn">Play again</button>
+        <button class="btn-ghost" id="shuffleAgain">🔀 Shuffle &amp; play</button>
+      </div>
+    </div>`;
+  document.getElementById("againBtn").addEventListener("click",()=>start(false));
+  document.getElementById("shuffleAgain").addEventListener("click",()=>start(true));
+}
+
+function start(doShuffle){
+  order=Q.map((_,i)=>i);
+  if(doShuffle) shuffle(order);
+  pos=0; score=0; answered=false;
+  render();
+}
+
+document.getElementById("shuffleBtn").addEventListener("click",()=>start(true));
+document.getElementById("restartBtn").addEventListener("click",()=>start(false));
+
+start(false);
+</script>
+</body>
+</html>
