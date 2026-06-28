@@ -33,6 +33,11 @@ they can learn too, no account needed.
   offline.
 - **Free Play sandbox** to experiment with your own code.
 - **Doubt Helper** (the 💬 Ask button) — see below.
+- **Guess the Output game** (`quiz.html`, linked from the toolbar) — an
+  **endless** "predict what this prints" game. Questions are generated on the
+  fly (never run out) across Easy / Medium / Hard, you **earn ⭐ for correct
+  answers** (more for harder levels), and you **spend ⭐ on hints** (Concept →
+  Shape → Reveal) when you're stuck. Stars and streak save automatically.
 
 ## The Doubt Helper — a free AI tutor, right in the app
 
