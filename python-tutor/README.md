@@ -35,11 +35,13 @@ they can learn too, no account needed.
 - **Doubt Helper** (the 💬 Ask button) — see below.
 - **Code Trace game** (`quiz.html`, linked from the toolbar) — an **endless**
   "predict what this prints" game built on real, **multi-line** Python programs.
-  - **Generated on the fly** across Easy / Medium / Hard (Hard = nested loops,
-    functions, FizzBuzz-style logic) and filterable by **topic** (Loops,
-    If/Else, Functions, Strings, Lists, Dicts).
-  - **Every answer is computed by the app's real Python interpreter** and was
-    **cross-checked against actual `python3`** (288 programs, 0 mismatches).
+  - **Generated on the fly** across Easy / Medium / Hard / **Expert** (Hard =
+    nested loops, functions, FizzBuzz-style logic; Expert = **slicing &
+    `enumerate`**) and filterable by **topic** (Loops, If/Else, Functions,
+    Strings, Lists, Dicts).
+  - **Every answer is computed by the app's real Python interpreter** (which
+    supports slicing and `enumerate`) and was **cross-checked against actual
+    `python3`** (490 programs, 0 mismatches).
   - **Stars + XP + a rank ladder** (Hatchling → Legend), **daily streaks**, and
     **achievement badges** — design borrowed from Edabit/Codewars/Mimo.
   - **Spend ⭐ on tiered hints** (Concept → Shape → Reveal).

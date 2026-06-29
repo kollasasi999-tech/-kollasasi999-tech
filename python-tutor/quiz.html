@@ -130,6 +130,7 @@
     <button class="pill lvl active" data-mode="easy">Easy</button>
     <button class="pill lvl" data-mode="medium">Medium</button>
     <button class="pill lvl" data-mode="hard">Hard</button>
+    <button class="pill lvl" data-mode="expert">Expert ⭐⭐⭐⭐</button>
     <button class="pill lvl" data-mode="mix">Mix 🎲</button>
   </div>
   <div class="chips" id="topicChips"></div>
@@ -257,7 +258,14 @@ function parsePostfix(p){ let e=parsePrimary(p);
   while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="."||peek(p).v==="("||peek(p).v==="[")){ const op=peek(p).v;
     if(op==="."){p.i++;const nm=eat(p,"name").v;e={t:"attr",obj:e,name:nm};}
     else if(op==="("){p.i++;const args=[];if(!(peek(p)&&peek(p).v===")")){args.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;args.push(parseOr(p));}}eat(p,")");e={t:"call",fn:e,args};}
-    else {p.i++;const idx=parseOr(p);eat(p,"]");e={t:"index",obj:e,idx};} }
+    else {p.i++;
+      let first=null;
+      if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) first=parseOr(p);
+      if(peek(p)&&peek(p).v===":"){ p.i++; let stp=null,step=null;
+        if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) stp=parseOr(p);
+        if(peek(p)&&peek(p).v===":"){ p.i++; if(!(peek(p)&&peek(p).v==="]")) step=parseOr(p); }
+        eat(p,"]"); e={t:"slice",obj:e,start:first,stop:stp,step:step};
+      } else { eat(p,"]"); e={t:"index",obj:e,idx:first}; } } }
   return e; }
 function parsePrimary(p){ const t=peek(p); if(!t)throw pyError("SyntaxError: unexpected end");
   if(t.t==="num"){p.i++;return {t:"num",v:t.v};}
@@ -294,6 +302,7 @@ function evalExpr(n,scope,G){ switch(n.t){
     if(o instanceof Map){ if(!o.has(i)) throw pyError("KeyError: "+pyRepr(i)); return o.get(i); }
     if(typeof o==="string"){ let idx=i<0?o.length+i:i; return o[idx]; }
     throw pyError("TypeError: not indexable"); }
+  case "slice":{ const o=evalExpr(n.obj,scope,G); const a=n.start?evalExpr(n.start,scope,G):null; const b=n.stop?evalExpr(n.stop,scope,G):null; const c=n.step?evalExpr(n.step,scope,G):null; if(!(Array.isArray(o)||typeof o==="string")) throw pyError("TypeError: not sliceable"); return pySlice(o,a,b,c); }
   case "attr": return {__bound:true,obj:evalExpr(n.obj,scope,G),name:n.name};
   case "call": return evalCall(n,scope,G); } }
 function evalBin(n,scope,G){ const op=n.op;
@@ -323,6 +332,7 @@ function evalCall(n,scope,G){
     if(name==="max"){ return Math.max.apply(null,args); }
     if(name==="abs"){ return Math.abs(args[0]); }
     if(name==="round"){ return Math.round(args[0]); }
+    if(name==="enumerate"){ const seq=iterate(args[0]); const start=args.length>1?args[1]:0; return seq.map((x,i)=>[start+i,x]); }
     return callUser(lookup(name,scope,G),args,G); }
   return callUser(evalExpr(n.fn,scope,G),n.args.map(a=>evalExpr(a,scope,G)),G); }
 function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError("TypeError: not callable"); const local=Object.create(null);
@@ -341,6 +351,16 @@ function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.le
 function pyStr(v){ if(v===null)return "None"; if(v===true)return "True"; if(v===false)return "False"; if(typeof v==="number")return String(v); if(typeof v==="string")return v; if(Array.isArray(v))return "["+v.map(pyRepr).join(", ")+"]"; if(v instanceof Map)return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}"; if(v&&v.__fn)return "<function>"; return String(v); }
 function pyRepr(v){ if(typeof v==="string")return "'"+v+"'"; return pyStr(v); }
 function iterate(v){ if(Array.isArray(v))return v; if(typeof v==="string")return v.split(""); if(v instanceof Map)return Array.from(v.keys()); throw pyError("TypeError: not iterable"); }
+/* Python slice semantics (mirrors CPython's slice.indices) */
+function pySlice(seq,start,stop,step){
+  const isStr=typeof seq==="string"; const arr=isStr?seq.split(""):seq; const len=arr.length;
+  step=(step==null)?1:step; if(step===0) throw pyError("ValueError: slice step cannot be zero");
+  let lower,upper; if(step<0){lower=-1;upper=len-1;}else{lower=0;upper=len;}
+  let s; if(start==null){s=step<0?upper:lower;} else { s=start; if(s<0){s+=len; if(s<lower)s=lower;} else if(s>upper)s=upper; }
+  let e; if(stop==null){e=step<0?lower:upper;} else { e=stop; if(e<0){e+=len; if(e<lower)e=lower;} else if(e>upper)e=upper; }
+  const out=[]; if(step>0){ for(let i=s;i<e;i+=step) out.push(arr[i]); } else { for(let i=s;i>e;i+=step) out.push(arr[i]); }
+  return isStr?out.join(""):out;
+}
 function runPy(src){ const out=[]; try{ const prog=parseBlock(toLogicalLines(src),{i:0},-1); const G=Object.create(null); G.__out=out; execBlock(prog,G,G); return {out:out.join(""),err:null}; }catch(e){ if(e&&e.__ret)return {out:out.join(""),err:null}; if(e&&e.__pyerr)return {out:out.join(""),err:e.message}; return {out:out.join(""),err:(e&&e.message)?e.message:String(e)}; } }
 </script>
 
@@ -405,6 +425,21 @@ const GEN={
   {topic:"loops",gen:()=>{const n=ri(2,5);const lines=[1,2,3].map(i=>`${n} x ${i} = ${n*i}`).join("  |  ");return{code:`n = ${n}\nfor i in range(1, 4):\n    print(n, "x", i, "=", n * i)`,concept:"print() joins several values with spaces",why:`i runs 1, 2, 3. Each line prints n, "x", i, "=", and n*i with spaces between: ${lines}.`};}},
   {topic:"strings",gen:()=>{const arr=pickn(LETTERS,3);const res=arr.map(w=>w+"-").join("");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nsentence = ""\nfor w in words:\n    sentence = sentence + w + "-"\nprint(sentence)`,concept:"build one string from a list of pieces",why:`sentence starts empty. Each loop adds the word plus "-", in order, giving "${res}". Note the trailing dash — every word gets one, including the last.`};}},
   {topic:"functions",gen:()=>{const arr=pickn([2,3,4,5,6],3);const dbl=arr.map(n=>n*2);const t=dbl.reduce((a,b)=>a+b,0);return{code:`def double(n):\n    return n * 2\n\ntotal = 0\nfor n in [${arr.join(", ")}]:\n    total = total + double(n)\nprint(total)`,concept:"use a function's result inside a running total",why:`double(n) returns n*2. The loop adds each doubled value: ${dbl.join(" + ")} = ${t}.`};}},
+ ],
+ 4:[ /* ===== EXPERT: slicing & enumerate ===== */
+  {topic:"strings",gen:()=>{const w=pick(["rainbow","sunlight","diamond","picture","library"]);const k=ri(2,4);return{code:`w = "${w}"\nprint(w[:${k}])\nprint(w[${k}:])`,concept:"slicing: [:k] is the start, [k:] is the rest",why:`w[:${k}] takes the first ${k} letters → "${w.slice(0,k)}". w[${k}:] takes from index ${k} to the end → "${w.slice(k)}".`};}},
+  {topic:"strings",gen:()=>{const w=pick(["stressed","level","python","banana","rotator","desserts"]);const r=w.split("").reverse().join("");return{code:`w = "${w}"\nprint(w[::-1])`,concept:"[::-1] reverses a sequence (step of -1)",why:`A step of -1 walks "${w}" backwards, giving "${r}".`};}},
+  {topic:"strings",gen:()=>{const w=pick(["abcdef","computer","elephant","keyboard","triangle"]);const r=w.split("").filter((_,i)=>i%2===0).join("");return{code:`w = "${w}"\nprint(w[::2])`,concept:"[::2] takes every 2nd item",why:`Starting at index 0 and stepping by 2 picks characters 0, 2, 4, … → "${r}".`};}},
+  {topic:"lists",gen:()=>{const arr=pickn([10,20,30,40,50,60],ri(5,6));const a=ri(1,2),b=a+ri(2,3);return{code:`nums = [${arr.join(", ")}]\nprint(nums[${a}:${b}])`,concept:"slicing a list: [a:b] stops before b",why:`Takes indexes ${a} up to ${b-1} → [${arr.slice(a,b).join(", ")}].`};}},
+  {topic:"strings",gen:()=>{const w=pick(["programming","wonderful","blueberry","developer","strawberry"]);return{code:`w = "${w}"\nprint(w[-3:])\nprint(w[:-3])`,concept:"negative indices count from the end",why:`w[-3:] is the last 3 letters → "${w.slice(-3)}". w[:-3] is everything except the last 3 → "${w.slice(0,-3)}".`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(FRUITS,3);const lines=arr.map((f,i)=>`${i} ${f}`).join("  |  ");return{code:`fruits = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, fruit in enumerate(fruits):\n    print(i, fruit)`,concept:"enumerate() gives the index AND the item together",why:`enumerate pairs each item with its position (starting at 0): ${lines}. print(i, fruit) puts them on one line with a space.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(["red","green","blue","gold","pink","teal"],3);const lines=arr.map((c,i)=>`${i+1} ${c}`).join("  |  ");return{code:`colors = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, c in enumerate(colors, 1):\n    print(i, c)`,concept:"enumerate(seq, 1) starts counting at 1",why:`The second argument sets the starting number, so positions begin at 1: ${lines}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(["hi","yo","ok","go","up"],3);const lines=arr.map((w,i)=>`${i}: ${w}`).join("  |  ");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, w in enumerate(words):\n    print(f"{i}: {w}")`,concept:"enumerate inside an f-string",why:`Each line shows the index and the word: ${lines}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([5,8,3,10,2,7,1],5);const idxs=arr.map((n,i)=>n>4?i:null).filter(x=>x!==null);return{code:`nums = [${arr.join(", ")}]\nfor i, n in enumerate(nums):\n    if n > 4:\n        print(i)`,concept:"enumerate to get the positions that pass a test",why:`It prints the index whenever the value is greater than 4. Those positions are ${idxs.length?idxs.join(", "):"(none)"}.`};}},
+  {topic:"lists",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8],6);return{code:`nums = [${arr.join(", ")}]\nprint(nums[::2])\nprint(nums[::-1])`,concept:"[::2] every other item; [::-1] reversed",why:`nums[::2] takes indexes 0, 2, 4, … → [${arr.filter((_,i)=>i%2===0).join(", ")}]. nums[::-1] reverses the whole list → [${arr.slice().reverse().join(", ")}].`};}},
+  {topic:"strings",gen:()=>{const w=pick(["elephant","umbrella","mountain","notebook","triangle"]);const k=ri(3,5);const part=w.slice(0,k);return{code:`w = "${w}"\npart = w[:${k}]\nprint(part)\nprint(len(part))`,concept:"store a slice in a variable, then use it",why:`part = w[:${k}] is "${part}". Then len(part) counts its letters → ${part.length}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(["a","b","c","d","e"],4);const target=pick(arr);const pos=arr.indexOf(target);return{code:`letters = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, ch in enumerate(letters):\n    if ch == "${target}":\n        print("found at", i)`,concept:"enumerate to find WHERE an item sits",why:`Scanning with positions, when ch == "${target}" (at index ${pos}) it prints "found at ${pos}".`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([10,20,30,40,50],3);let t=0;arr.forEach((v,i)=>t+=i+v);const parts=arr.map((v,i)=>`(${i}+${v})`).join(" + ");return{code:`vals = [${arr.join(", ")}]\ntotal = 0\nfor i, v in enumerate(vals):\n    total = total + i + v\nprint(total)`,concept:"enumerate gives both index and value to use",why:`Each turn adds index + value: ${parts} = ${t}.`};}},
  ]
 };
 
@@ -449,7 +484,7 @@ function updateStats(){
 
 /* ===== question generation (output computed by runPy) ===== */
 function poolFor(){
-  let lvls = mode==="mix"?[1,2,3]:[{easy:1,medium:2,hard:3}[mode]];
+  let lvls = mode==="mix"?[1,2,3,4]:[{easy:1,medium:2,hard:3,expert:4}[mode]];
   let items=[];
   for(const lv of lvls) for(const it of GEN[lv]) if(topic==="all"||it.topic===topic) items.push({lv,it});
   if(!items.length){ for(const lv of lvls) for(const it of GEN[lv]) items.push({lv,it}); } // relax topic
@@ -502,7 +537,7 @@ function buyHint(i){
 
 /* ===== rendering ===== */
 function codeHtml(code){ return code.split("\n").map((ln,i)=>`<div class="cl"><span class="ln">${i+1}</span><span class="lt">${esc(ln)||" "}</span></div>`).join(""); }
-const LVLNAME=["","Easy","Medium","Hard"];
+const LVLNAME=["","Easy","Medium","Hard","Expert"];
 function worth(lv){ return "⭐".repeat(lv)+` · +${lv*10} XP`; }
 function render(){
   attempts=0; solvedThis=false; bought=[]; cur=newQuestion(); updateStats();
