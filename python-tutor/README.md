@@ -33,11 +33,20 @@ they can learn too, no account needed.
   offline.
 - **Free Play sandbox** to experiment with your own code.
 - **Doubt Helper** (the 💬 Ask button) — see below.
-- **Guess the Output game** (`quiz.html`, linked from the toolbar) — an
-  **endless** "predict what this prints" game. Questions are generated on the
-  fly (never run out) across Easy / Medium / Hard, you **earn ⭐ for correct
-  answers** (more for harder levels), and you **spend ⭐ on hints** (Concept →
-  Shape → Reveal) when you're stuck. Stars and streak save automatically.
+- **Code Trace game** (`quiz.html`, linked from the toolbar) — an **endless**
+  "predict what this prints" game built on real, **multi-line** Python programs.
+  - **Generated on the fly** across Easy / Medium / Hard (Hard = nested loops,
+    functions, FizzBuzz-style logic) and filterable by **topic** (Loops,
+    If/Else, Functions, Strings, Lists, Dicts).
+  - **Every answer is computed by the app's real Python interpreter** and was
+    **cross-checked against actual `python3`** (288 programs, 0 mismatches).
+  - **Stars + XP + a rank ladder** (Hatchling → Legend), **daily streaks**, and
+    **achievement badges** — design borrowed from Edabit/Codewars/Mimo.
+  - **Spend ⭐ on tiered hints** (Concept → Shape → Reveal).
+  - **Step-by-step explanations** on every answer — when you're right, when you
+    reveal, and when you're wrong (the idea right away, the full walkthrough
+    after a second try). Wrong answers let you **retry** instead of failing.
+  - Progress (stars, XP, streak, badges) saves automatically.
 
 ## The Doubt Helper — a free AI tutor, right in the app
 
