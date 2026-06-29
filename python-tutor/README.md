@@ -48,6 +48,13 @@ they can learn too, no account needed.
   - **Step-by-step explanations** on every answer — when you're right, when you
     reveal, and when you're wrong (the idea right away, the full walkthrough
     after a second try). Wrong answers let you **retry** instead of failing.
+  - **Two ways to play** (toggle 🔍 Predict / ✍️ Write code / 🔁 Alternate):
+    - **Predict** — read code, type its output.
+    - **Write code** — you write the Python yourself; the app **runs it and
+      checks it** (output-based, or hidden test cases for `def` tasks, like
+      Codewars), shows your output vs expected, lets you **Run** and **retry**,
+      and reveals a clean sample solution. Validated: all sample solutions pass
+      the checker and match real `python3`.
   - Progress (stars, XP, streak, badges) saves automatically.
 
 ## The Doubt Helper — a free AI tutor, right in the app
