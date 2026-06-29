@@ -325,6 +325,20 @@ function norm(s){return String(s).replace(/\r/g,"").split("\n").map(x=>x.replace
 function ld(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function codeHtml(code){return code.split("\n").map((ln,i)=>`<div class="cl"><span class="ln">${i+1}</span><span class="lt">${esc(ln)||" "}</span></div>`).join("");}
+function friendlyError(raw){ const m=String(raw); let plain="Something's off in the code.";
+  if(/NameError/.test(m)){ const n=(m.match(/name '([^']+)'/)||[])[1]; plain=`Python doesn't recognise <code>${esc(n||"that name")}</code> — usually a typo, a missing quote (text needs quotes), or using it before you created it.`; }
+  else if(/SyntaxError/.test(m)) plain=`A typo in the structure — often a missing <code>:</code> at the end of an if/for/while/def line, or a missing <code>)</code> or quote.`;
+  else if(/IndexError/.test(m)) plain=`You asked for a position that doesn't exist. Counting starts at <code>0</code>.`;
+  else if(/KeyError/.test(m)) plain=`That key isn't in the dictionary — check the spelling or use <code>.get(key)</code>.`;
+  else if(/str \+ non-str|cannot add string/.test(m)) plain=`You joined text and a number with <code>+</code>. Use <code>str(...)</code> or an f-string.`;
+  else if(/not callable/.test(m)) plain=`You "called" something that isn't a function — maybe an extra <code>()</code>.`;
+  else if(/missing arg/.test(m)) plain=`Your function needs more inputs than you gave it.`;
+  else if(/AttributeError/.test(m)) plain=`That action doesn't exist for this value — e.g. <code>.append()</code> is for lists, <code>.upper()</code> is for text.`;
+  else if(/loop too long|RuntimeError/.test(m)) plain=`Your loop never stops — make sure something changes inside it so it ends.`;
+  else if(/cannot unpack|ValueError/.test(m)) plain=`The number of variables doesn't match the data.`;
+  else if(/not iterable/.test(m)) plain=`You looped over something that isn't a sequence — use a list, string, or range.`;
+  else if(/not indexable|not sliceable/.test(m)) plain=`You used <code>[ ]</code> on something that doesn't support it.`;
+  return `<b>What went wrong:</b> ${plain}<br><span style="color:var(--cream-dim);font-size:11.5px;">Python's words: ${esc(m)}</span>`; }
 
 const MODULES=[
  {icon:"💬",title:"Printing",
@@ -401,7 +415,7 @@ function render(){
 }
 
 function bindTa(id){const t=document.getElementById(id);if(!t)return;t.addEventListener("keydown",e=>{if(e.key==="Tab"){e.preventDefault();const s=t.selectionStart,en=t.selectionEnd;t.value=t.value.slice(0,s)+"    "+t.value.slice(en);t.selectionStart=t.selectionEnd=s+4;}});}
-function showOut(id,res){const o=document.getElementById(id);if(res.err){o.className="output err";o.textContent="🤔 Python hit an error:\n"+res.err;}else{o.className="output";o.textContent=res.out.trim().length?res.out:"(ran, but nothing was printed)";}}
+function showOut(id,res){const o=document.getElementById(id);if(res.err){o.className="output err";o.innerHTML=friendlyError(res.err);}else{o.className="output";o.textContent=res.out.trim().length?res.out:"(ran, but nothing was printed)";}}
 
 function renderTeach(){
   const m=MODULES[li];
@@ -493,7 +507,7 @@ function wsubmit(){
   if(r.ok){ fb.className="fb win show"; fb.innerHTML="<b>✓ Your code works!</b><div class='why' style='margin-top:7px;'><b>Why:</b> "+w.why+"</div><div class='why' style='margin-top:5px;'><b>A clean solution:</b></div><div class='wsol'>"+esc(w.solution)+"</div>"; award(); writeAdvance(); return; }
   attempts++;
   let msg;
-  if(r.err) msg="Your code hit an error: <code>"+esc(r.err)+"</code>. Read it, fix it, and Submit again.";
+  if(r.err) msg=friendlyError(r.err)+" Fix it and Submit again.";
   else if(r.msg) msg=r.msg;
   else msg="Not matching yet. Your output:<div class='wsol'>"+esc((r.got||"").replace(/\n$/,"").trim()||"(nothing printed)")+"</div>Expected:<div class='wsol'>"+esc(w.kind==="output"?w.expected:w.expectedTests)+"</div>";
   if(attempts>=3){ fb.className="fb miss show"; fb.innerHTML="<b>Here's one way to do it.</b> "+msg+"<div class='why' style='margin-top:7px;'><b>Solution:</b></div><div class='wsol'>"+esc(w.solution)+"</div>"; writeAdvance(); }

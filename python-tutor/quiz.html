@@ -149,7 +149,9 @@
     <button class="chip mode" data-gm="predict">🔍 Predict</button>
     <button class="chip mode" data-gm="write">✍️ Write code</button>
     <button class="chip mode active" data-gm="alt">🔁 Alternate</button>
+    <button class="chip mode" data-gm="review">🩹 Review weak</button>
   </div>
+  <div id="weakspots" style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--cream-dim);margin-bottom:11px;"></div>
 
   <div class="rankbar">
     <span class="rk" id="rankName">🥚 Hatchling</span>
@@ -467,13 +469,25 @@ const RANKS=[[0,"🥚 Hatchling"],[40,"🌱 Sprout"],[110,"🐍 Coder"],[220,"�
 function rankFor(xp){ let r=RANKS[0],nxt=null; for(let i=0;i<RANKS.length;i++){ if(xp>=RANKS[i][0]){r=RANKS[i];nxt=RANKS[i+1]||null;} } return {name:r[1],base:r[0],next:nxt}; }
 
 /* ===== persistence ===== */
-const SK={stars:"ct-stars",streak:"ct-streak",solved:"ct-solved",xp:"ct-xp",badges:"ct-badges"};
+const SK={stars:"ct-stars",streak:"ct-streak",solved:"ct-solved",xp:"ct-xp",badges:"ct-badges",srs:"ct-srs",clock:"ct-clock"};
 function ld(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 let stars=ld(SK.stars,5), streak=ld(SK.streak,0), solved=ld(SK.solved,0), xp=ld(SK.xp,0);
 let badges=ld(SK.badges,[]);
+let srs=ld(SK.srs,{}), clock=ld(SK.clock,0);
 let mode="easy", topic="all", cur=null, attempts=0, solvedThis=false, bought=[];
 let gameMode=ld("ct-mode","alt"), qIndex=0, curW=null, __lvl=0;
+let forceTopic=null, forceLevel=null, reviewed=false;
+const TOPIC_KEYS=["basics","strings","loops","conditionals","functions","lists","dicts"];
+const SRS_INT=[0,1,3,8,20,50];
+function levelFromBox(box){ return box<=2?1:(box<=4?2:3); }
+function recordReview(t,success){ if(reviewed) return; reviewed=true; clock++; sv(SK.clock,clock);
+  const s=srs[t]||{box:1,seen:0,at:0}; s.box=success?Math.min(5,s.box+1):1; s.seen=(s.seen||0)+1; s.at=clock; srs[t]=s; sv(SK.srs,srs); updateWeak(); }
+function pickDueTopic(){ let due=[],rest=[]; for(const t of TOPIC_KEYS){ const s=srs[t]; if(!s){ rest.push({t,box:99,d:Infinity}); continue; } const d=s.at+SRS_INT[s.box]; (d<=clock?due:rest).push({t,box:s.box,d}); } const pool=due.length?due:rest; pool.sort((a,b)=>a.box-b.box||a.d-b.d); return pool[0].t; }
+function updateWeak(){ const el=document.getElementById("weakspots"); if(!el) return; const seen=Object.keys(srs);
+  if(!seen.length){ el.textContent="🩹 Review mode focuses on the topics you miss most."; return; }
+  const weak=seen.filter(t=>srs[t].box<=2).sort((a,b)=>srs[a].box-srs[b].box).slice(0,3);
+  el.innerHTML = weak.length ? ("Needs review: "+weak.map(t=>`<span style='color:var(--coral)'>${t}</span>`).join(", ")) : "<span style='color:var(--jade)'>All topics looking solid! 🎉</span>"; }
 
 /* ===== badges ===== */
 const BADGES=[
@@ -501,10 +515,12 @@ function updateStats(){
 
 /* ===== question generation (output computed by runPy) ===== */
 function poolFor(){
-  let lvls = mode==="mix"?[1,2,3,4]:[{easy:1,medium:2,hard:3,expert:4}[mode]];
+  const t = forceTopic || topic;
+  const lvls = forceLevel ? [forceLevel] : (mode==="mix"?[1,2,3,4]:[{easy:1,medium:2,hard:3,expert:4}[mode]]);
   let items=[];
-  for(const lv of lvls) for(const it of GEN[lv]) if(topic==="all"||it.topic===topic) items.push({lv,it});
+  for(const lv of lvls) for(const it of GEN[lv]) if(t==="all"||it.topic===t) items.push({lv,it});
   if(!items.length){ for(const lv of lvls) for(const it of GEN[lv]) items.push({lv,it}); } // relax topic
+  if(!items.length){ for(const lv of [1,2,3,4]) for(const it of GEN[lv]) items.push({lv,it}); }
   return items;
 }
 function newQuestion(){
@@ -620,7 +636,7 @@ function check(){
     let extra = firstTry?` <b>+${sReward}⭐ · +${xReward} XP</b>` : ` +${sReward}⭐ · +${xReward} XP (you got there — that counts!)`;
     let sb = (firstTry && streak>0 && streak%5===0)?` 🔥 ${streak} streak!`:"";
     showFb("win","<b>✓ Correct!</b>"+extra+sb+realBlock());
-    lockSolved(); checkBadges(cur.level);
+    lockSolved(); checkBadges(cur.level); recordReview(cur.topic,true);
     return;
   }
   // wrong — explain why, then let them retry (full walkthrough after the 2nd miss)
@@ -633,7 +649,7 @@ function check(){
   else nudge="Right number of lines — but a value is off. Re-check the arithmetic, or which branch the <span class='c'>if</span> takes.";
   if(attempts>=2){
     showFb("miss","<b>Let's walk through it together.</b> "+nudge+realBlock());
-    lockSolved();
+    lockSolved(); recordReview(cur.topic,false);
   } else {
     showFb(caseOnly?"almost":"miss","<b>Not quite — try again.</b> "+nudge
       +`<div class="why" style="margin-top:6px;"><b>The idea:</b> ${cur.concept}. <span style="color:var(--cream-dim)">(Try once more — your answer stays. A hint reveals the shape or the start; the full walkthrough shows after another try.)</span></div>`);
@@ -643,7 +659,7 @@ function giveUp(){
   if(solvedThis) return;
   streak=0; sv(SK.streak,streak); updateStats();
   showFb("almost","<b>Here's the answer:</b>"+realBlock());
-  lockSolved();
+  lockSolved(); recordReview(cur.topic,false);
 }
 function next(){ qIndex++; render(); }
 
@@ -661,9 +677,9 @@ document.querySelectorAll(".pill.lvl").forEach(p=>p.addEventListener("click",()=
   }));
 })();
 document.getElementById("resetBtn").addEventListener("click",()=>{
-  stars=5;streak=0;solved=0;xp=0;badges=[];
-  sv(SK.stars,stars);sv(SK.streak,streak);sv(SK.solved,solved);sv(SK.xp,xp);sv(SK.badges,badges);
-  qIndex=0; updateStats(); render();
+  stars=5;streak=0;solved=0;xp=0;badges=[];srs={};clock=0;
+  sv(SK.stars,stars);sv(SK.streak,streak);sv(SK.solved,solved);sv(SK.xp,xp);sv(SK.badges,badges);sv(SK.srs,srs);sv(SK.clock,clock);
+  qIndex=0; updateStats(); updateWeak(); render();
 });
 
 /* ===== Write-Code mode: type code, run it, get checked (output- or test-based) ===== */
@@ -696,7 +712,7 @@ const WHINTS=[
  {cost:3,label:"Show solution",make:c=>`<b>One solution:</b><div class="wsol">${esc(c.solution)}</div>`},
 ];
 function award(level, firstTry){ stars+=level; xp+=level*10; solved++; if(firstTry) streak++; sv(SK.stars,stars); sv(SK.xp,xp); sv(SK.solved,solved); sv(SK.streak,streak); updateStats(); }
-function writePoolFor(){ const lvls = mode==="mix"?[1,2,3]:[{easy:1,medium:2,hard:3,expert:3}[mode]]; let items=[]; for(const lv of lvls) for(const it of WGEN[lv]) if(topic==="all"||it.topic===topic) items.push({lv,it}); if(!items.length){ for(const lv of lvls) for(const it of WGEN[lv]) items.push({lv,it}); } return items; }
+function writePoolFor(){ const t=forceTopic||topic; const lvls = forceLevel ? [Math.min(3,forceLevel)] : (mode==="mix"?[1,2,3]:[{easy:1,medium:2,hard:3,expert:3}[mode]]); let items=[]; for(const lv of lvls) for(const it of WGEN[lv]) if(t==="all"||it.topic===t) items.push({lv,it}); if(!items.length){ for(const lv of lvls) for(const it of WGEN[lv]) items.push({lv,it}); } if(!items.length){ for(const lv of [1,2,3]) for(const it of WGEN[lv]) items.push({lv,it}); } return items; }
 function newWrite(){ const pool=writePoolFor(); const {lv,it}=pick(pool); const c=it.gen(); c.level=lv; c.topic=it.topic; return c; }
 function renderHintBarW(){ const bar=document.getElementById("hintBar"); if(!bar) return; bar.querySelectorAll(".hbtn").forEach((btn,i)=>{ const h=WHINTS[i]; if(bought.includes(i)){ btn.classList.add("used"); btn.disabled=true; btn.textContent=h.label+" ✓"; } else { btn.disabled=solvedThis||stars<h.cost; btn.textContent=`${h.label} (${h.cost}⭐)`; } }); }
 function buyHintW(i){ if(solvedThis||bought.includes(i)) return; const h=WHINTS[i]; if(stars<h.cost) return; stars-=h.cost; sv(SK.stars,stars); bought.push(i); updateStats(); const div=document.createElement("div"); div.className="hint-card"; div.innerHTML=h.make(curW); document.getElementById("hintOut").appendChild(div); renderHintBarW(); }
@@ -738,8 +754,24 @@ function renderWrite(){
   document.querySelectorAll("#hintBar .hbtn").forEach(b=>b.addEventListener("click",()=>buyHintW(parseInt(b.dataset.h,10))));
   renderHintBarW();
 }
+function friendlyError(raw){
+  const m=String(raw); let plain="Something's off in the code.";
+  if(/NameError/.test(m)){ const n=(m.match(/name '([^']+)'/)||[])[1]; plain=`Python doesn't recognise <span class='c'>${esc(n||"that name")}</span>. Usually a typo, a missing quote (text needs quotes like <span class='c'>"hi"</span>), or using it before you created it.`; }
+  else if(/SyntaxError/.test(m)) plain=`There's a typo in the structure — most often a missing <span class='c'>:</span> at the end of an if/for/while/def line, or a missing <span class='c'>)</span> or quote.`;
+  else if(/IndexError/.test(m)) plain=`You asked for a list or string position that doesn't exist. Counting starts at <span class='c'>0</span>, so a list of 3 has positions 0, 1, 2.`;
+  else if(/KeyError/.test(m)) plain=`That key isn't in the dictionary. Check the spelling, or use <span class='c'>.get(key)</span>.`;
+  else if(/str \+ non-str|cannot add string/.test(m)) plain=`You tried to join text and a number with <span class='c'>+</span>. Turn the number into text with <span class='c'>str(...)</span>, or use an f-string: <span class='c'>f"n={n}"</span>.`;
+  else if(/not callable/.test(m)) plain=`You tried to "call" something that isn't a function — often an extra pair of <span class='c'>()</span>.`;
+  else if(/missing arg/.test(m)) plain=`Your function was called with too few values — give it every input it asks for.`;
+  else if(/AttributeError/.test(m)) plain=`That action doesn't exist for this kind of value. For example <span class='c'>.append()</span> is for lists and <span class='c'>.upper()</span> is for text.`;
+  else if(/loop too long|RuntimeError/.test(m)) plain=`Your loop never stops — make sure something changes inside it so the condition becomes False.`;
+  else if(/cannot unpack|ValueError/.test(m)) plain=`The number of variables doesn't match the data — e.g. <span class='c'>for a, b in ...</span> needs each item to have two parts.`;
+  else if(/not iterable/.test(m)) plain=`You tried to loop over something that isn't a sequence (like a plain number). Loop over a list, string, or range.`;
+  else if(/not indexable|not sliceable/.test(m)) plain=`You used <span class='c'>[ ]</span> on something that doesn't support it (like a number).`;
+  return `<b>What went wrong:</b> ${plain}<br><span style="color:var(--cream-dim);font-size:11.5px;">Python's words: ${esc(m)}</span>`;
+}
 function wrun(){ const res=runPy(document.getElementById("wcode").value); const o=document.getElementById("wout");
-  if(res.err){ o.className="output err"; o.textContent="🤔 Python hit an error:\n"+res.err; }
+  if(res.err){ o.className="output err"; o.innerHTML=friendlyError(res.err); }
   else { o.className="output"; o.textContent=res.out.trim().length?res.out:"(your code ran, but nothing was printed)"; } }
 function checkWrite(code){
   const res=runPy(code);
@@ -762,23 +794,24 @@ function wsubmit(){
     showFb("win","<b>✓ Your code works!</b>"+extra+sb
       +`<div class="why" style="margin-top:7px;"><b>Why it works:</b> ${curW.why}</div>`
       +`<div class="why" style="margin-top:5px;"><b>A clean solution:</b></div><div class="wsol">${esc(curW.solution)}</div>`);
-    lockWrite(); checkBadges(curW.level);
+    lockWrite(); checkBadges(curW.level); recordReview(curW.topic,true);
     return;
   }
   attempts++; streak=0; sv(SK.streak,streak); updateStats();
   let msg;
-  if(r.err) msg=`Your code hit an error: <span class='c'>${esc(r.err)}</span>. Read it, fix it, and Submit again.`;
+  if(r.err) msg=friendlyError(r.err)+`<br>Fix it and Submit again.`;
   else if(r.msg) msg=r.msg;
   else msg=`Not matching yet. Your output:<div class="wsol">${esc((r.got||"").replace(/\n$/,"").trim()||"(nothing printed)")}</div>Expected:<div class="wsol">${esc(curW.kind==="output"?curW.expected:curW.expectedTests)}</div>`;
-  if(attempts>=3){ showFb("miss","<b>Here's one way to do it.</b> "+msg+`<div class="why" style="margin-top:7px;"><b>Solution:</b></div><div class="wsol">${esc(curW.solution)}</div><div class="why" style="margin-top:5px;">${curW.why}</div>`); lockWrite(); }
+  if(attempts>=3){ showFb("miss","<b>Here's one way to do it.</b> "+msg+`<div class="why" style="margin-top:7px;"><b>Solution:</b></div><div class="wsol">${esc(curW.solution)}</div><div class="why" style="margin-top:5px;">${curW.why}</div>`); lockWrite(); recordReview(curW.topic,false); }
   else showFb("miss","<b>Almost — try again.</b> "+msg+`<div class="why" style="margin-top:6px;"><b>Idea:</b> ${curW.concept}. <span style="color:var(--cream-dim)">(Press Run to see your output; a hint can show the approach or a full solution.)</span></div>`);
 }
-function wgive(){ if(solvedThis) return; streak=0; sv(SK.streak,streak); updateStats(); showFb("almost","<b>Here's a working solution:</b><div class=\"wsol\">"+esc(curW.solution)+"</div><div class=\"why\" style=\"margin-top:6px;\">"+curW.why+"</div>"); lockWrite(); }
+function wgive(){ if(solvedThis) return; streak=0; sv(SK.streak,streak); updateStats(); showFb("almost","<b>Here's a working solution:</b><div class=\"wsol\">"+esc(curW.solution)+"</div><div class=\"why\" style=\"margin-top:6px;\">"+curW.why+"</div>"); lockWrite(); recordReview(curW.topic,false); }
 
 /* ===== dispatcher: predict or write (alternating) ===== */
 function render(){
-  attempts=0; solvedThis=false; bought=[];
-  const isWrite = gameMode==="write" || (gameMode==="alt" && qIndex%2===1);
+  attempts=0; solvedThis=false; bought=[]; reviewed=false; forceTopic=null; forceLevel=null;
+  if(gameMode==="review"){ const t=pickDueTopic(); forceTopic=t; const s=srs[t]; forceLevel=levelFromBox(s?s.box:1); }
+  const isWrite = gameMode==="write" || ((gameMode==="alt"||gameMode==="review") && qIndex%2===1);
   if(isWrite) renderWrite(); else renderPredict();
 }
 (function buildMode(){
@@ -791,6 +824,7 @@ function render(){
 
 /* ===== boot ===== */
 updateStats();
+updateWeak();
 render();
 </script>
 </body>

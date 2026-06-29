@@ -290,6 +290,20 @@ function tracePy(src){ TR={steps:[],cap:1200}; const out=[]; let err=null,trunca
 <script>
 /* ===== UI ===== */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function friendlyError(raw){ const m=String(raw); let plain="Something's off in the code.";
+  if(/NameError/.test(m)){ const n=(m.match(/name '([^']+)'/)||[])[1]; plain=`Python doesn't recognise <code>${esc(n||"that name")}</code> — usually a typo, a missing quote, or using it before creating it.`; }
+  else if(/SyntaxError/.test(m)) plain=`A typo in the structure — often a missing <code>:</code> at the end of an if/for/while/def line, or a missing <code>)</code> or quote.`;
+  else if(/IndexError/.test(m)) plain=`You asked for a position that doesn't exist. Counting starts at <code>0</code>.`;
+  else if(/KeyError/.test(m)) plain=`That key isn't in the dictionary — check spelling or use <code>.get(key)</code>.`;
+  else if(/str \+ non-str|cannot add string/.test(m)) plain=`You joined text and a number with <code>+</code>. Use <code>str(...)</code> or an f-string.`;
+  else if(/not callable/.test(m)) plain=`You "called" something that isn't a function — maybe extra <code>()</code>.`;
+  else if(/missing arg/.test(m)) plain=`Your function needs more inputs than you gave it.`;
+  else if(/AttributeError/.test(m)) plain=`That action doesn't exist for this value — e.g. <code>.append()</code> is for lists, <code>.upper()</code> for text.`;
+  else if(/loop too long|RuntimeError/.test(m)) plain=`Your loop never stops — make sure something changes so it ends.`;
+  else if(/cannot unpack|ValueError/.test(m)) plain=`The number of variables doesn't match the data.`;
+  else if(/not iterable/.test(m)) plain=`You looped over something that isn't a sequence — use a list, string, or range.`;
+  else if(/not indexable|not sliceable/.test(m)) plain=`You used <code>[ ]</code> on something that doesn't support it.`;
+  return `<b>What went wrong:</b> ${plain}<br><span style="color:var(--cream-dim);font-size:11.5px;">Python's words: ${esc(m)}</span>`; }
 const PRESETS=[
  {name:"Loop: add 1..4",code:`total = 0\nfor i in range(1, 5):\n    total = total + i\nprint(total)`},
  {name:"Build a list",code:`squares = []\nfor i in range(1, 5):\n    squares.append(i * i)\nprint(squares)`},
@@ -314,7 +328,7 @@ function visualize(){
   srcLines=src.replace(/\r\n/g,"\n").split("\n");
   const r=tracePy(src);
   const errbox=document.getElementById("errbox");
-  if(r.err){ errbox.className="errbox show"; errbox.textContent="🤔 Python couldn't run this:\n"+r.err+"\n\nFix the code above and visualize again."; }
+  if(r.err){ errbox.className="errbox show"; errbox.innerHTML=friendlyError(r.err)+"<br>Fix the code above and visualize again."; }
   else errbox.className="errbox";
   steps=r.steps;
   if(r.truncated) steps.push({line:null,vars:[],out:r.out,scope:"global",done:true,note:"(stopped early — too many steps to show)"});

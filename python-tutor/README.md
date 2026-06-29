@@ -82,7 +82,14 @@ verified against real `python3`.
       Codewars), shows your output vs expected, lets you **Run** and **retry**,
       and reveals a clean sample solution. Validated: all sample solutions pass
       the checker and match real `python3`.
-  - Progress (stars, XP, streak, badges) saves automatically.
+  - **🩹 Review weak (spaced repetition)** — the game tracks which topics you
+    miss and a **Review mode** re-surfaces your weakest ones first (Leitner-style
+    spacing: a topic you ace is shown later, one you miss comes back soon). A
+    "Needs review" line shows your current weak spots.
+  - **Plain-English errors** — when your code errors (in the quiz, the lessons,
+    or the visualizer), it's translated into beginner language ("Python doesn't
+    recognise `x` — usually a typo…") with Python's exact message underneath.
+  - Progress (stars, XP, streak, badges, review history) saves automatically.
 
 ## The Doubt Helper — a free AI tutor, right in the app
 
