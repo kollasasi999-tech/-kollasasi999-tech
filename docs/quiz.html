@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Trace — endless Python output puzzles</title>
+<style>
+  :root{
+    --night-0:#0c0d2b; --night-1:#15123f; --night-2:#1d1850;
+    --surface:#221c57; --surface-soft:#2a2466; --ink:#090a1c;
+    --cream:#f4eddd; --cream-dim:#bdb6d8;
+    --saffron:#f2a93b; --saffron-soft:#f6c878;
+    --jade:#74d6c3; --lotus:#c9a7f0; --coral:#f0856f;
+    --hair:rgba(244,237,221,0.12);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, #2a2068 0%, transparent 55%),
+      radial-gradient(900px 600px at 0% 110%, #241a5a 0%, transparent 50%),
+      linear-gradient(160deg, var(--night-0), var(--night-1) 60%, var(--night-2));
+    color:var(--cream); font-family:var(--sans); line-height:1.55; min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:700px;margin:0 auto;padding:18px 16px 60px;}
+  header.top{text-align:center;margin-bottom:10px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--saffron);opacity:.85;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,8vw,40px);margin:6px 0 4px;}
+  h1 .glow{color:var(--saffron-soft);}
+  .sub{color:var(--cream-dim);font-size:13.5px;max-width:44ch;margin:0 auto;}
+
+  .nav{display:flex;justify-content:center;gap:7px;margin:12px 0 10px;flex-wrap:wrap;}
+  .pill{font-size:12.5px;font-weight:600;border:1px solid var(--hair);background:var(--surface);color:var(--cream-dim);border-radius:999px;padding:7px 13px;cursor:pointer;text-decoration:none;display:inline-block;}
+  .pill:hover{color:var(--cream);}
+  .pill.active{background:var(--saffron);color:var(--night-0);border-color:var(--saffron);}
+  .chips{display:flex;justify-content:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .chip{font-size:11.5px;font-weight:600;border:1px solid var(--hair);background:var(--surface-soft);color:var(--cream-dim);border-radius:999px;padding:5px 11px;cursor:pointer;}
+  .chip.active{background:rgba(116,214,195,.16);border-color:rgba(116,214,195,.45);color:var(--jade);}
+
+  .rankbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .rankbar .rk{font-family:var(--serif);font-size:14px;color:var(--saffron-soft);white-space:nowrap;}
+  .xpbar{flex:1;height:9px;border-radius:999px;background:var(--surface);overflow:hidden;border:1px solid var(--hair);}
+  .xpbar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--lotus),#9d6fe0);transition:width .35s ease;}
+  .rankbar .xp{font-family:var(--mono);font-size:11px;color:var(--cream-dim);white-space:nowrap;}
+
+  .stats{display:flex;gap:9px;justify-content:center;margin-bottom:13px;flex-wrap:wrap;}
+  .stat{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:7px 13px;text-align:center;min-width:80px;}
+  .stat .n{font-family:var(--serif);font-size:19px;line-height:1;}
+  .stat .l{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--cream-dim);margin-top:3px;}
+  .stat.stars .n{color:var(--saffron-soft);}
+  .stat.streak .n{color:var(--jade);}
+  .stat.solved .n{color:var(--lotus);}
+
+  .card{background:linear-gradient(180deg,var(--surface),rgba(29,24,80,.7));border:1px solid var(--hair);border-radius:20px;padding:18px 16px;box-shadow:0 16px 40px -24px rgba(0,0,0,.8);}
+  .qrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;gap:8px;}
+  .qlabel{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--saffron);}
+  .qtopic{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);background:rgba(116,214,195,.1);border:1px solid rgba(116,214,195,.28);border-radius:999px;padding:3px 9px;}
+  .qworth{font-family:var(--mono);font-size:11px;color:var(--saffron-soft);}
+  .ask{font-size:15px;color:var(--cream);margin:0 0 10px;}
+  .ask b{color:var(--saffron-soft);}
+
+  .editor{background:var(--ink);border:1px solid rgba(244,237,221,.10);border-radius:13px;overflow:hidden;}
+  .ebar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid rgba(244,237,221,.07);}
+  .ebar .d{width:10px;height:10px;border-radius:50%;}
+  .ebar .r{background:#ff6b6b;}.ebar .y{background:#ffce5b;}.ebar .g{background:#74d6c3;}
+  .ebar .fn{margin-left:6px;font-family:var(--mono);font-size:11px;color:var(--cream-dim);}
+  .code{padding:12px 8px 12px 0;font-family:var(--mono);font-size:13.5px;line-height:1.65;overflow-x:auto;}
+  .cl{display:flex;}
+  .cl .ln{width:34px;flex:0 0 34px;text-align:right;padding-right:12px;color:#5b5687;user-select:none;}
+  .cl .lt{white-space:pre;color:#e9e3ff;}
+
+  .alabel{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cream-dim);margin:15px 0 7px;}
+  textarea.ans{width:100%;min-height:58px;resize:vertical;background:var(--ink);border:1px solid var(--hair);border-radius:11px;color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.6;padding:11px 13px;outline:none;}
+  textarea.ans:focus{border-color:var(--saffron);}
+  .hintNote{font-size:11px;color:var(--cream-dim);margin-top:5px;}
+
+  .hints{margin-top:12px;}
+  .hint-bar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .hint-bar .htitle{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream-dim);margin-right:2px;}
+  .hbtn{font-size:12.5px;font-weight:600;border:1px solid rgba(201,167,240,.35);background:rgba(201,167,240,.10);color:var(--lotus);border-radius:999px;padding:6px 11px;cursor:pointer;}
+  .hbtn:disabled{opacity:.4;cursor:not-allowed;}
+  .hbtn.used{background:rgba(116,214,195,.12);border-color:rgba(116,214,195,.4);color:var(--jade);cursor:default;}
+  .hint-out{margin-top:9px;display:flex;flex-direction:column;gap:6px;}
+  .hint-card{background:rgba(201,167,240,.08);border:1px solid rgba(201,167,240,.22);border-radius:10px;padding:8px 11px;font-size:13.5px;color:var(--cream);}
+  .hint-card b{color:var(--lotus);}
+  .hint-card .c{font-family:var(--mono);font-size:12.5px;background:rgba(9,10,28,.6);padding:1px 5px;border-radius:5px;color:var(--jade);}
+
+  .controls{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  button{font-family:var(--sans);font-size:14.5px;font-weight:600;border:0;border-radius:11px;padding:11px 18px;cursor:pointer;transition:transform .1s ease,filter .15s ease;}
+  button:active{transform:translateY(1px);}
+  .btn-check{background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);}
+  .btn-next{background:linear-gradient(160deg,var(--jade),#48b6a2);color:var(--night-0);}
+  .btn-ghost{background:transparent;color:var(--cream-dim);border:1px solid var(--hair);font-weight:500;}
+
+  .fb{margin-top:13px;border-radius:12px;padding:12px 14px;font-size:14.5px;display:none;}
+  .fb.show{display:block;}
+  .fb.win{background:rgba(116,214,195,.12);border:1px solid rgba(116,214,195,.4);}
+  .fb.win b{color:var(--jade);}
+  .fb.miss{background:rgba(240,133,111,.10);border:1px solid rgba(240,133,111,.4);}
+  .fb.miss b{color:var(--coral);}
+  .fb.almost{background:rgba(242,169,59,.10);border:1px solid rgba(242,169,59,.4);}
+  .fb.almost b{color:var(--saffron-soft);}
+  .fb .real{display:block;margin-top:7px;font-family:var(--mono);font-size:13.5px;background:rgba(9,10,28,.55);border-radius:8px;padding:8px 10px;color:var(--cream);white-space:pre-wrap;}
+  .fb .why{margin-top:8px;font-size:13.5px;color:var(--cream-dim);}
+  .fb .why b{color:var(--lotus);}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(40px);background:linear-gradient(160deg,#2a2466,#1d1850);border:1px solid rgba(246,200,120,.5);color:var(--cream);border-radius:14px;padding:12px 18px;font-size:14px;font-weight:600;box-shadow:0 18px 40px -16px rgba(0,0,0,.8);opacity:0;transition:opacity .3s ease,transform .3s ease;z-index:60;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast b{color:var(--saffron-soft);}
+
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:0 4px;}
+  .footer small{color:var(--cream-dim);font-size:11.5px;}
+  .footer .reset{background:none;border:0;color:var(--cream-dim);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;}
+  .chip.mode.active{background:rgba(242,169,59,.18);border-color:rgba(242,169,59,.5);color:var(--saffron-soft);}
+  .taskbox{background:rgba(201,167,240,.10);border:1px solid rgba(201,167,240,.25);border-radius:12px;padding:11px 13px;font-size:14.5px;color:var(--cream);margin-bottom:10px;}
+  .taskbox b{color:var(--lotus);}
+  .btn-run{background:var(--surface-soft);color:var(--cream);border:1px solid rgba(116,214,195,.4);}
+  .btn-run:hover{filter:brightness(1.15);}
+  .output{margin-top:13px;border-radius:12px;border:1px solid var(--hair);background:rgba(9,10,28,.6);padding:12px 14px;font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;color:var(--cream);min-height:20px;}
+  .output .ph{color:var(--cream-dim);font-style:italic;}
+  .output.err{border-color:rgba(240,133,111,.5);background:rgba(240,133,111,.08);color:var(--coral);}
+  .wsol{background:rgba(9,10,28,.6);border:1px solid var(--hair);border-radius:8px;padding:8px 10px;margin-top:6px;font-family:var(--mono);font-size:12.5px;color:#d6e2ff;white-space:pre;overflow-x:auto;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">read code like Python does</div>
+    <h1>Code <span class="glow">Trace</span></h1>
+    <p class="sub">Real multi-line Python. Predict what it prints. Earn ⭐ &amp; XP, climb the ranks, spend ⭐ on hints.</p>
+  </header>
+
+  <div class="nav">
+    <a class="pill" href="index.html" style="text-decoration:none;">← Lessons &amp; AI</a>
+    <a class="pill" href="learn.html" style="text-decoration:none;">📚 Learn</a>
+    <a class="pill" href="visualize.html" style="text-decoration:none;">🔎 Visualize</a>
+    <button class="pill lvl active" data-mode="easy">Easy</button>
+    <button class="pill lvl" data-mode="medium">Medium</button>
+    <button class="pill lvl" data-mode="hard">Hard</button>
+    <button class="pill lvl" data-mode="expert">Expert ⭐⭐⭐⭐</button>
+    <button class="pill lvl" data-mode="mix">Mix 🎲</button>
+  </div>
+  <div class="chips" id="topicChips"></div>
+  <div class="chips" id="modeRow">
+    <button class="chip mode" data-gm="predict">🔍 Predict</button>
+    <button class="chip mode" data-gm="write">✍️ Write code</button>
+    <button class="chip mode active" data-gm="alt">🔁 Alternate</button>
+    <button class="chip mode" data-gm="review">🩹 Review weak</button>
+  </div>
+  <div id="weakspots" style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--cream-dim);margin-bottom:11px;"></div>
+
+  <div class="rankbar">
+    <span class="rk" id="rankName">🥚 Hatchling</span>
+    <div class="xpbar"><i id="xpFill"></i></div>
+    <span class="xp" id="xpText">0 XP</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat stars"><div class="n" id="stStars">5</div><div class="l">stars</div></div>
+    <div class="stat streak"><div class="n" id="stStreak">0</div><div class="l">streak</div></div>
+    <div class="stat solved"><div class="n" id="stSolved">0</div><div class="l">solved</div></div>
+  </div>
+
+  <main class="card" id="card"></main>
+
+  <div class="footer">
+    <small>Type the output exactly, line by line.</small>
+    <button class="reset" id="resetBtn">Reset progress</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   mini-py — a tiny Python interpreter (pure JS). Used here to
+   COMPUTE the correct output of every generated program, so the
+   game's answers are always right. Cross-checked against real
+   CPython during development. Supports: print, variables,
+   f-strings, + - * // % **, comparisons, and/or/not, in, lists,
+   indexing, .append, len, sum, min, max, abs, round, dicts,
+   .items/.get/.keys/.values, range, for, while, if/elif/else,
+   def/return (defaults), .upper/.lower/.title/.count, comments.
+   (Intentionally avoids true division / and slicing.)
+   ============================================================ */
+function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
+function toLogicalLines(src){
+  const phys=src.replace(/\r\n/g,"\n").replace(/\t/g,"    ").split("\n");
+  const res=[]; let i=0;
+  while(i<phys.length){
+    let raw=phys[i]; const indent=raw.length-raw.trimStart().length;
+    let {text,depth,open}=scanLine(raw); let buf=text;
+    while(open && i+1<phys.length){ i++; const nxt=scanLine(phys[i]); buf+=" "+nxt.text.trim(); open=nxt.openFrom(depth); depth=nxt.depthFrom(depth); }
+    if(buf.trim().length>0) res.push({indent,text:buf}); i++;
+  }
+  return res;
+}
+function scanLine(line){
+  let s="",depth=0,inStr=false,q="",esc=false;
+  for(let k=0;k<line.length;k++){ const c=line[k];
+    if(inStr){ s+=c; if(esc){esc=false;} else if(c==="\\"){esc=true;} else if(c===q){inStr=false;} continue; }
+    if(c==="'"||c==='"'){inStr=true;q=c;s+=c;continue;}
+    if(c==="#"){break;}
+    if(c==="("||c==="["||c==="{")depth++;
+    if(c===")"||c==="]"||c==="}")depth--;
+    s+=c;
+  }
+  return {text:s,depth,open:depth>0,openFrom:(d)=>(d+depth)>0,depthFrom:(d)=>d+depth};
+}
+function parseBlock(lines,st,parentIndent){
+  const body=[]; if(st.i>=lines.length) return body;
+  const indent=lines[st.i].indent; if(indent<=parentIndent) return body;
+  while(st.i<lines.length && lines[st.i].indent===indent){ body.push(parseStatement(lines,st,indent)); }
+  return body;
+}
+function parseStatement(lines,st,indent){
+  const text=lines[st.i].text.trim(); let m;
+  if((m=/^if\s+(.*):$/.exec(text))){
+    st.i++; const cond=parseExpr(m[1]); const branches=[{cond,body:parseBlock(lines,st,indent)}]; let els=null;
+    while(st.i<lines.length && lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^elif\s+(.*):$/.exec(t))){ st.i++; branches.push({cond:parseExpr(em[1]),body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); break; } else break; }
+    return {t:"if",branches,els};
+  }
+  if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(",").map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:"for",targets,iter,body:parseBlock(lines,st,indent)}; }
+  if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:"while",cond:parseExpr(m[1]),body:parseBlock(lines,st,indent)}; }
+  if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:"def",name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent)}; }
+  if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:"return",expr:ex?parseExpr(ex):{t:"none"}}; }
+  st.i++;
+  const eq=findTopAssign(text);
+  if(eq>=0){ return {t:"assign",target:text.slice(0,eq).trim(),expr:parseExpr(text.slice(eq+1).trim())}; }
+  return {t:"expr",expr:parseExpr(text)};
+}
+function parseParams(s){ s=s.trim(); if(!s) return []; return splitTop(s,",").map(p=>{ const e=findTopAssign(p); if(e>=0) return {name:p.slice(0,e).trim(),def:parseExpr(p.slice(e+1).trim())}; return {name:p.trim(),def:null}; }); }
+function splitTop(s,sep){ const parts=[]; let depth=0,inStr=false,q="",esc=false,cur=""; for(let k=0;k<s.length;k++){ const c=s[k];
+  if(inStr){ cur+=c; if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+  if(c==="'"||c==='"'){inStr=true;q=c;cur+=c;continue;}
+  if(c==="("||c==="["||c==="{"){depth++;cur+=c;continue;}
+  if(c===")"||c==="]"||c==="}"){depth--;cur+=c;continue;}
+  if(c===sep&&depth===0){parts.push(cur);cur="";continue;} cur+=c; }
+  if(cur.trim().length) parts.push(cur); return parts; }
+function findTopAssign(text){ let depth=0,inStr=false,q="",esc=false; for(let k=0;k<text.length;k++){ const c=text[k];
+  if(inStr){ if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+  if(c==="'"||c==='"'){inStr=true;q=c;continue;}
+  if(c==="("||c==="["||c==="{")depth++; else if(c===")"||c==="]"||c==="}")depth--;
+  else if(c==="="&&depth===0){ const prev=text[k-1],next=text[k+1]; if(next==="="){k++;continue;} if(prev==="="||prev==="!"||prev===">"||prev==="<")continue; return k; } }
+  return -1; }
+function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),isIdc=c=>/[A-Za-z0-9_]/.test(c),isD=c=>/[0-9]/.test(c);
+  while(k<s.length){ const c=s[k];
+    if(c===" "||c==="\t"){k++;continue;}
+    if((c==="f"||c==="F")&&(s[k+1]==='"'||s[k+1]==="'")){ const q=s[k+1]; let j=k+2,val="",esc=false; while(j<s.length){const d=s[j];if(esc){val+=d;esc=false;}else if(d==="\\"){val+=d;esc=true;}else if(d===q){break;}else val+=d;j++;} toks.push({t:"fstr",v:val}); k=j+1; continue; }
+    if(c==='"'||c==="'"){ const q=c; let j=k+1,val="",esc=false; while(j<s.length){const d=s[j];if(esc){val+=unesc(d);esc=false;}else if(d==="\\"){esc=true;}else if(d===q){break;}else val+=d;j++;} toks.push({t:"str",v:val}); k=j+1; continue; }
+    if(isD(c)||(c==="."&&isD(s[k+1]))){ let j=k,num=""; while(j<s.length&&/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:"num",v:parseFloat(num)}); k=j; continue; }
+    if(isId(c)){ let j=k,id=""; while(j<s.length&&isIdc(s[j])){id+=s[j];j++;}
+      if(id==="True")toks.push({t:"bool",v:true}); else if(id==="False")toks.push({t:"bool",v:false}); else if(id==="None")toks.push({t:"none"});
+      else if(id==="and"||id==="or"||id==="not"||id==="in")toks.push({t:"kw",v:id}); else toks.push({t:"name",v:id}); k=j; continue; }
+    const two=s.slice(k,k+2); if(["==","!=",">=","<="].includes(two)){toks.push({t:"op",v:two});k+=2;continue;}
+    if("+-*/%<>()[]{}:,.".includes(c)){toks.push({t:"op",v:c});k++;continue;}
+    throw pyError("SyntaxError: unexpected character '"+c+"'"); }
+  return toks; }
+function unesc(d){return d==="n"?"\n":d==="t"?"\t":d;}
+function parseExpr(str){ const toks=tokenize(str); const p={toks,i:0}; const node=parseOr(p); if(p.i<toks.length) throw pyError("SyntaxError: unexpected token"); return node; }
+function peek(p){return p.toks[p.i];}
+function eat(p,v){const t=p.toks[p.i];if(!t||(v&&!(t.v===v||t.t===v)))throw pyError("SyntaxError near '"+(t?t.v:"end")+"'");p.i++;return t;}
+function parseOr(p){let l=parseAnd(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="or"){p.i++;l={t:"bin",op:"or",l,r:parseAnd(p)};}return l;}
+function parseAnd(p){let l=parseNot(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="and"){p.i++;l={t:"bin",op:"and",l,r:parseNot(p)};}return l;}
+function parseNot(p){if(peek(p)&&peek(p).t==="kw"&&peek(p).v==="not"){p.i++;return {t:"unary",op:"not",e:parseNot(p)};}return parseCmp(p);}
+function parseCmp(p){let l=parseAdd(p);while(peek(p)&&((peek(p).t==="op"&&["<",">","==","!=",">=","<="].includes(peek(p).v))||(peek(p).t==="kw"&&peek(p).v==="in"))){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseAdd(p)};}return l;}
+function parseAdd(p){let l=parseMul(p);while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="+"||peek(p).v==="-")){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseMul(p)};}return l;}
+function parseMul(p){let l=parseUnary(p);while(peek(p)&&peek(p).t==="op"&&["*","/","%"].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseUnary(p)};}return l;}
+function parseUnary(p){if(peek(p)&&peek(p).t==="op"&&peek(p).v==="-"){p.i++;return {t:"unary",op:"-",e:parseUnary(p)};}return parsePostfix(p);}
+function parsePostfix(p){ let e=parsePrimary(p);
+  while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="."||peek(p).v==="("||peek(p).v==="[")){ const op=peek(p).v;
+    if(op==="."){p.i++;const nm=eat(p,"name").v;e={t:"attr",obj:e,name:nm};}
+    else if(op==="("){p.i++;const args=[];if(!(peek(p)&&peek(p).v===")")){args.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;args.push(parseOr(p));}}eat(p,")");e={t:"call",fn:e,args};}
+    else {p.i++;
+      let first=null;
+      if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) first=parseOr(p);
+      if(peek(p)&&peek(p).v===":"){ p.i++; let stp=null,step=null;
+        if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) stp=parseOr(p);
+        if(peek(p)&&peek(p).v===":"){ p.i++; if(!(peek(p)&&peek(p).v==="]")) step=parseOr(p); }
+        eat(p,"]"); e={t:"slice",obj:e,start:first,stop:stp,step:step};
+      } else { eat(p,"]"); e={t:"index",obj:e,idx:first}; } } }
+  return e; }
+function parsePrimary(p){ const t=peek(p); if(!t)throw pyError("SyntaxError: unexpected end");
+  if(t.t==="num"){p.i++;return {t:"num",v:t.v};}
+  if(t.t==="str"){p.i++;return {t:"str",v:t.v};}
+  if(t.t==="fstr"){p.i++;return {t:"fstr",v:t.v};}
+  if(t.t==="bool"){p.i++;return {t:"bool",v:t.v};}
+  if(t.t==="none"){p.i++;return {t:"none"};}
+  if(t.t==="name"){p.i++;return {t:"name",v:t.v};}
+  if(t.t==="op"&&t.v==="("){p.i++;const e=parseOr(p);eat(p,")");return e;}
+  if(t.t==="op"&&t.v==="["){p.i++;const items=[];if(!(peek(p)&&peek(p).v==="]")){items.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="]")break;items.push(parseOr(p));}}eat(p,"]");return {t:"list",items};}
+  if(t.t==="op"&&t.v==="{"){p.i++;const pairs=[];if(!(peek(p)&&peek(p).v==="}")){do{if(peek(p)&&peek(p).v==="}")break;const k=parseOr(p);eat(p,":");const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&&peek(p).v===","&&(p.i++,true));}eat(p,"}");return {t:"dict",pairs};}
+  throw pyError("SyntaxError near '"+t.v+"'"); }
+function execBlock(stmts,scope,G){ for(const s of stmts) execStmt(s,scope,G); }
+function execStmt(s,scope,G){ switch(s.t){
+  case "assign":{ const val=evalExpr(s.expr,scope,G); if(!/^[A-Za-z_]\w*$/.test(s.target)) throw pyError("SyntaxError: bad assign target"); scope[s.target]=val; return; }
+  case "expr": evalExpr(s.expr,scope,G); return;
+  case "if":{ for(const b of s.branches){ if(truthy(evalExpr(b.cond,scope,G))){ execBlock(b.body,scope,G); return; } } if(s.els) execBlock(s.els,scope,G); return; }
+  case "for":{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); execBlock(s.body,scope,G); } return; }
+  case "while":{ let guard=0; while(truthy(evalExpr(s.cond,scope,G))){ execBlock(s.body,scope,G); if(++guard>100000) throw pyError("RuntimeError: loop too long"); } return; }
+  case "def":{ scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
+  case "return":{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError("ValueError: cannot unpack"); targets.forEach((t,i)=>scope[t]=item[i]); } }
+function lookup(name,scope,G){ if(name in scope) return scope[name]; if(name in G) return G[name]; throw pyError("NameError: name '"+name+"' is not defined"); }
+function evalExpr(n,scope,G){ switch(n.t){
+  case "num": return n.v; case "str": return n.v; case "bool": return n.v; case "none": return null;
+  case "fstr": return evalFString(n.v,scope,G);
+  case "name": return lookup(n.v,scope,G);
+  case "list": return n.items.map(x=>evalExpr(x,scope,G));
+  case "dict":{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case "unary":{ const v=evalExpr(n.e,scope,G); if(n.op==="-") return -v; if(n.op==="not") return !truthy(v); return; }
+  case "bin": return evalBin(n,scope,G);
+  case "index":{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
+    if(Array.isArray(o)){ let idx=i<0?o.length+i:i; if(idx<0||idx>=o.length) throw pyError("IndexError"); return o[idx]; }
+    if(o instanceof Map){ if(!o.has(i)) throw pyError("KeyError: "+pyRepr(i)); return o.get(i); }
+    if(typeof o==="string"){ let idx=i<0?o.length+i:i; return o[idx]; }
+    throw pyError("TypeError: not indexable"); }
+  case "slice":{ const o=evalExpr(n.obj,scope,G); const a=n.start?evalExpr(n.start,scope,G):null; const b=n.stop?evalExpr(n.stop,scope,G):null; const c=n.step?evalExpr(n.step,scope,G):null; if(!(Array.isArray(o)||typeof o==="string")) throw pyError("TypeError: not sliceable"); return pySlice(o,a,b,c); }
+  case "attr": return {__bound:true,obj:evalExpr(n.obj,scope,G),name:n.name};
+  case "call": return evalCall(n,scope,G); } }
+function evalBin(n,scope,G){ const op=n.op;
+  if(op==="and"){const l=evalExpr(n.l,scope,G);return truthy(l)?evalExpr(n.r,scope,G):l;}
+  if(op==="or"){const l=evalExpr(n.l,scope,G);return truthy(l)?l:evalExpr(n.r,scope,G);}
+  const a=evalExpr(n.l,scope,G),b=evalExpr(n.r,scope,G);
+  switch(op){
+    case "+": if(typeof a==="string"||typeof b==="string"){ if(typeof a!=="string"||typeof b!=="string") throw pyError("TypeError: str + non-str"); return a+b; } if(Array.isArray(a)&&Array.isArray(b)) return a.concat(b); return a+b;
+    case "-": return a-b;
+    case "*": if(typeof a==="string"&&typeof b==="number") return a.repeat(b); if(typeof a==="number"&&typeof b==="string") return b.repeat(a); return a*b;
+    case "/": return a/b;
+    case "%": return ((a%b)+b)%b;
+    case "<": return a<b; case ">": return a>b; case "<=": return a<=b; case ">=": return a>=b;
+    case "==": return pyEq(a,b); case "!=": return !pyEq(a,b);
+    case "in":{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b==="string") return b.includes(a); return false; } } }
+function evalCall(n,scope,G){
+  if(n.fn.t==="attr"){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
+  if(n.fn.t==="name"){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
+    if(name==="print"){ G.__out.push(args.map(pyStr).join(" ")+"\n"); return null; }
+    if(name==="len"){ const x=args[0]; if(Array.isArray(x)||typeof x==="string")return x.length; if(x instanceof Map)return x.size; throw pyError("TypeError: no len()"); }
+    if(name==="range"){ let a=0,b,step=1; if(args.length===1){b=args[0];}else{a=args[0];b=args[1];if(args.length>2)step=args[2];} const r=[]; if(step>0)for(let i=a;i<b;i+=step)r.push(i); else for(let i=a;i>b;i+=step)r.push(i); return r; }
+    if(name==="str"){ return pyStr(args[0]); }
+    if(name==="int"){ return Math.trunc(Number(args[0])); }
+    if(name==="float"){ return Number(args[0]); }
+    if(name==="sum"){ return (args[0]||[]).reduce((x,y)=>x+y,0); }
+    if(name==="min"){ return Math.min.apply(null,args); }
+    if(name==="max"){ return Math.max.apply(null,args); }
+    if(name==="abs"){ return Math.abs(args[0]); }
+    if(name==="round"){ return Math.round(args[0]); }
+    if(name==="enumerate"){ const seq=iterate(args[0]); const start=args.length>1?args[1]:0; return seq.map((x,i)=>[start+i,x]); }
+    return callUser(lookup(name,scope,G),args,G); }
+  return callUser(evalExpr(n.fn,scope,G),n.args.map(a=>evalExpr(a,scope,G)),G); }
+function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError("TypeError: not callable"); const local=Object.create(null);
+  fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError("TypeError: missing arg '"+p.name+"'"); });
+  try{ execBlock(fn.body,local,G); }catch(e){ if(e&&e.__ret) return e.value; throw e; } return null; }
+function callMethod(obj,name,args){
+  if(Array.isArray(obj)){ if(name==="append"){obj.push(args[0]);return null;} if(name==="pop"){return obj.pop();} if(name==="count"){return obj.filter(x=>pyEq(x,args[0])).length;} throw pyError("AttributeError: list."+name); }
+  if(obj instanceof Map){ if(name==="items")return Array.from(obj.entries()).map(([k,v])=>[k,v]); if(name==="keys")return Array.from(obj.keys()); if(name==="values")return Array.from(obj.values()); if(name==="get")return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); throw pyError("AttributeError: dict."+name); }
+  if(typeof obj==="string"){ if(name==="upper")return obj.toUpperCase(); if(name==="lower")return obj.toLowerCase(); if(name==="title")return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name==="capitalize")return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name==="count"){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;} throw pyError("AttributeError: str."+name); }
+  throw pyError("AttributeError"); }
+function evalFString(raw,scope,G){ let res="",i=0; while(i<raw.length){ const c=raw[i];
+  if(c==="{"){ if(raw[i+1]==="{"){res+="{";i+=2;continue;} let j=i+1,depth=1,ex=""; while(j<raw.length&&depth>0){const d=raw[j];if(d==="{")depth++;else if(d==="}"){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
+  else if(c==="}"){ if(raw[i+1]==="}"){res+="}";i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
+function truthy(v){ if(v===null||v===false)return false; if(v===0||v==="")return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
+function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((x,i)=>pyEq(x,b[i])); return a===b; }
+function pyStr(v){ if(v===null)return "None"; if(v===true)return "True"; if(v===false)return "False"; if(typeof v==="number")return String(v); if(typeof v==="string")return v; if(Array.isArray(v))return "["+v.map(pyRepr).join(", ")+"]"; if(v instanceof Map)return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}"; if(v&&v.__fn)return "<function>"; return String(v); }
+function pyRepr(v){ if(typeof v==="string")return "'"+v+"'"; return pyStr(v); }
+function iterate(v){ if(Array.isArray(v))return v; if(typeof v==="string")return v.split(""); if(v instanceof Map)return Array.from(v.keys()); throw pyError("TypeError: not iterable"); }
+/* Python slice semantics (mirrors CPython's slice.indices) */
+function pySlice(seq,start,stop,step){
+  const isStr=typeof seq==="string"; const arr=isStr?seq.split(""):seq; const len=arr.length;
+  step=(step==null)?1:step; if(step===0) throw pyError("ValueError: slice step cannot be zero");
+  let lower,upper; if(step<0){lower=-1;upper=len-1;}else{lower=0;upper=len;}
+  let s; if(start==null){s=step<0?upper:lower;} else { s=start; if(s<0){s+=len; if(s<lower)s=lower;} else if(s>upper)s=upper; }
+  let e; if(stop==null){e=step<0?lower:upper;} else { e=stop; if(e<0){e+=len; if(e<lower)e=lower;} else if(e>upper)e=upper; }
+  const out=[]; if(step>0){ for(let i=s;i<e;i+=step) out.push(arr[i]); } else { for(let i=s;i>e;i+=step) out.push(arr[i]); }
+  return isStr?out.join(""):out;
+}
+function runPy(src){ const out=[]; try{ const prog=parseBlock(toLogicalLines(src),{i:0},-1); const G=Object.create(null); G.__out=out; execBlock(prog,G,G); return {out:out.join(""),err:null}; }catch(e){ if(e&&e.__ret)return {out:out.join(""),err:null}; if(e&&e.__pyerr)return {out:out.join(""),err:e.message}; return {out:out.join(""),err:(e&&e.message)?e.message:String(e)}; } }
+</script>
+
+<script>
+/* ============================================================
+   Code Trace — endless multi-line "predict the output" game.
+   Programs are generated, then their output is COMPUTED by runPy()
+   above (so answers are always correct and never run out).
+   ============================================================ */
+function ri(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function pickn(a,n){const c=a.slice();const r=[];while(r.length<n&&c.length){r.push(c.splice(Math.floor(Math.random()*c.length),1)[0]);}return r;}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function norm(s){return String(s).replace(/\r/g,"").split("\n").map(x=>x.replace(/[ \t]+/g," ").trim()).join("\n").replace(/\n+$/,"").replace(/^\n+/,"");}
+
+const NAMES=["Sasi","Ravi","Ada","Sam","Maya","Leo","Nila","Arjun","Tara","Kiran"];
+const WORDS=["cat","sun","moon","code","star","data","loop","tree","fish","gold","bird","city"];
+const FRUITS=["apple","mango","grape","lemon","peach","melon","berry","plum"];
+const LETTERS=["a","b","c","x","y","z"];
+
+/* Each generator returns {code, concept, why}. Output is computed by runPy().
+   topic ∈ basics | loops | conditionals | functions | strings | lists | dicts */
+const GEN={
+ 1:[ /* ===== EASY: 2–4 lines ===== */
+  {topic:"basics",gen:()=>{const a=ri(2,20),b=ri(2,20);return{code:`a = ${a}\nb = ${b}\nprint(a + b)`,concept:"variables hold values; + adds them",why:`a is ${a} and b is ${b}, so a + b is ${a+b}.`};}},
+  {topic:"basics",gen:()=>{const a=ri(3,9),b=ri(2,5);return{code:`x = ${a}\nx = x + ${b}\nprint(x)`,concept:"a variable can be updated with a new value",why:`x starts at ${a}, then becomes ${a}+${b} = ${a+b}.`};}},
+  {topic:"strings",gen:()=>{const n=pick(NAMES),s=ri(5,99);return{code:`name = "${n}"\nscore = ${s}\nprint(f"{name} scored {score}")`,concept:"f-strings drop values into { }",why:`It fills in ${n} and ${s}.`};}},
+  {topic:"strings",gen:()=>{const a=pick(WORDS),b=pick(WORDS);return{code:`first = "${a}"\nsecond = "${b}"\nprint(first + second)`,concept:"+ joins strings (no space added)",why:`"${a}" + "${b}" sticks together as "${a+b}".`};}},
+  {topic:"lists",gen:()=>{const arr=pickn(FRUITS,ri(3,4));return{code:`fruits = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint(len(fruits))`,concept:"len() counts items in a list",why:`The list has ${arr.length} items.`};}},
+  {topic:"strings",gen:()=>{const ch=pick(["=","-","*","~"]),n=ri(3,8);return{code:`line = "${ch}" * ${n}\nprint(line)`,concept:"a string times a number repeats it",why:`"${ch}" repeated ${n} times.`};}},
+  {topic:"basics",gen:()=>{const w=ri(2,9),h=ri(2,9);return{code:`width = ${w}\nheight = ${h}\nprint(width * height)`,concept:"* multiplies",why:`${w} * ${h} = ${w*h}.`};}},
+  {topic:"conditionals",gen:()=>{const a=ri(10,30);return{code:`age = ${a}\nprint(age >= 18)`,concept:"comparisons give True or False",why:`${a} >= 18 is ${a>=18?"True":"False"}.`};}},
+  {topic:"strings",gen:()=>{const w=pick(WORDS);return{code:`word = "${w}"\nprint(word.upper())`,concept:".upper() makes text uppercase",why:`"${w}" becomes "${w.toUpperCase()}".`};}},
+  {topic:"lists",gen:()=>{const arr=pickn([5,10,15,20,25,30],ri(3,4));return{code:`nums = [${arr.join(", ")}]\nprint(nums[0])\nprint(nums[-1])`,concept:"[0] is first, [-1] is last",why:`First is ${arr[0]}, last is ${arr[arr.length-1]}.`};}},
+  {topic:"basics",gen:()=>{const a=ri(20,40),b=ri(2,9);return{code:`a = ${a}\nb = ${b}\nprint(a - b)\nprint(a * b)`,concept:"two prints make two lines",why:`${a}-${b}=${a-b}, then ${a}*${b}=${a*b}.`};}},
+ ],
+ 2:[ /* ===== MEDIUM: 4–6 lines, one loop or branch ===== */
+  {topic:"loops",gen:()=>{const n=ri(3,6);const s=n*(n+1)/2;return{code:`total = 0\nfor i in range(1, ${n+1}):\n    total = total + i\nprint(total)`,concept:"a loop that adds numbers up (accumulation)",why:`total starts at 0, then the loop adds 1, 2, … up to ${n}: 1+2+…+${n} = ${s}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([2,3,4,5,6,7,8],ri(3,4));const s=arr.reduce((a,b)=>a+b,0);return{code:`nums = [${arr.join(", ")}]\ntotal = 0\nfor n in nums:\n    total = total + n\nprint(total)`,concept:"loop over a list, adding each item to a total",why:`It adds every item in turn: ${arr.join(" + ")} = ${s}.`};}},
+  {topic:"loops",gen:()=>{const n=ri(3,5);return{code:`for i in range(${n}):\n    print(i)`,concept:"range(n) gives 0 … n-1, printed one per line",why:`The loop runs with i = ${Array.from({length:n},(_,k)=>k).join(", ")}, printing each on its own line.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(LETTERS,3);return{code:`for c in [${arr.map(x=>`"${x}"`).join(", ")}]:\n    print(c)`,concept:"a for loop visits each item in the list",why:`c becomes "${arr.join('", then "')}" — one printed per line, in order.`};}},
+  {topic:"conditionals",gen:()=>{const s=ri(40,100);const g=s>=90?"A":s>=70?"B":"C";return{code:`score = ${s}\nif score >= 90:\n    print("A")\nelif score >= 70:\n    print("B")\nelse:\n    print("C")`,concept:"if/elif/else runs the FIRST branch that's true",why:`score is ${s}. ${s>=90?'score >= 90 is True → prints "A".':s>=70?'score >= 90 is False, but score >= 70 is True → prints "B".':'both checks are False → the else runs → prints "C".'}`};}},
+  {topic:"strings",gen:()=>{const ch=pick(["ab","x","-","#"]),n=ri(2,5);return{code:`s = ""\nfor i in range(${n}):\n    s = s + "${ch}"\nprint(s)`,concept:"build up a string piece by piece in a loop",why:`s starts empty and gains "${ch}" on each of the ${n} turns → "${ch.repeat(n)}".`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8,9,10],5);const ev=arr.filter(n=>n%2===0);return{code:`nums = [${arr.join(", ")}]\ncount = 0\nfor n in nums:\n    if n % 2 == 0:\n        count = count + 1\nprint(count)`,concept:"count the items that pass a test",why:`count goes up by 1 for each even number. The evens here are ${ev.length?ev.join(", "):"(none)"}, so count = ${ev.length}.`};}},
+  {topic:"dicts",gen:()=>{const k=pickn(NAMES,2),v=pickn([20,25,30,35,40],2);return{code:`ages = {"${k[0]}": ${v[0]}, "${k[1]}": ${v[1]}}\nfor name, age in ages.items():\n    print(name, age)`,concept:".items() gives each key and value together",why:`The loop walks the pairs in order: "${k[0]}" ${v[0]}, then "${k[1]}" ${v[1]}. print(name, age) puts each pair on one line with a space.`};}},
+  {topic:"loops",gen:()=>{const n=ri(3,5);return{code:`n = ${n}\nwhile n > 0:\n    print(n)\n    n = n - 1\nprint("Go!")`,concept:"a while loop repeats while its test stays true",why:`It prints ${Array.from({length:n},(_,k)=>n-k).join(", ")} (n drops by 1 each time) until n reaches 0, the test n > 0 becomes False, then it prints "Go!".`};}},
+  {topic:"functions",gen:()=>{const nm=pick(NAMES);return{code:`def greet(name):\n    return "Hi " + name\n\nprint(greet("${nm}"))`,concept:"define a function once, then call it",why:`greet("${nm}") runs the function, which returns "Hi " + "${nm}" = "Hi ${nm}", and that result is printed.`};}},
+  {topic:"loops",gen:()=>{const n=ri(2,4);const lines=Array.from({length:n},(_,k)=>`${k+1} squared is ${(k+1)*(k+1)}`).join("  |  ");return{code:`for i in range(1, ${n+1}):\n    print(f"{i} squared is {i * i}")`,concept:"an f-string can do math inside { }",why:`For i = 1..${n}, {i * i} works out the square each time: ${lines}.`};}},
+  {topic:"conditionals",gen:()=>{const a=ri(1,9),b=ri(1,9),c=ri(1,9);const r=(a>b)&&(b>c);return{code:`a = ${a}\nb = ${b}\nc = ${c}\nprint(a > b and b > c)`,concept:"'and' is True only when BOTH sides are True",why:`${a} > ${b} is ${a>b?"True":"False"} and ${b} > ${c} is ${b>c?"True":"False"}; "and" combines them → ${r?"True":"False"}.`};}},
+ ],
+ 3:[ /* ===== HARD: 5–10 lines, nested / functions / multi-step ===== */
+  {topic:"functions",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8],ri(3,4));const map=arr.map(n=>`${n}→${n%2===0?"even":"odd"}`).join(", ");return{code:`def label(n):\n    if n % 2 == 0:\n        return "even"\n    else:\n        return "odd"\n\nfor n in [${arr.join(", ")}]:\n    print(n, label(n))`,concept:"a function with an if, called inside a loop",why:`label(n) returns "even" when n % 2 == 0, otherwise "odd". The loop tags each number: ${map}. print(n, label(n)) puts the number and its tag on one line, separated by a space.`};}},
+  {topic:"loops",gen:()=>{const a=ri(2,3),b=ri(2,3);const seq=[];for(let i=1;i<=a;i++)for(let j=1;j<=b;j++)seq.push(i*j);return{code:`for i in range(1, ${a+1}):\n    for j in range(1, ${b+1}):\n        print(i * j)`,concept:"a loop inside a loop (nested loops)",why:`For each i (1..${a}), the inner loop runs all of j (1..${b}) before i moves on. So it prints i*j in this order: ${seq.join(", ")} — ${a}×${b} = ${a*b} lines total.`};}},
+  {topic:"conditionals",gen:()=>{const n=ri(4,7);const seq=[];for(let i=1;i<=n;i++)seq.push(i%3===0?"Fizz":String(i));return{code:`for n in range(1, ${n+1}):\n    if n % 3 == 0:\n        print("Fizz")\n    else:\n        print(n)`,concept:"replace some numbers based on a condition (the FizzBuzz idea)",why:`For each n from 1 to ${n}: if n divides evenly by 3 (n % 3 == 0) it prints "Fizz", otherwise it prints the number. Result: ${seq.join(", ")}.`};}},
+  {topic:"loops",gen:()=>{const n=ri(4,7);let ev=0,od=0;const es=[],os=[];for(let i=1;i<=n;i++){if(i%2===0){ev+=i;es.push(i);}else{od+=i;os.push(i);}}return{code:`evens = 0\nodds = 0\nfor n in range(1, ${n+1}):\n    if n % 2 == 0:\n        evens = evens + n\n    else:\n        odds = odds + n\nprint(evens)\nprint(odds)`,concept:"keep two running totals in one loop",why:`Even numbers ${es.join("+")} add up to ${ev}; odd numbers ${os.join("+")} add up to ${od}. It prints evens (${ev}) first, then odds (${od}).`};}},
+  {topic:"lists",gen:()=>{const n=ri(3,5);const sq=[];for(let i=0;i<n;i++)sq.push(i*i);return{code:`result = []\nfor i in range(${n}):\n    result.append(i * i)\nprint(result)`,concept:"grow a list with .append() inside a loop",why:`Starting from an empty list, each turn appends i*i for i = 0..${n-1}: ${sq.join(", ")}. Printing a list shows it as [${sq.join(", ")}].`};}},
+  {topic:"lists",gen:()=>{const arr=pickn([3,7,2,9,5,1,8,6],ri(4,5));const m=Math.max(...arr);return{code:`nums = [${arr.join(", ")}]\nbest = nums[0]\nfor n in nums:\n    if n > best:\n        best = n\nprint(best)`,concept:"find the biggest value by hand (running max)",why:`best starts at the first item (${arr[0]}). Each time a number is bigger than best, best updates to it. The largest in ${arr.join(", ")} is ${m}.`};}},
+  {topic:"functions",gen:()=>{const qs=pickn([1,2,3,4,5],3);const lines=qs.map(q=>`${q} costs ${q*10}`).join("  |  ");return{code:`def price(qty):\n    return qty * 10\n\nfor q in [${qs.join(", ")}]:\n    print(f"{q} costs {price(q)}")`,concept:"call a function from inside an f-string",why:`price(q) returns q * 10. The f-string fills in q and price(q) for each q: ${lines}.`};}},
+  {topic:"conditionals",gen:()=>{const x=ri(-5,9);let r;if(x>0)r=(x%2===0)?"positive even":"positive odd";else r="not positive";return{code:`x = ${x}\nif x > 0:\n    if x % 2 == 0:\n        print("positive even")\n    else:\n        print("positive odd")\nelse:\n    print("not positive")`,concept:"an if inside an if (nested conditions)",why:`x is ${x}. Outer check x > 0 is ${x>0?"True":"False"}. ${x>0?`Inside, x % 2 == 0 is ${x%2===0?"True":"False"}, so it prints "${r}".`:`So it jumps to else and prints "not positive".`}`};}},
+  {topic:"loops",gen:()=>{const n=ri(4,6);let t=0;const parts=[];for(let i=1;i<=n;i++)if(i%2===0){t+=i*i;parts.push(`${i}*${i}`);}return{code:`total = 0\nfor i in range(1, ${n+1}):\n    if i % 2 == 0:\n        total = total + i * i\nprint(total)`,concept:"combine a loop, an if, and math",why:`Only even i pass the if. Their squares ${parts.join(" + ")} add up to ${t}.`};}},
+  {topic:"functions",gen:()=>{const e=ri(3,4),b=ri(2,3);const r1=Math.pow(b,2),r2=Math.pow(b,e);return{code:`def power(base, exp=2):\n    result = 1\n    for i in range(exp):\n        result = result * base\n    return result\n\nprint(power(${b}))\nprint(power(${b}, ${e}))`,concept:"default arguments + a loop that multiplies",why:`power multiplies result by base, exp times. power(${b}) uses the default exp=2 → ${b}*${b} = ${r1}. power(${b}, ${e}) multiplies ${b} ${e} times = ${r2}.`};}},
+  {topic:"loops",gen:()=>{const n=ri(2,5);const lines=[1,2,3].map(i=>`${n} x ${i} = ${n*i}`).join("  |  ");return{code:`n = ${n}\nfor i in range(1, 4):\n    print(n, "x", i, "=", n * i)`,concept:"print() joins several values with spaces",why:`i runs 1, 2, 3. Each line prints n, "x", i, "=", and n*i with spaces between: ${lines}.`};}},
+  {topic:"strings",gen:()=>{const arr=pickn(LETTERS,3);const res=arr.map(w=>w+"-").join("");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nsentence = ""\nfor w in words:\n    sentence = sentence + w + "-"\nprint(sentence)`,concept:"build one string from a list of pieces",why:`sentence starts empty. Each loop adds the word plus "-", in order, giving "${res}". Note the trailing dash — every word gets one, including the last.`};}},
+  {topic:"functions",gen:()=>{const arr=pickn([2,3,4,5,6],3);const dbl=arr.map(n=>n*2);const t=dbl.reduce((a,b)=>a+b,0);return{code:`def double(n):\n    return n * 2\n\ntotal = 0\nfor n in [${arr.join(", ")}]:\n    total = total + double(n)\nprint(total)`,concept:"use a function's result inside a running total",why:`double(n) returns n*2. The loop adds each doubled value: ${dbl.join(" + ")} = ${t}.`};}},
+ ],
+ 4:[ /* ===== EXPERT: slicing & enumerate ===== */
+  {topic:"strings",gen:()=>{const w=pick(["rainbow","sunlight","diamond","picture","library"]);const k=ri(2,4);return{code:`w = "${w}"\nprint(w[:${k}])\nprint(w[${k}:])`,concept:"slicing: [:k] is the start, [k:] is the rest",why:`w[:${k}] takes the first ${k} letters → "${w.slice(0,k)}". w[${k}:] takes from index ${k} to the end → "${w.slice(k)}".`};}},
+  {topic:"strings",gen:()=>{const w=pick(["stressed","level","python","banana","rotator","desserts"]);const r=w.split("").reverse().join("");return{code:`w = "${w}"\nprint(w[::-1])`,concept:"[::-1] reverses a sequence (step of -1)",why:`A step of -1 walks "${w}" backwards, giving "${r}".`};}},
+  {topic:"strings",gen:()=>{const w=pick(["abcdef","computer","elephant","keyboard","triangle"]);const r=w.split("").filter((_,i)=>i%2===0).join("");return{code:`w = "${w}"\nprint(w[::2])`,concept:"[::2] takes every 2nd item",why:`Starting at index 0 and stepping by 2 picks characters 0, 2, 4, … → "${r}".`};}},
+  {topic:"lists",gen:()=>{const arr=pickn([10,20,30,40,50,60],ri(5,6));const a=ri(1,2),b=a+ri(2,3);return{code:`nums = [${arr.join(", ")}]\nprint(nums[${a}:${b}])`,concept:"slicing a list: [a:b] stops before b",why:`Takes indexes ${a} up to ${b-1} → [${arr.slice(a,b).join(", ")}].`};}},
+  {topic:"strings",gen:()=>{const w=pick(["programming","wonderful","blueberry","developer","strawberry"]);return{code:`w = "${w}"\nprint(w[-3:])\nprint(w[:-3])`,concept:"negative indices count from the end",why:`w[-3:] is the last 3 letters → "${w.slice(-3)}". w[:-3] is everything except the last 3 → "${w.slice(0,-3)}".`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(FRUITS,3);const lines=arr.map((f,i)=>`${i} ${f}`).join("  |  ");return{code:`fruits = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, fruit in enumerate(fruits):\n    print(i, fruit)`,concept:"enumerate() gives the index AND the item together",why:`enumerate pairs each item with its position (starting at 0): ${lines}. print(i, fruit) puts them on one line with a space.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(["red","green","blue","gold","pink","teal"],3);const lines=arr.map((c,i)=>`${i+1} ${c}`).join("  |  ");return{code:`colors = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, c in enumerate(colors, 1):\n    print(i, c)`,concept:"enumerate(seq, 1) starts counting at 1",why:`The second argument sets the starting number, so positions begin at 1: ${lines}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(["hi","yo","ok","go","up"],3);const lines=arr.map((w,i)=>`${i}: ${w}`).join("  |  ");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, w in enumerate(words):\n    print(f"{i}: {w}")`,concept:"enumerate inside an f-string",why:`Each line shows the index and the word: ${lines}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([5,8,3,10,2,7,1],5);const idxs=arr.map((n,i)=>n>4?i:null).filter(x=>x!==null);return{code:`nums = [${arr.join(", ")}]\nfor i, n in enumerate(nums):\n    if n > 4:\n        print(i)`,concept:"enumerate to get the positions that pass a test",why:`It prints the index whenever the value is greater than 4. Those positions are ${idxs.length?idxs.join(", "):"(none)"}.`};}},
+  {topic:"lists",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8],6);return{code:`nums = [${arr.join(", ")}]\nprint(nums[::2])\nprint(nums[::-1])`,concept:"[::2] every other item; [::-1] reversed",why:`nums[::2] takes indexes 0, 2, 4, … → [${arr.filter((_,i)=>i%2===0).join(", ")}]. nums[::-1] reverses the whole list → [${arr.slice().reverse().join(", ")}].`};}},
+  {topic:"strings",gen:()=>{const w=pick(["elephant","umbrella","mountain","notebook","triangle"]);const k=ri(3,5);const part=w.slice(0,k);return{code:`w = "${w}"\npart = w[:${k}]\nprint(part)\nprint(len(part))`,concept:"store a slice in a variable, then use it",why:`part = w[:${k}] is "${part}". Then len(part) counts its letters → ${part.length}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn(["a","b","c","d","e"],4);const target=pick(arr);const pos=arr.indexOf(target);return{code:`letters = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, ch in enumerate(letters):\n    if ch == "${target}":\n        print("found at", i)`,concept:"enumerate to find WHERE an item sits",why:`Scanning with positions, when ch == "${target}" (at index ${pos}) it prints "found at ${pos}".`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([10,20,30,40,50],3);let t=0;arr.forEach((v,i)=>t+=i+v);const parts=arr.map((v,i)=>`(${i}+${v})`).join(" + ");return{code:`vals = [${arr.join(", ")}]\ntotal = 0\nfor i, v in enumerate(vals):\n    total = total + i + v\nprint(total)`,concept:"enumerate gives both index and value to use",why:`Each turn adds index + value: ${parts} = ${t}.`};}},
+ ]
+};
+
+/* ===== topics for the filter ===== */
+const TOPICS=[["all","All"],["loops","Loops"],["conditionals","If/Else"],["functions","Functions"],["strings","Strings"],["lists","Lists"],["dicts","Dicts"]];
+
+/* ===== ranks ===== */
+const RANKS=[[0,"🥚 Hatchling"],[40,"🌱 Sprout"],[110,"🐍 Coder"],[220,"🔥 Sharp"],[380,"⚡ Pro"],[600,"🏆 Master"],[900,"🧙 Wizard"],[1300,"🌟 Legend"]];
+function rankFor(xp){ let r=RANKS[0],nxt=null; for(let i=0;i<RANKS.length;i++){ if(xp>=RANKS[i][0]){r=RANKS[i];nxt=RANKS[i+1]||null;} } return {name:r[1],base:r[0],next:nxt}; }
+
+/* ===== persistence ===== */
+const SK={stars:"ct-stars",streak:"ct-streak",solved:"ct-solved",xp:"ct-xp",badges:"ct-badges",srs:"ct-srs",clock:"ct-clock"};
+function ld(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+let stars=ld(SK.stars,5), streak=ld(SK.streak,0), solved=ld(SK.solved,0), xp=ld(SK.xp,0);
+let badges=ld(SK.badges,[]);
+let srs=ld(SK.srs,{}), clock=ld(SK.clock,0);
+let mode="easy", topic="all", cur=null, attempts=0, solvedThis=false, bought=[];
+let gameMode=ld("ct-mode","alt"), qIndex=0, curW=null, __lvl=0;
+let forceTopic=null, forceLevel=null, reviewed=false;
+const TOPIC_KEYS=["basics","strings","loops","conditionals","functions","lists","dicts"];
+const SRS_INT=[0,1,3,8,20,50];
+function levelFromBox(box){ return box<=2?1:(box<=4?2:3); }
+function recordReview(t,success){ if(reviewed) return; reviewed=true; clock++; sv(SK.clock,clock);
+  const s=srs[t]||{box:1,seen:0,at:0}; s.box=success?Math.min(5,s.box+1):1; s.seen=(s.seen||0)+1; s.at=clock; srs[t]=s; sv(SK.srs,srs); updateWeak(); }
+function pickDueTopic(){ let due=[],rest=[]; for(const t of TOPIC_KEYS){ const s=srs[t]; if(!s){ rest.push({t,box:99,d:Infinity}); continue; } const d=s.at+SRS_INT[s.box]; (d<=clock?due:rest).push({t,box:s.box,d}); } const pool=due.length?due:rest; pool.sort((a,b)=>a.box-b.box||a.d-b.d); return pool[0].t; }
+function updateWeak(){ const el=document.getElementById("weakspots"); if(!el) return; const seen=Object.keys(srs);
+  if(!seen.length){ el.textContent="🩹 Review mode focuses on the topics you miss most."; return; }
+  const weak=seen.filter(t=>srs[t].box<=2).sort((a,b)=>srs[a].box-srs[b].box).slice(0,3);
+  el.innerHTML = weak.length ? ("Needs review: "+weak.map(t=>`<span style='color:var(--coral)'>${t}</span>`).join(", ")) : "<span style='color:var(--jade)'>All topics looking solid! 🎉</span>"; }
+
+/* ===== badges ===== */
+const BADGES=[
+ {id:"hard1",test:()=>__lvl>=3,label:"💪 Cracked a Hard challenge!"},
+ {id:"s5",test:()=>streak===5,label:"🔥 5 in a row!"},
+ {id:"s10",test:()=>streak===10,label:"⚡ 10 streak — on fire!"},
+ {id:"s20",test:()=>streak===20,label:"🌟 20 streak — unstoppable!"},
+ {id:"solved25",test:()=>solved===25,label:"🎯 25 puzzles solved!"},
+ {id:"solved100",test:()=>solved===100,label:"🏅 100 puzzles solved!"},
+];
+let toastTimer=null;
+function toast(msg){ const t=document.getElementById("toast"); t.innerHTML=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2600); }
+function checkBadges(lvl){ if(lvl!=null) __lvl=lvl; for(const b of BADGES){ if(!badges.includes(b.id) && b.test()){ badges.push(b.id); sv(SK.badges,badges); toast("<b>Badge unlocked</b> · "+b.label); break; } } }
+
+/* ===== stats / rank UI ===== */
+function updateStats(){
+  document.getElementById("stStars").textContent=stars;
+  document.getElementById("stStreak").textContent=streak;
+  document.getElementById("stSolved").textContent=solved;
+  const r=rankFor(xp);
+  document.getElementById("rankName").textContent=r.name;
+  if(r.next){ const span=r.next[0]-r.base, into=xp-r.base; document.getElementById("xpFill").style.width=Math.min(100,Math.round(into/span*100))+"%"; document.getElementById("xpText").textContent=`${xp} XP · ${r.next[0]-xp} to ${r.next[1].replace(/^\S+\s/,"")}`; }
+  else { document.getElementById("xpFill").style.width="100%"; document.getElementById("xpText").textContent=`${xp} XP · max rank`; }
+}
+
+/* ===== question generation (output computed by runPy) ===== */
+function poolFor(){
+  const t = forceTopic || topic;
+  const lvls = forceLevel ? [forceLevel] : (mode==="mix"?[1,2,3,4]:[{easy:1,medium:2,hard:3,expert:4}[mode]]);
+  let items=[];
+  for(const lv of lvls) for(const it of GEN[lv]) if(t==="all"||it.topic===t) items.push({lv,it});
+  if(!items.length){ for(const lv of lvls) for(const it of GEN[lv]) items.push({lv,it}); } // relax topic
+  if(!items.length){ for(const lv of [1,2,3,4]) for(const it of GEN[lv]) items.push({lv,it}); }
+  return items;
+}
+function newQuestion(){
+  const pool=poolFor();
+  for(let tries=0;tries<25;tries++){
+    const {lv,it}=pick(pool);
+    const q=it.gen();
+    const res=runPy(q.code);
+    if(!res.err && res.out.trim().length){ q.out=res.out.replace(/\n$/,""); q.level=lv; q.topic=it.topic; return q; }
+  }
+  // ultra-safe fallback
+  const a=ri(2,9),b=ri(2,9);
+  return {code:`a = ${a}\nb = ${b}\nprint(a + b)`,out:String(a+b),level:1,topic:"basics",concept:"variables and +",why:`${a}+${b}=${a+b}.`};
+}
+
+/* ===== hints ===== */
+function shapeHint(out){
+  if(out.includes("\n")) return `It prints <b>${out.split("\n").length} lines</b>.`;
+  if(out==="True"||out==="False") return `The answer is just <b>True</b> or <b>False</b>.`;
+  if(/^-?\d+$/.test(out)) return `The output is <b>one whole number</b>.`;
+  if(out.startsWith("[")) return `The output is a <b>list</b> like <span class="c">[ ... ]</span>.`;
+  if(out.startsWith("{")) return `The output is a <b>dictionary</b> like <span class="c">{ ... }</span>.`;
+  return `The output is <b>text</b> (${out.length} characters).`;
+}
+function revealHint(out){
+  if(out.includes("\n")){ return `The first line is: <span class="c">${esc(out.split("\n")[0])}</span>`; }
+  if(out.length<=2) return `It starts with <span class="c">${esc(out[0])}</span> (very short).`;
+  return `It starts with <span class="c">${esc(out.slice(0,Math.max(1,Math.ceil(out.length/3))))}</span>…`;
+}
+const HINTS=[
+ {cost:1,label:"Concept",make:q=>`<b>Concept:</b> ${q.concept}.`},
+ {cost:2,label:"Shape",make:q=>`<b>Shape:</b> ${shapeHint(q.out)}`},
+ {cost:3,label:"Reveal start",make:q=>`<b>Reveal:</b> ${revealHint(q.out)}`},
+];
+function renderHintBar(){
+  const bar=document.getElementById("hintBar"); if(!bar) return;
+  bar.querySelectorAll(".hbtn").forEach((btn,i)=>{ const h=HINTS[i];
+    if(bought.includes(i)){ btn.classList.add("used"); btn.disabled=true; btn.textContent=h.label+" ✓"; }
+    else { btn.disabled = solvedThis || stars<h.cost; btn.textContent=`${h.label} (${h.cost}⭐)`; } });
+}
+function buyHint(i){
+  if(solvedThis||bought.includes(i)) return; const h=HINTS[i]; if(stars<h.cost) return;
+  stars-=h.cost; sv(SK.stars,stars); bought.push(i); updateStats();
+  const div=document.createElement("div"); div.className="hint-card"; div.innerHTML=h.make(cur);
+  document.getElementById("hintOut").appendChild(div); renderHintBar();
+}
+
+/* ===== rendering ===== */
+function codeHtml(code){ return code.split("\n").map((ln,i)=>`<div class="cl"><span class="ln">${i+1}</span><span class="lt">${esc(ln)||" "}</span></div>`).join(""); }
+const LVLNAME=["","Easy","Medium","Hard","Expert"];
+function worth(lv){ return "⭐".repeat(lv)+` · +${lv*10} XP`; }
+function renderPredict(){
+  attempts=0; solvedThis=false; bought=[]; cur=newQuestion(); updateStats();
+  document.getElementById("card").innerHTML=`
+    <div class="qrow">
+      <span class="qlabel">${LVLNAME[cur.level]} · trace it</span>
+      <span class="qtopic">${cur.topic}</span>
+    </div>
+    <div class="ask">What does this program <b>print</b>? <span style="color:var(--saffron-soft);font-size:12px;">(worth ${worth(cur.level)})</span></div>
+    <div class="editor">
+      <div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">trace.py</span></div>
+      <div class="code">${codeHtml(cur.code)}</div>
+    </div>
+    <div class="alabel"><span>⌨</span> Your answer (one line per printed line)</div>
+    <textarea class="ans" id="ans" spellcheck="false" placeholder="Type exactly what gets printed…"></textarea>
+    <div class="hints">
+      <div class="hint-bar" id="hintBar">
+        <span class="htitle">Stuck? Hints:</span>
+        <button class="hbtn" data-h="0"></button>
+        <button class="hbtn" data-h="1"></button>
+        <button class="hbtn" data-h="2"></button>
+      </div>
+      <div class="hint-out" id="hintOut"></div>
+    </div>
+    <div class="controls">
+      <button class="btn-check" id="checkBtn">Check</button>
+      <button class="btn-ghost" id="giveBtn">Show answer</button>
+      <button class="btn-ghost" id="skipBtn">Skip →</button>
+    </div>
+    <div class="fb" id="fb"></div>`;
+  const ans=document.getElementById("ans"); ans.focus();
+  ans.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="Enter") check(); });
+  document.getElementById("checkBtn").addEventListener("click",check);
+  document.getElementById("giveBtn").addEventListener("click",giveUp);
+  document.getElementById("skipBtn").addEventListener("click",next);
+  document.querySelectorAll("#hintBar .hbtn").forEach(b=>b.addEventListener("click",()=>buyHint(parseInt(b.dataset.h,10))));
+  renderHintBar();
+}
+function realBlock(){ return `<span class="real">${esc(cur.out)}</span>`
+  +`<div class="why"><b>Step by step:</b> ${cur.why}</div>`
+  +`<div class="why" style="margin-top:5px;"><b>The idea:</b> ${cur.concept}.</div>`
+  +`<div class="why" style="margin-top:6px;"><a href="visualize.html#${encodeURIComponent(cur.code)}" target="_blank" rel="noopener" style="color:var(--jade);font-weight:600;">🔎 Watch this run line by line →</a></div>`; }
+function showFb(kind,html){ const fb=document.getElementById("fb"); fb.className="fb "+kind+" show"; fb.innerHTML=html; }
+function lockSolved(){
+  solvedThis=true;
+  document.getElementById("checkBtn").style.display="none";
+  document.getElementById("giveBtn").style.display="none";
+  const skip=document.getElementById("skipBtn"); skip.textContent="Next →"; skip.className="btn-next";
+  renderHintBar();
+}
+
+function check(){
+  if(solvedThis) return;
+  const user=norm(document.getElementById("ans").value);
+  const expect=norm(cur.out);
+  if(user===expect){
+    const firstTry = attempts===0 && bought.length===0;
+    const sReward=cur.level, xReward=cur.level*10;
+    stars+=sReward; xp+=xReward; solved++;
+    if(firstTry) streak++;
+    sv(SK.stars,stars); sv(SK.xp,xp); sv(SK.solved,solved); sv(SK.streak,streak);
+    updateStats();
+    let extra = firstTry?` <b>+${sReward}⭐ · +${xReward} XP</b>` : ` +${sReward}⭐ · +${xReward} XP (you got there — that counts!)`;
+    let sb = (firstTry && streak>0 && streak%5===0)?` 🔥 ${streak} streak!`:"";
+    showFb("win","<b>✓ Correct!</b>"+extra+sb+realBlock());
+    lockSolved(); checkBadges(cur.level); recordReview(cur.topic,true);
+    return;
+  }
+  // wrong — explain why, then let them retry (full walkthrough after the 2nd miss)
+  attempts++; streak=0; sv(SK.streak,streak); updateStats();
+  const caseOnly = user.length && user.toLowerCase()===expect.toLowerCase();
+  let nudge;
+  if(!user) nudge="Type what the program prints — one line for each thing it prints.";
+  else if(caseOnly) nudge="Right letters, but Python is <b>case-sensitive</b> — check your capitals (e.g. <span class='c'>True</span>, not <span class='c'>true</span>).";
+  else if(user.split("\n").length!==expect.split("\n").length) nudge=`Your answer has <b>${user.split("\n").length} line(s)</b>, but this program prints <b>${expect.split("\n").length} line(s)</b>. Count the <span class='c'>print()</span>s — and how many times each loop repeats.`;
+  else nudge="Right number of lines — but a value is off. Re-check the arithmetic, or which branch the <span class='c'>if</span> takes.";
+  if(attempts>=2){
+    showFb("miss","<b>Let's walk through it together.</b> "+nudge+realBlock());
+    lockSolved(); recordReview(cur.topic,false);
+  } else {
+    showFb(caseOnly?"almost":"miss","<b>Not quite — try again.</b> "+nudge
+      +`<div class="why" style="margin-top:6px;"><b>The idea:</b> ${cur.concept}. <span style="color:var(--cream-dim)">(Try once more — your answer stays. A hint reveals the shape or the start; the full walkthrough shows after another try.)</span></div>`);
+  }
+}
+function giveUp(){
+  if(solvedThis) return;
+  streak=0; sv(SK.streak,streak); updateStats();
+  showFb("almost","<b>Here's the answer:</b>"+realBlock());
+  lockSolved(); recordReview(cur.topic,false);
+}
+function next(){ qIndex++; render(); }
+
+/* ===== selectors ===== */
+document.querySelectorAll(".pill.lvl").forEach(p=>p.addEventListener("click",()=>{
+  document.querySelectorAll(".pill.lvl").forEach(x=>x.classList.remove("active"));
+  p.classList.add("active"); mode=p.dataset.mode; render();
+}));
+(function buildTopics(){
+  const box=document.getElementById("topicChips");
+  box.innerHTML=TOPICS.map(([k,l],i)=>`<button class="chip${i===0?" active":""}" data-t="${k}">${l}</button>`).join("");
+  box.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+    box.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
+    c.classList.add("active"); topic=c.dataset.t; render();
+  }));
+})();
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  stars=5;streak=0;solved=0;xp=0;badges=[];srs={};clock=0;
+  sv(SK.stars,stars);sv(SK.streak,streak);sv(SK.solved,solved);sv(SK.xp,xp);sv(SK.badges,badges);sv(SK.srs,srs);sv(SK.clock,clock);
+  qIndex=0; updateStats(); updateWeak(); render();
+});
+
+/* ===== Write-Code mode: type code, run it, get checked (output- or test-based) ===== */
+const WGEN={
+ 1:[
+  {topic:"basics",gen:()=>({prompt:`Make Python print exactly:  <b>Hello, World!</b>`,starter:`# write your code below\n`,kind:"output",expected:"Hello, World!",solution:`print("Hello, World!")`,concept:"print() shows the text inside the quotes",why:`print("Hello, World!") sends that exact text to the screen.`})},
+  {topic:"basics",gen:()=>{const a=ri(11,40),b=ri(11,40);return{prompt:`Print the <b>sum of ${a} and ${b}</b>.`,starter:``,kind:"output",expected:String(a+b),solution:`print(${a} + ${b})`,concept:"Python can do math right inside print()",why:`${a} + ${b} = ${a+b}.`};}},
+  {topic:"basics",gen:()=>{const nm=pick(NAMES);return{prompt:`Make a variable called <b>name</b> set to <b>"${nm}"</b>, then print it.`,starter:``,kind:"output",expected:nm,need:["name","="],solution:`name = "${nm}"\nprint(name)`,concept:"store a value in a variable, then use its name",why:`name holds "${nm}", and print(name) shows what's inside.`};}},
+  {topic:"strings",gen:()=>{const w=pick(["hello","python","code","star"]);return{prompt:`Print the word <b>"${w}"</b> in ALL CAPITALS using <span class='c'>.upper()</span>.`,starter:``,kind:"output",expected:w.toUpperCase(),need:[".upper("],solution:`print("${w}".upper())`,concept:".upper() returns the uppercase version of text",why:`"${w}".upper() gives "${w.toUpperCase()}".`};}},
+  {topic:"strings",gen:()=>{const a=pick(NAMES);return{prompt:`Using an <b>f-string</b>, print:  <b>Hi ${a}</b>  (the name is already in a variable).`,starter:`name = "${a}"\n`,kind:"output",expected:`Hi ${a}`,need:['f"'],solution:`name = "${a}"\nprint(f"Hi {name}")`,concept:"f-strings drop a variable's value into text with { }",why:`f"Hi {name}" fills in ${a}.`};}},
+ ],
+ 2:[
+  {topic:"loops",gen:()=>({prompt:`Print the numbers <b>1 to 5</b>, each on its own line. (Use a <span class='c'>for</span> loop.)`,starter:`for i in range(1, 6):\n    `,kind:"output",expected:"1\n2\n3\n4\n5",need:["for"],solution:`for i in range(1, 6):\n    print(i)`,concept:"range(1, 6) gives 1,2,3,4,5",why:`The loop runs once per number and prints it.`})},
+  {topic:"loops",gen:()=>({prompt:`Print only the <b>even</b> numbers from <b>1 to 10</b>. (Use a loop and an if.)`,starter:`for n in range(1, 11):\n    `,kind:"output",expected:"2\n4\n6\n8\n10",need:["for","if","%"],solution:`for n in range(1, 11):\n    if n % 2 == 0:\n        print(n)`,concept:"n % 2 == 0 is True for even numbers",why:`Only the even numbers pass the if and get printed.`})},
+  {topic:"conditionals",gen:()=>{const a=ri(1,20);return{prompt:`The variable <b>x = ${a}</b> is set for you. Print <b>"big"</b> if x is greater than 10, otherwise print <b>"small"</b>.`,starter:`x = ${a}\n`,kind:"output",expected:a>10?"big":"small",need:["if"],solution:`x = ${a}\nif x > 10:\n    print("big")\nelse:\n    print("small")`,concept:"if/else chooses what to do",why:`${a} > 10 is ${a>10}, so it prints "${a>10?"big":"small"}".`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([2,3,4,5,6,7],3);const s=arr.reduce((p,c)=>p+c,0);return{prompt:`The list <b>nums = [${arr.join(", ")}]</b> is given. Print the <b>total</b> of its numbers.`,starter:`nums = [${arr.join(", ")}]\n`,kind:"output",expected:String(s),solution:`nums = [${arr.join(", ")}]\nprint(sum(nums))`,concept:"sum() adds a whole list (a loop works too)",why:`${arr.join(" + ")} = ${s}.`};}},
+  {topic:"functions",gen:()=>({prompt:`Write a function <b>add(a, b)</b> that <b>returns</b> a + b. (It will be tested with a few values.)`,starter:`def add(a, b):\n    `,kind:"func",tests:`print(add(2, 3))\nprint(add(10, 20))`,expectedTests:"5\n30",need:["def","return"],solution:`def add(a, b):\n    return a + b`,concept:"a function hands back a value with 'return'",why:`add(2, 3) → 5 and add(10, 20) → 30.`})},
+ ],
+ 3:[
+  {topic:"functions",gen:()=>({prompt:`Write a function <b>double(n)</b> that returns <b>n times 2</b>.`,starter:`def double(n):\n    `,kind:"func",tests:`print(double(4))\nprint(double(25))`,expectedTests:"8\n50",need:["def","return"],solution:`def double(n):\n    return n * 2`,concept:"a function transforms its input and returns it",why:`double(4) → 8, double(25) → 50.`})},
+  {topic:"functions",gen:()=>({prompt:`Write a function <b>greet(name)</b> that returns <b>"Hi " + name</b>.`,starter:`def greet(name):\n    `,kind:"func",tests:`print(greet("Sam"))\nprint(greet("Ada"))`,expectedTests:"Hi Sam\nHi Ada",need:["def","return"],solution:`def greet(name):\n    return "Hi " + name`,concept:"join strings with +",why:`greet("Sam") → "Hi Sam".`})},
+  {topic:"loops",gen:()=>({prompt:`Print the numbers <b>5 down to 1</b> (a countdown), each on its own line.`,starter:``,kind:"output",expected:"5\n4\n3\n2\n1",solution:`for i in range(5, 0, -1):\n    print(i)`,concept:"range can count down with a negative step",why:`range(5, 0, -1) → 5, 4, 3, 2, 1.`})},
+  {topic:"lists",gen:()=>({prompt:`Build a list of the <b>squares</b> of 1, 2, 3, 4 and print it. (Expected: [1, 4, 9, 16])`,starter:`result = []\n`,kind:"output",expected:"[1, 4, 9, 16]",need:["append"],solution:`result = []\nfor i in range(1, 5):\n    result.append(i * i)\nprint(result)`,concept:"grow a list with .append() inside a loop",why:`The squares of 1..4 are 1, 4, 9, 16.`})},
+  {topic:"functions",gen:()=>({prompt:`Write a function <b>is_even(n)</b> that returns <b>True</b> if n is even, otherwise <b>False</b>.`,starter:`def is_even(n):\n    `,kind:"func",tests:`print(is_even(4))\nprint(is_even(7))`,expectedTests:"True\nFalse",need:["def","return"],solution:`def is_even(n):\n    return n % 2 == 0`,concept:"you can return a comparison (it's True or False)",why:`4 is even → True, 7 is odd → False.`})},
+ ]
+};
+const WHINTS=[
+ {cost:1,label:"Concept",make:c=>`<b>Concept:</b> ${c.concept}.`},
+ {cost:2,label:"Approach",make:c=>`<b>Approach:</b> Build it line by line and press Run to test as you go. Key idea: ${c.concept}.`},
+ {cost:3,label:"Show solution",make:c=>`<b>One solution:</b><div class="wsol">${esc(c.solution)}</div>`},
+];
+function award(level, firstTry){ stars+=level; xp+=level*10; solved++; if(firstTry) streak++; sv(SK.stars,stars); sv(SK.xp,xp); sv(SK.solved,solved); sv(SK.streak,streak); updateStats(); }
+function writePoolFor(){ const t=forceTopic||topic; const lvls = forceLevel ? [Math.min(3,forceLevel)] : (mode==="mix"?[1,2,3]:[{easy:1,medium:2,hard:3,expert:3}[mode]]); let items=[]; for(const lv of lvls) for(const it of WGEN[lv]) if(t==="all"||it.topic===t) items.push({lv,it}); if(!items.length){ for(const lv of lvls) for(const it of WGEN[lv]) items.push({lv,it}); } if(!items.length){ for(const lv of [1,2,3]) for(const it of WGEN[lv]) items.push({lv,it}); } return items; }
+function newWrite(){ const pool=writePoolFor(); const {lv,it}=pick(pool); const c=it.gen(); c.level=lv; c.topic=it.topic; return c; }
+function renderHintBarW(){ const bar=document.getElementById("hintBar"); if(!bar) return; bar.querySelectorAll(".hbtn").forEach((btn,i)=>{ const h=WHINTS[i]; if(bought.includes(i)){ btn.classList.add("used"); btn.disabled=true; btn.textContent=h.label+" ✓"; } else { btn.disabled=solvedThis||stars<h.cost; btn.textContent=`${h.label} (${h.cost}⭐)`; } }); }
+function buyHintW(i){ if(solvedThis||bought.includes(i)) return; const h=WHINTS[i]; if(stars<h.cost) return; stars-=h.cost; sv(SK.stars,stars); bought.push(i); updateStats(); const div=document.createElement("div"); div.className="hint-card"; div.innerHTML=h.make(curW); document.getElementById("hintOut").appendChild(div); renderHintBarW(); }
+function renderWrite(){
+  curW=newWrite(); updateStats();
+  document.getElementById("card").innerHTML=`
+    <div class="qrow">
+      <span class="qlabel">✍️ Write · ${LVLNAME[curW.level]}</span>
+      <span class="qtopic">${curW.topic}</span>
+    </div>
+    <div class="taskbox"><b>Task:</b> ${curW.prompt} <span style="color:var(--saffron-soft);font-size:12px;">(worth ${worth(curW.level)})</span></div>
+    <div class="editor">
+      <div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">solution.py</span></div>
+      <textarea class="ans" id="wcode" spellcheck="false" style="min-height:120px;">${esc(curW.starter||"")}</textarea>
+    </div>
+    <div class="controls">
+      <button class="btn-run" id="wrun">▶ Run</button>
+      <button class="btn-check" id="wsubmit">Submit ✓</button>
+      <button class="btn-ghost" id="wgive">Show answer</button>
+      <button class="btn-ghost" id="wskip">Skip →</button>
+    </div>
+    <div class="output" id="wout"><span class="ph">Press Run to test your code…</span></div>
+    <div class="hints">
+      <div class="hint-bar" id="hintBar">
+        <span class="htitle">Stuck? Hints:</span>
+        <button class="hbtn" data-h="0"></button>
+        <button class="hbtn" data-h="1"></button>
+        <button class="hbtn" data-h="2"></button>
+      </div>
+      <div class="hint-out" id="hintOut"></div>
+    </div>
+    <div class="fb" id="fb"></div>`;
+  const ta=document.getElementById("wcode"); ta.focus();
+  ta.addEventListener("keydown",e=>{ if(e.key==="Tab"){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.slice(0,s)+"    "+ta.value.slice(en);ta.selectionStart=ta.selectionEnd=s+4;} if((e.ctrlKey||e.metaKey)&&e.key==="Enter") wsubmit(); });
+  document.getElementById("wrun").addEventListener("click",wrun);
+  document.getElementById("wsubmit").addEventListener("click",wsubmit);
+  document.getElementById("wgive").addEventListener("click",wgive);
+  document.getElementById("wskip").addEventListener("click",next);
+  document.querySelectorAll("#hintBar .hbtn").forEach(b=>b.addEventListener("click",()=>buyHintW(parseInt(b.dataset.h,10))));
+  renderHintBarW();
+}
+function friendlyError(raw){
+  const m=String(raw); let plain="Something's off in the code.";
+  if(/NameError/.test(m)){ const n=(m.match(/name '([^']+)'/)||[])[1]; plain=`Python doesn't recognise <span class='c'>${esc(n||"that name")}</span>. Usually a typo, a missing quote (text needs quotes like <span class='c'>"hi"</span>), or using it before you created it.`; }
+  else if(/SyntaxError/.test(m)) plain=`There's a typo in the structure — most often a missing <span class='c'>:</span> at the end of an if/for/while/def line, or a missing <span class='c'>)</span> or quote.`;
+  else if(/IndexError/.test(m)) plain=`You asked for a list or string position that doesn't exist. Counting starts at <span class='c'>0</span>, so a list of 3 has positions 0, 1, 2.`;
+  else if(/KeyError/.test(m)) plain=`That key isn't in the dictionary. Check the spelling, or use <span class='c'>.get(key)</span>.`;
+  else if(/str \+ non-str|cannot add string/.test(m)) plain=`You tried to join text and a number with <span class='c'>+</span>. Turn the number into text with <span class='c'>str(...)</span>, or use an f-string: <span class='c'>f"n={n}"</span>.`;
+  else if(/not callable/.test(m)) plain=`You tried to "call" something that isn't a function — often an extra pair of <span class='c'>()</span>.`;
+  else if(/missing arg/.test(m)) plain=`Your function was called with too few values — give it every input it asks for.`;
+  else if(/AttributeError/.test(m)) plain=`That action doesn't exist for this kind of value. For example <span class='c'>.append()</span> is for lists and <span class='c'>.upper()</span> is for text.`;
+  else if(/loop too long|RuntimeError/.test(m)) plain=`Your loop never stops — make sure something changes inside it so the condition becomes False.`;
+  else if(/cannot unpack|ValueError/.test(m)) plain=`The number of variables doesn't match the data — e.g. <span class='c'>for a, b in ...</span> needs each item to have two parts.`;
+  else if(/not iterable/.test(m)) plain=`You tried to loop over something that isn't a sequence (like a plain number). Loop over a list, string, or range.`;
+  else if(/not indexable|not sliceable/.test(m)) plain=`You used <span class='c'>[ ]</span> on something that doesn't support it (like a number).`;
+  return `<b>What went wrong:</b> ${plain}<br><span style="color:var(--cream-dim);font-size:11.5px;">Python's words: ${esc(m)}</span>`;
+}
+function wrun(){ const res=runPy(document.getElementById("wcode").value); const o=document.getElementById("wout");
+  if(res.err){ o.className="output err"; o.innerHTML=friendlyError(res.err); }
+  else { o.className="output"; o.textContent=res.out.trim().length?res.out:"(your code ran, but nothing was printed)"; } }
+function checkWrite(code){
+  const res=runPy(code);
+  if(res.err) return {ok:false,err:res.err};
+  if(curW.need){ for(const s of curW.need){ if(!code.includes(s)) return {ok:false,msg:`Make sure your code uses <span class='c'>${esc(s)}</span>.`}; } }
+  if(curW.kind==="output"){ return {ok:norm(res.out)===norm(curW.expected),got:res.out}; }
+  const full=runPy(code+"\n"+curW.tests);
+  if(full.err) return {ok:false,err:full.err};
+  let testOut=full.out; if(testOut.startsWith(res.out)) testOut=testOut.slice(res.out.length);
+  return {ok:norm(testOut)===norm(curW.expectedTests),got:testOut};
+}
+function lockWrite(){ solvedThis=true; ["wsubmit","wgive","wrun"].forEach(id=>{const el=document.getElementById(id); if(el) el.style.display="none";}); const skip=document.getElementById("wskip"); skip.textContent="Next →"; skip.className="btn-next"; renderHintBarW(); }
+function wsubmit(){
+  if(solvedThis) return;
+  const code=document.getElementById("wcode").value; const r=checkWrite(code);
+  if(r.ok){
+    const firstTry=attempts===0 && bought.length===0; award(curW.level,firstTry);
+    const extra=firstTry?` <b>+${curW.level}⭐ · +${curW.level*10} XP</b>`:` +${curW.level}⭐ · +${curW.level*10} XP (you got it working!)`;
+    const sb=(firstTry && streak>0 && streak%5===0)?` 🔥 ${streak} streak!`:"";
+    showFb("win","<b>✓ Your code works!</b>"+extra+sb
+      +`<div class="why" style="margin-top:7px;"><b>Why it works:</b> ${curW.why}</div>`
+      +`<div class="why" style="margin-top:5px;"><b>A clean solution:</b></div><div class="wsol">${esc(curW.solution)}</div>`);
+    lockWrite(); checkBadges(curW.level); recordReview(curW.topic,true);
+    return;
+  }
+  attempts++; streak=0; sv(SK.streak,streak); updateStats();
+  let msg;
+  if(r.err) msg=friendlyError(r.err)+`<br>Fix it and Submit again.`;
+  else if(r.msg) msg=r.msg;
+  else msg=`Not matching yet. Your output:<div class="wsol">${esc((r.got||"").replace(/\n$/,"").trim()||"(nothing printed)")}</div>Expected:<div class="wsol">${esc(curW.kind==="output"?curW.expected:curW.expectedTests)}</div>`;
+  if(attempts>=3){ showFb("miss","<b>Here's one way to do it.</b> "+msg+`<div class="why" style="margin-top:7px;"><b>Solution:</b></div><div class="wsol">${esc(curW.solution)}</div><div class="why" style="margin-top:5px;">${curW.why}</div>`); lockWrite(); recordReview(curW.topic,false); }
+  else showFb("miss","<b>Almost — try again.</b> "+msg+`<div class="why" style="margin-top:6px;"><b>Idea:</b> ${curW.concept}. <span style="color:var(--cream-dim)">(Press Run to see your output; a hint can show the approach or a full solution.)</span></div>`);
+}
+function wgive(){ if(solvedThis) return; streak=0; sv(SK.streak,streak); updateStats(); showFb("almost","<b>Here's a working solution:</b><div class=\"wsol\">"+esc(curW.solution)+"</div><div class=\"why\" style=\"margin-top:6px;\">"+curW.why+"</div>"); lockWrite(); recordReview(curW.topic,false); }
+
+/* ===== dispatcher: predict or write (alternating) ===== */
+function render(){
+  attempts=0; solvedThis=false; bought=[]; reviewed=false; forceTopic=null; forceLevel=null;
+  if(gameMode==="review"){ const t=pickDueTopic(); forceTopic=t; const s=srs[t]; forceLevel=levelFromBox(s?s.box:1); }
+  const isWrite = gameMode==="write" || ((gameMode==="alt"||gameMode==="review") && qIndex%2===1);
+  if(isWrite) renderWrite(); else renderPredict();
+}
+(function buildMode(){
+  const row=document.getElementById("modeRow"); if(!row) return;
+  row.querySelectorAll(".chip.mode").forEach(c=>{
+    c.classList.toggle("active", c.dataset.gm===gameMode);
+    c.addEventListener("click",()=>{ row.querySelectorAll(".chip.mode").forEach(x=>x.classList.remove("active")); c.classList.add("active"); gameMode=c.dataset.gm; sv("ct-mode",gameMode); qIndex=0; render(); });
+  });
+})();
+
+/* ===== boot ===== */
+updateStats();
+updateWeak();
+render();
+</script>
+</body>
+</html>

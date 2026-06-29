@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Watch It Run — Python step-by-step visualizer</title>
+<style>
+  :root{
+    --night-0:#0c0d2b; --night-1:#15123f; --night-2:#1d1850;
+    --surface:#221c57; --surface-soft:#2a2466; --ink:#090a1c;
+    --cream:#f4eddd; --cream-dim:#bdb6d8;
+    --saffron:#f2a93b; --saffron-soft:#f6c878;
+    --jade:#74d6c3; --lotus:#c9a7f0; --coral:#f0856f;
+    --hair:rgba(244,237,221,0.12);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ background:
+      radial-gradient(1200px 700px at 80% -10%, #2a2068 0%, transparent 55%),
+      radial-gradient(900px 600px at 0% 110%, #241a5a 0%, transparent 50%),
+      linear-gradient(160deg, var(--night-0), var(--night-1) 60%, var(--night-2));
+    color:var(--cream); font-family:var(--sans); line-height:1.5; min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 60px;}
+  header.top{text-align:center;margin-bottom:10px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--saffron);opacity:.85;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,8vw,40px);margin:6px 0 4px;}
+  h1 .glow{color:var(--saffron-soft);}
+  .sub{color:var(--cream-dim);font-size:13.5px;max-width:46ch;margin:0 auto;}
+  .nav{display:flex;justify-content:center;gap:7px;margin:12px 0 12px;flex-wrap:wrap;}
+  .pill{font-size:12.5px;font-weight:600;border:1px solid var(--hair);background:var(--surface);color:var(--cream-dim);border-radius:999px;padding:7px 13px;text-decoration:none;display:inline-block;cursor:pointer;}
+  .pill:hover{color:var(--cream);}
+
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .preset{font-size:12px;font-weight:600;border:1px solid var(--hair);background:var(--surface-soft);color:var(--cream-dim);border-radius:999px;padding:5px 11px;cursor:pointer;}
+  .preset:hover{color:var(--cream);}
+
+  .editor{background:var(--ink);border:1px solid rgba(244,237,221,.10);border-radius:13px;overflow:hidden;}
+  .ebar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid rgba(244,237,221,.07);}
+  .ebar .d{width:10px;height:10px;border-radius:50%;}
+  .ebar .r{background:#ff6b6b;}.ebar .y{background:#ffce5b;}.ebar .g{background:#74d6c3;}
+  .ebar .fn{margin-left:6px;font-family:var(--mono);font-size:11px;color:var(--cream-dim);}
+  textarea.ta{width:100%;border:0;outline:0;resize:vertical;min-height:120px;background:transparent;color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.7;padding:12px 14px;display:block;tab-size:4;}
+
+  .controls{display:flex;gap:9px;margin-top:12px;flex-wrap:wrap;align-items:center;}
+  button{font-family:var(--sans);font-size:14px;font-weight:600;border:0;border-radius:11px;padding:10px 15px;cursor:pointer;transition:transform .1s,filter .15s;}
+  button:active{transform:translateY(1px);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-go{background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);}
+  .btn-step{background:var(--surface-soft);color:var(--cream);border:1px solid rgba(116,214,195,.4);}
+  .btn-ghost{background:transparent;color:var(--cream-dim);border:1px solid var(--hair);font-weight:500;}
+
+  .stage{margin-top:14px;display:none;}
+  .stage.show{display:block;}
+  .runline{font-family:var(--mono);font-size:12px;color:var(--saffron-soft);margin-bottom:6px;}
+  .codeview{background:var(--ink);border:1px solid rgba(244,237,221,.10);border-radius:13px;overflow:hidden;padding:10px 8px 10px 0;}
+  .cl{display:flex;border-radius:6px;}
+  .cl .ln{width:34px;flex:0 0 34px;text-align:right;padding-right:12px;color:#5b5687;user-select:none;font-family:var(--mono);font-size:13.5px;line-height:1.7;}
+  .cl .lt{white-space:pre;color:#cfd6f0;font-family:var(--mono);font-size:13.5px;line-height:1.7;}
+  .cl.hot{background:rgba(242,169,59,.16);}
+  .cl.hot .lt{color:#fff;}
+  .cl.hot .ln{color:var(--saffron-soft);}
+
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  @media(max-width:540px){ .panels{grid-template-columns:1fr;} }
+  .panel{background:linear-gradient(180deg,var(--surface),rgba(29,24,80,.6));border:1px solid var(--hair);border-radius:13px;padding:11px 12px;}
+  .panel h3{margin:0 0 7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim);font-weight:700;}
+  .vrow{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed rgba(244,237,221,.08);font-family:var(--mono);font-size:13px;}
+  .vrow:last-child{border-bottom:0;}
+  .vrow .vn{color:var(--lotus);}
+  .vrow .vv{color:var(--jade);white-space:pre-wrap;word-break:break-word;text-align:right;}
+  .vrow.changed{background:rgba(116,214,195,.10);border-radius:6px;padding:4px 6px;margin:0 -6px;}
+  .empty{color:var(--cream-dim);font-style:italic;font-size:13px;}
+  .outbox{font-family:var(--mono);font-size:13px;white-space:pre-wrap;word-break:break-word;color:var(--cream);min-height:18px;}
+  .scopetag{font-size:10px;color:var(--cream-dim);float:right;font-family:var(--mono);text-transform:none;letter-spacing:0;}
+  .errbox{margin-top:10px;border:1px solid rgba(240,133,111,.5);background:rgba(240,133,111,.08);color:var(--coral);border-radius:12px;padding:10px 12px;font-family:var(--mono);font-size:13px;white-space:pre-wrap;display:none;}
+  .errbox.show{display:block;}
+  .stepbar{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap;}
+  .stepbar input[type=range]{flex:1;min-width:140px;accent-color:var(--saffron);}
+  .stepcount{font-family:var(--mono);font-size:12px;color:var(--cream-dim);white-space:nowrap;}
+  .note{font-size:12px;color:var(--cream-dim);margin-top:8px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">see how code really runs</div>
+    <h1>Watch It <span class="glow">Run</span></h1>
+    <p class="sub">Step through Python one line at a time and watch the variables and output change. The best way to truly understand loops, variables, and functions.</p>
+  </header>
+  <div class="nav">
+    <a class="pill" href="learn.html">📚 Learn</a>
+    <a class="pill" href="quiz.html">🎯 Practice</a>
+    <a class="pill" href="index.html">🐍 Quest &amp; AI</a>
+  </div>
+
+  <div class="presets" id="presets"></div>
+  <div class="editor"><div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">run_me.py</span></div>
+    <textarea class="ta" id="vizCode" spellcheck="false"></textarea></div>
+  <div class="controls">
+    <button class="btn-go" id="vizBtn">▶ Visualize</button>
+    <span class="note" style="margin:0;color:var(--cream-dim);font-size:12px;">edit the code, then visualize</span>
+  </div>
+
+  <div class="errbox" id="errbox"></div>
+
+  <div class="stage" id="stage">
+    <div class="runline" id="runline"></div>
+    <div class="codeview" id="codeview"></div>
+    <div class="panels">
+      <div class="panel"><h3>Variables</h3><div id="vars"></div></div>
+      <div class="panel"><h3>Output so far</h3><div class="outbox" id="outbox"></div></div>
+    </div>
+    <div class="stepbar">
+      <button class="btn-step" id="prevBtn">◀ Back</button>
+      <button class="btn-step" id="nextBtn">Step ▶</button>
+      <button class="btn-go" id="playBtn">▶ Play</button>
+      <input type="range" id="slider" min="0" max="0" value="0" />
+      <span class="stepcount" id="stepcount">0 / 0</span>
+    </div>
+    <div class="note">Tip: press <b>Step ▶</b> repeatedly and watch the highlighted line, the variables, and the output.</div>
+  </div>
+</div>
+
+<script>
+/* ===== mini-py with TRACING: records a step (line, variables, output) before
+   each statement runs, so we can replay execution line by line. ===== */
+function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
+function scanLine(line){ let s="",depth=0,inStr=false,q="",esc=false;
+  for(let k=0;k<line.length;k++){ const c=line[k];
+    if(inStr){ s+=c; if(esc){esc=false;} else if(c==="\\"){esc=true;} else if(c===q){inStr=false;} continue; }
+    if(c==="'"||c==='"'){inStr=true;q=c;s+=c;continue;}
+    if(c==="#"){break;}
+    if(c==="("||c==="["||c==="{")depth++; if(c===")"||c==="]"||c==="}")depth--; s+=c; }
+  return {text:s,depth,open:depth>0,openFrom:(d)=>(d+depth)>0,depthFrom:(d)=>d+depth}; }
+function toLogicalLines(src){ const phys=src.replace(/\r\n/g,"\n").replace(/\t/g,"    ").split("\n"); const res=[]; let i=0;
+  while(i<phys.length){ let raw=phys[i]; const indent=raw.length-raw.trimStart().length; const startLine=i+1;
+    let {text,depth,open}=scanLine(raw); let buf=text;
+    while(open && i+1<phys.length){ i++; const nxt=scanLine(phys[i]); buf+=" "+nxt.text.trim(); open=nxt.openFrom(depth); depth=nxt.depthFrom(depth); }
+    if(buf.trim().length>0) res.push({indent,text:buf,line:startLine}); i++; }
+  return res; }
+function parseBlock(lines,st,parentIndent){ const body=[]; if(st.i>=lines.length) return body;
+  const indent=lines[st.i].indent; if(indent<=parentIndent) return body;
+  while(st.i<lines.length && lines[st.i].indent===indent){ body.push(parseStatement(lines,st,indent)); } return body; }
+function parseStatement(lines,st,indent){ const text=lines[st.i].text.trim(); const ln=lines[st.i].line; let m;
+  if((m=/^if\s+(.*):$/.exec(text))){ st.i++; const cond=parseExpr(m[1]); const branches=[{cond,body:parseBlock(lines,st,indent)}]; let els=null;
+    while(st.i<lines.length && lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^elif\s+(.*):$/.exec(t))){ st.i++; branches.push({cond:parseExpr(em[1]),body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); break; } else break; }
+    return {t:"if",branches,els,line:ln}; }
+  if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(",").map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:"for",targets,iter,body:parseBlock(lines,st,indent),line:ln}; }
+  if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:"while",cond:parseExpr(m[1]),body:parseBlock(lines,st,indent),line:ln}; }
+  if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:"def",name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent),line:ln}; }
+  if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:"return",expr:ex?parseExpr(ex):{t:"none"},line:ln}; }
+  st.i++; const eq=findTopAssign(text);
+  if(eq>=0){ return {t:"assign",target:text.slice(0,eq).trim(),expr:parseExpr(text.slice(eq+1).trim()),line:ln}; }
+  return {t:"expr",expr:parseExpr(text),line:ln}; }
+function parseParams(s){ s=s.trim(); if(!s) return []; return splitTop(s,",").map(p=>{ const e=findTopAssign(p); if(e>=0) return {name:p.slice(0,e).trim(),def:parseExpr(p.slice(e+1).trim())}; return {name:p.trim(),def:null}; }); }
+function splitTop(s,sep){ const parts=[]; let depth=0,inStr=false,q="",esc=false,cur=""; for(let k=0;k<s.length;k++){ const c=s[k];
+  if(inStr){ cur+=c; if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+  if(c==="'"||c==='"'){inStr=true;q=c;cur+=c;continue;}
+  if(c==="("||c==="["||c==="{"){depth++;cur+=c;continue;} if(c===")"||c==="]"||c==="}"){depth--;cur+=c;continue;}
+  if(c===sep&&depth===0){parts.push(cur);cur="";continue;} cur+=c; } if(cur.trim().length) parts.push(cur); return parts; }
+function findTopAssign(text){ let depth=0,inStr=false,q="",esc=false; for(let k=0;k<text.length;k++){ const c=text[k];
+  if(inStr){ if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+  if(c==="'"||c==='"'){inStr=true;q=c;continue;}
+  if(c==="("||c==="["||c==="{")depth++; else if(c===")"||c==="]"||c==="}")depth--;
+  else if(c==="="&&depth===0){ const prev=text[k-1],next=text[k+1]; if(next==="="){k++;continue;} if(prev==="="||prev==="!"||prev===">"||prev==="<")continue; return k; } } return -1; }
+function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),isIdc=c=>/[A-Za-z0-9_]/.test(c),isD=c=>/[0-9]/.test(c);
+  while(k<s.length){ const c=s[k]; if(c===" "||c==="\t"){k++;continue;}
+    if((c==="f"||c==="F")&&(s[k+1]==='"'||s[k+1]==="'")){ const q=s[k+1]; let j=k+2,val="",esc=false; while(j<s.length){const d=s[j];if(esc){val+=d;esc=false;}else if(d==="\\"){val+=d;esc=true;}else if(d===q){break;}else val+=d;j++;} toks.push({t:"fstr",v:val}); k=j+1; continue; }
+    if(c==='"'||c==="'"){ const q=c; let j=k+1,val="",esc=false; while(j<s.length){const d=s[j];if(esc){val+=unesc(d);esc=false;}else if(d==="\\"){esc=true;}else if(d===q){break;}else val+=d;j++;} toks.push({t:"str",v:val}); k=j+1; continue; }
+    if(isD(c)||(c==="."&&isD(s[k+1]))){ let j=k,num=""; while(j<s.length&&/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:"num",v:parseFloat(num)}); k=j; continue; }
+    if(isId(c)){ let j=k,id=""; while(j<s.length&&isIdc(s[j])){id+=s[j];j++;}
+      if(id==="True")toks.push({t:"bool",v:true}); else if(id==="False")toks.push({t:"bool",v:false}); else if(id==="None")toks.push({t:"none"});
+      else if(id==="and"||id==="or"||id==="not"||id==="in")toks.push({t:"kw",v:id}); else toks.push({t:"name",v:id}); k=j; continue; }
+    const two=s.slice(k,k+2); if(["==","!=",">=","<="].includes(two)){toks.push({t:"op",v:two});k+=2;continue;}
+    if("+-*/%<>()[]{}:,.".includes(c)){toks.push({t:"op",v:c});k++;continue;} throw pyError("SyntaxError: unexpected character '"+c+"'"); }
+  return toks; }
+function unesc(d){return d==="n"?"\n":d==="t"?"\t":d;}
+function parseExpr(str){ const toks=tokenize(str); const p={toks,i:0}; const node=parseOr(p); if(p.i<toks.length) throw pyError("SyntaxError: unexpected token"); return node; }
+function peek(p){return p.toks[p.i];}
+function eat(p,v){const t=p.toks[p.i];if(!t||(v&&!(t.v===v||t.t===v)))throw pyError("SyntaxError near '"+(t?t.v:"end")+"'");p.i++;return t;}
+function parseOr(p){let l=parseAnd(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="or"){p.i++;l={t:"bin",op:"or",l,r:parseAnd(p)};}return l;}
+function parseAnd(p){let l=parseNot(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="and"){p.i++;l={t:"bin",op:"and",l,r:parseNot(p)};}return l;}
+function parseNot(p){if(peek(p)&&peek(p).t==="kw"&&peek(p).v==="not"){p.i++;return {t:"unary",op:"not",e:parseNot(p)};}return parseCmp(p);}
+function parseCmp(p){let l=parseAdd(p);while(peek(p)&&((peek(p).t==="op"&&["<",">","==","!=",">=","<="].includes(peek(p).v))||(peek(p).t==="kw"&&peek(p).v==="in"))){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseAdd(p)};}return l;}
+function parseAdd(p){let l=parseMul(p);while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="+"||peek(p).v==="-")){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseMul(p)};}return l;}
+function parseMul(p){let l=parseUnary(p);while(peek(p)&&peek(p).t==="op"&&["*","/","%"].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseUnary(p)};}return l;}
+function parseUnary(p){if(peek(p)&&peek(p).t==="op"&&peek(p).v==="-"){p.i++;return {t:"unary",op:"-",e:parseUnary(p)};}return parsePostfix(p);}
+function parsePostfix(p){ let e=parsePrimary(p);
+  while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="."||peek(p).v==="("||peek(p).v==="[")){ const op=peek(p).v;
+    if(op==="."){p.i++;const nm=eat(p,"name").v;e={t:"attr",obj:e,name:nm};}
+    else if(op==="("){p.i++;const args=[];if(!(peek(p)&&peek(p).v===")")){args.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;args.push(parseOr(p));}}eat(p,")");e={t:"call",fn:e,args};}
+    else {p.i++; let first=null; if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) first=parseOr(p);
+      if(peek(p)&&peek(p).v===":"){ p.i++; let stp=null,step=null; if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) stp=parseOr(p); if(peek(p)&&peek(p).v===":"){ p.i++; if(!(peek(p)&&peek(p).v==="]")) step=parseOr(p); } eat(p,"]"); e={t:"slice",obj:e,start:first,stop:stp,step:step}; }
+      else { eat(p,"]"); e={t:"index",obj:e,idx:first}; } } }
+  return e; }
+function parsePrimary(p){ const t=peek(p); if(!t)throw pyError("SyntaxError: unexpected end");
+  if(t.t==="num"){p.i++;return {t:"num",v:t.v};} if(t.t==="str"){p.i++;return {t:"str",v:t.v};}
+  if(t.t==="fstr"){p.i++;return {t:"fstr",v:t.v};} if(t.t==="bool"){p.i++;return {t:"bool",v:t.v};}
+  if(t.t==="none"){p.i++;return {t:"none"};} if(t.t==="name"){p.i++;return {t:"name",v:t.v};}
+  if(t.t==="op"&&t.v==="("){p.i++;const e=parseOr(p);eat(p,")");return e;}
+  if(t.t==="op"&&t.v==="["){p.i++;const items=[];if(!(peek(p)&&peek(p).v==="]")){items.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="]")break;items.push(parseOr(p));}}eat(p,"]");return {t:"list",items};}
+  if(t.t==="op"&&t.v==="{"){p.i++;const pairs=[];if(!(peek(p)&&peek(p).v==="}")){do{if(peek(p)&&peek(p).v==="}")break;const k=parseOr(p);eat(p,":");const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&&peek(p).v===","&&(p.i++,true));}eat(p,"}");return {t:"dict",pairs};}
+  throw pyError("SyntaxError near '"+t.v+"'"); }
+
+/* ---- tracer ---- */
+let TR=null;
+function rec(line,scope,G){ if(!TR) return; if(TR.steps.length>=TR.cap) throw pyError("__cap");
+  const vars=[]; for(const k of Object.keys(scope)){ if(k==="__out")continue; const v=scope[k]; if(v&&v.__fn)continue; vars.push({name:k,val:pyRepr(v)}); }
+  TR.steps.push({line,vars,out:G.__out.join(""),scope:(scope===G?"global":"in function")}); }
+
+function execBlock(stmts,scope,G){ for(const s of stmts) execStmt(s,scope,G); }
+function execStmt(s,scope,G){ switch(s.t){
+  case "assign":{ rec(s.line,scope,G); const val=evalExpr(s.expr,scope,G); if(!/^[A-Za-z_]\w*$/.test(s.target)) throw pyError("SyntaxError: bad assign target"); scope[s.target]=val; return; }
+  case "expr": rec(s.line,scope,G); evalExpr(s.expr,scope,G); return;
+  case "if":{ rec(s.line,scope,G); for(const b of s.branches){ if(truthy(evalExpr(b.cond,scope,G))){ execBlock(b.body,scope,G); return; } } if(s.els) execBlock(s.els,scope,G); return; }
+  case "for":{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); rec(s.line,scope,G); execBlock(s.body,scope,G); } return; }
+  case "while":{ let g=0; while(truthy(evalExpr(s.cond,scope,G))){ rec(s.line,scope,G); execBlock(s.body,scope,G); if(++g>100000) throw pyError("RuntimeError: loop too long"); } return; }
+  case "def":{ rec(s.line,scope,G); scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
+  case "return":{ rec(s.line,scope,G); throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError("ValueError: cannot unpack"); targets.forEach((t,i)=>scope[t]=item[i]); } }
+function lookup(name,scope,G){ if(name in scope) return scope[name]; if(name in G) return G[name]; throw pyError("NameError: name '"+name+"' is not defined"); }
+function evalExpr(n,scope,G){ switch(n.t){
+  case "num": return n.v; case "str": return n.v; case "bool": return n.v; case "none": return null;
+  case "fstr": return evalFString(n.v,scope,G); case "name": return lookup(n.v,scope,G);
+  case "list": return n.items.map(x=>evalExpr(x,scope,G));
+  case "dict":{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case "unary":{ const v=evalExpr(n.e,scope,G); if(n.op==="-") return -v; if(n.op==="not") return !truthy(v); return; }
+  case "bin": return evalBin(n,scope,G);
+  case "index":{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
+    if(Array.isArray(o)){ let idx=i<0?o.length+i:i; if(idx<0||idx>=o.length) throw pyError("IndexError"); return o[idx]; }
+    if(o instanceof Map){ if(!o.has(i)) throw pyError("KeyError: "+pyRepr(i)); return o.get(i); }
+    if(typeof o==="string"){ let idx=i<0?o.length+i:i; return o[idx]; } throw pyError("TypeError: not indexable"); }
+  case "slice":{ const o=evalExpr(n.obj,scope,G); const a=n.start?evalExpr(n.start,scope,G):null; const b=n.stop?evalExpr(n.stop,scope,G):null; const c=n.step?evalExpr(n.step,scope,G):null; if(!(Array.isArray(o)||typeof o==="string")) throw pyError("TypeError: not sliceable"); return pySlice(o,a,b,c); }
+  case "attr": return {__bound:true,obj:evalExpr(n.obj,scope,G),name:n.name};
+  case "call": return evalCall(n,scope,G); } }
+function evalBin(n,scope,G){ const op=n.op;
+  if(op==="and"){const l=evalExpr(n.l,scope,G);return truthy(l)?evalExpr(n.r,scope,G):l;}
+  if(op==="or"){const l=evalExpr(n.l,scope,G);return truthy(l)?l:evalExpr(n.r,scope,G);}
+  const a=evalExpr(n.l,scope,G),b=evalExpr(n.r,scope,G);
+  switch(op){ case "+": if(typeof a==="string"||typeof b==="string"){ if(typeof a!=="string"||typeof b!=="string") throw pyError("TypeError: str + non-str"); return a+b; } if(Array.isArray(a)&&Array.isArray(b)) return a.concat(b); return a+b;
+    case "-": return a-b; case "*": if(typeof a==="string"&&typeof b==="number") return a.repeat(b); if(typeof a==="number"&&typeof b==="string") return b.repeat(a); return a*b;
+    case "/": return a/b; case "%": return ((a%b)+b)%b; case "<": return a<b; case ">": return a>b; case "<=": return a<=b; case ">=": return a>=b;
+    case "==": return pyEq(a,b); case "!=": return !pyEq(a,b);
+    case "in":{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b==="string") return b.includes(a); return false; } } }
+function evalCall(n,scope,G){
+  if(n.fn.t==="attr"){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
+  if(n.fn.t==="name"){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
+    if(name==="print"){ G.__out.push(args.map(pyStr).join(" ")+"\n"); return null; }
+    if(name==="len"){ const x=args[0]; if(Array.isArray(x)||typeof x==="string")return x.length; if(x instanceof Map)return x.size; throw pyError("TypeError: no len()"); }
+    if(name==="range"){ let a=0,b,step=1; if(args.length===1){b=args[0];}else{a=args[0];b=args[1];if(args.length>2)step=args[2];} const r=[]; if(step>0)for(let i=a;i<b;i+=step)r.push(i); else for(let i=a;i>b;i+=step)r.push(i); return r; }
+    if(name==="str"){ return pyStr(args[0]); } if(name==="int"){ return Math.trunc(Number(args[0])); } if(name==="float"){ return Number(args[0]); }
+    if(name==="sum"){ return (args[0]||[]).reduce((x,y)=>x+y,0); } if(name==="min"){ return Math.min.apply(null,args); } if(name==="max"){ return Math.max.apply(null,args); }
+    if(name==="abs"){ return Math.abs(args[0]); } if(name==="round"){ return Math.round(args[0]); }
+    if(name==="enumerate"){ const seq=iterate(args[0]); const start=args.length>1?args[1]:0; return seq.map((x,i)=>[start+i,x]); }
+    return callUser(lookup(name,scope,G),args,G); }
+  return callUser(evalExpr(n.fn,scope,G),n.args.map(a=>evalExpr(a,scope,G)),G); }
+function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError("TypeError: not callable"); const local=Object.create(null);
+  fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError("TypeError: missing arg '"+p.name+"'"); });
+  try{ execBlock(fn.body,local,G); }catch(e){ if(e&&e.__ret) return e.value; throw e; } return null; }
+function callMethod(obj,name,args){
+  if(Array.isArray(obj)){ if(name==="append"){obj.push(args[0]);return null;} if(name==="pop"){return obj.pop();} if(name==="count"){return obj.filter(x=>pyEq(x,args[0])).length;} throw pyError("AttributeError: list."+name); }
+  if(obj instanceof Map){ if(name==="items")return Array.from(obj.entries()).map(([k,v])=>[k,v]); if(name==="keys")return Array.from(obj.keys()); if(name==="values")return Array.from(obj.values()); if(name==="get")return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); throw pyError("AttributeError: dict."+name); }
+  if(typeof obj==="string"){ if(name==="upper")return obj.toUpperCase(); if(name==="lower")return obj.toLowerCase(); if(name==="title")return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name==="capitalize")return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name==="count"){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;} throw pyError("AttributeError: str."+name); }
+  throw pyError("AttributeError"); }
+function evalFString(raw,scope,G){ let res="",i=0; while(i<raw.length){ const c=raw[i];
+  if(c==="{"){ if(raw[i+1]==="{"){res+="{";i+=2;continue;} let j=i+1,depth=1,ex=""; while(j<raw.length&&depth>0){const d=raw[j];if(d==="{")depth++;else if(d==="}"){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
+  else if(c==="}"){ if(raw[i+1]==="}"){res+="}";i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
+function truthy(v){ if(v===null||v===false)return false; if(v===0||v==="")return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
+function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((x,i)=>pyEq(x,b[i])); return a===b; }
+function pyStr(v){ if(v===null)return "None"; if(v===true)return "True"; if(v===false)return "False"; if(typeof v==="number")return String(v); if(typeof v==="string")return v; if(Array.isArray(v))return "["+v.map(pyRepr).join(", ")+"]"; if(v instanceof Map)return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}"; if(v&&v.__fn)return "<function>"; return String(v); }
+function pyRepr(v){ if(typeof v==="string")return "'"+v+"'"; return pyStr(v); }
+function iterate(v){ if(Array.isArray(v))return v; if(typeof v==="string")return v.split(""); if(v instanceof Map)return Array.from(v.keys()); throw pyError("TypeError: not iterable"); }
+function pySlice(seq,start,stop,step){ const isStr=typeof seq==="string"; const arr=isStr?seq.split(""):seq; const len=arr.length;
+  step=(step==null)?1:step; if(step===0) throw pyError("ValueError: slice step cannot be zero"); let lower,upper; if(step<0){lower=-1;upper=len-1;}else{lower=0;upper=len;}
+  let s; if(start==null){s=step<0?upper:lower;} else { s=start; if(s<0){s+=len; if(s<lower)s=lower;} else if(s>upper)s=upper; }
+  let e; if(stop==null){e=step<0?lower:upper;} else { e=stop; if(e<0){e+=len; if(e<lower)e=lower;} else if(e>upper)e=upper; }
+  const out=[]; if(step>0){ for(let i=s;i<e;i+=step) out.push(arr[i]); } else { for(let i=s;i>e;i+=step) out.push(arr[i]); } return isStr?out.join(""):out; }
+function tracePy(src){ TR={steps:[],cap:1200}; const out=[]; let err=null,truncated=false;
+  try{ const prog=parseBlock(toLogicalLines(src),{i:0},-1); const G=Object.create(null); G.__out=out; execBlock(prog,G,G);
+    TR.steps.push({line:null,vars:(function(){const a=[];for(const k of Object.keys(G)){if(k==="__out")continue;const v=G[k];if(v&&v.__fn)continue;a.push({name:k,val:pyRepr(v)});}return a;})(),out:out.join(""),scope:"global",done:true});
+  }catch(e){ if(e&&e.__ret){} else if(e&&e.message==="__cap"){ truncated=true; } else if(e&&e.__pyerr){ err=e.message; } else { err=(e&&e.message)||String(e); } }
+  const steps=TR.steps; TR=null; return {steps,out:out.join(""),err,truncated}; }
+</script>
+
+<script>
+/* ===== UI ===== */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function friendlyError(raw){ const m=String(raw); let plain="Something's off in the code.";
+  if(/NameError/.test(m)){ const n=(m.match(/name '([^']+)'/)||[])[1]; plain=`Python doesn't recognise <code>${esc(n||"that name")}</code> — usually a typo, a missing quote, or using it before creating it.`; }
+  else if(/SyntaxError/.test(m)) plain=`A typo in the structure — often a missing <code>:</code> at the end of an if/for/while/def line, or a missing <code>)</code> or quote.`;
+  else if(/IndexError/.test(m)) plain=`You asked for a position that doesn't exist. Counting starts at <code>0</code>.`;
+  else if(/KeyError/.test(m)) plain=`That key isn't in the dictionary — check spelling or use <code>.get(key)</code>.`;
+  else if(/str \+ non-str|cannot add string/.test(m)) plain=`You joined text and a number with <code>+</code>. Use <code>str(...)</code> or an f-string.`;
+  else if(/not callable/.test(m)) plain=`You "called" something that isn't a function — maybe extra <code>()</code>.`;
+  else if(/missing arg/.test(m)) plain=`Your function needs more inputs than you gave it.`;
+  else if(/AttributeError/.test(m)) plain=`That action doesn't exist for this value — e.g. <code>.append()</code> is for lists, <code>.upper()</code> for text.`;
+  else if(/loop too long|RuntimeError/.test(m)) plain=`Your loop never stops — make sure something changes so it ends.`;
+  else if(/cannot unpack|ValueError/.test(m)) plain=`The number of variables doesn't match the data.`;
+  else if(/not iterable/.test(m)) plain=`You looped over something that isn't a sequence — use a list, string, or range.`;
+  else if(/not indexable|not sliceable/.test(m)) plain=`You used <code>[ ]</code> on something that doesn't support it.`;
+  return `<b>What went wrong:</b> ${plain}<br><span style="color:var(--cream-dim);font-size:11.5px;">Python's words: ${esc(m)}</span>`; }
+const PRESETS=[
+ {name:"Loop: add 1..4",code:`total = 0\nfor i in range(1, 5):\n    total = total + i\nprint(total)`},
+ {name:"Build a list",code:`squares = []\nfor i in range(1, 5):\n    squares.append(i * i)\nprint(squares)`},
+ {name:"If / else",code:`score = 7\nif score >= 5:\n    print("pass")\nelse:\n    print("retry")`},
+ {name:"Function",code:`def double(n):\n    return n * 2\n\nx = double(5)\nprint(x)`},
+ {name:"While countdown",code:`n = 3\nwhile n > 0:\n    print(n)\n    n = n - 1\nprint("Go!")`},
+ {name:"Enumerate",code:`fruits = ["apple", "mango", "pear"]\nfor i, fruit in enumerate(fruits):\n    print(i, fruit)`},
+];
+let steps=[], si=0, srcLines=[], playTimer=null, prevVars={};
+
+const ta=document.getElementById("vizCode");
+ta.addEventListener("keydown",e=>{ if(e.key==="Tab"){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.slice(0,s)+"    "+ta.value.slice(en);ta.selectionStart=ta.selectionEnd=s+4;} });
+
+(function buildPresets(){ const box=document.getElementById("presets");
+  box.innerHTML=PRESETS.map((p,i)=>`<button class="preset" data-i="${i}">${esc(p.name)}</button>`).join("");
+  box.querySelectorAll(".preset").forEach(b=>b.addEventListener("click",()=>{ ta.value=PRESETS[+b.dataset.i].code; visualize(); }));
+})();
+
+function visualize(){
+  stopPlay();
+  const src=ta.value;
+  srcLines=src.replace(/\r\n/g,"\n").split("\n");
+  const r=tracePy(src);
+  const errbox=document.getElementById("errbox");
+  if(r.err){ errbox.className="errbox show"; errbox.innerHTML=friendlyError(r.err)+"<br>Fix the code above and visualize again."; }
+  else errbox.className="errbox";
+  steps=r.steps;
+  if(r.truncated) steps.push({line:null,vars:[],out:r.out,scope:"global",done:true,note:"(stopped early — too many steps to show)"});
+  if(!steps.length){ document.getElementById("stage").className="stage"; return; }
+  si=0; prevVars={};
+  const sl=document.getElementById("slider"); sl.max=steps.length-1; sl.value=0;
+  document.getElementById("stage").className="stage show";
+  draw();
+}
+function draw(){
+  const step=steps[si];
+  // code with highlight
+  document.getElementById("codeview").innerHTML=srcLines.map((ln,i)=>{
+    const hot = step.line===(i+1);
+    return `<div class="cl${hot?" hot":""}"><span class="ln">${i+1}</span><span class="lt">${esc(ln)||" "}</span></div>`;
+  }).join("");
+  // run line label
+  const rl=document.getElementById("runline");
+  if(step.done) rl.innerHTML="✓ Finished — the program is done.";
+  else rl.innerHTML=`▶ About to run <b>line ${step.line}</b> <span class="scopetag">${step.scope}</span>`;
+  // vars (highlight changed)
+  const vbox=document.getElementById("vars");
+  if(!step.vars.length) vbox.innerHTML='<div class="empty">(no variables yet)</div>';
+  else vbox.innerHTML=step.vars.map(v=>{ const changed = prevVars[v.name]!==undefined && prevVars[v.name]!==v.val; const isNew = prevVars[v.name]===undefined;
+    return `<div class="vrow${(changed||isNew)?" changed":""}"><span class="vn">${esc(v.name)}</span><span class="vv">${esc(v.val)}</span></div>`; }).join("");
+  // output
+  const o=document.getElementById("outbox"); o.textContent=step.out.length?step.out:"(no output yet)";
+  // stepbar
+  document.getElementById("stepcount").textContent=(si+1)+" / "+steps.length;
+  document.getElementById("slider").value=si;
+  document.getElementById("prevBtn").disabled = si===0;
+  document.getElementById("nextBtn").disabled = si===steps.length-1;
+  // remember vars for change-highlight next step
+  prevVars={}; step.vars.forEach(v=>prevVars[v.name]=v.val);
+}
+function go(to){ si=Math.max(0,Math.min(steps.length-1,to)); if(si>0){ prevVars={}; steps[si-1].vars.forEach(v=>prevVars[v.name]=v.val); } else prevVars={}; draw(); }
+function stopPlay(){ if(playTimer){clearInterval(playTimer);playTimer=null;} const b=document.getElementById("playBtn"); if(b) b.textContent="▶ Play"; }
+function togglePlay(){ const b=document.getElementById("playBtn");
+  if(playTimer){ stopPlay(); return; }
+  if(si>=steps.length-1) go(0);
+  b.textContent="⏸ Pause";
+  playTimer=setInterval(()=>{ if(si>=steps.length-1){ stopPlay(); return; } go(si+1); },800);
+}
+document.getElementById("vizBtn").addEventListener("click",visualize);
+document.getElementById("prevBtn").addEventListener("click",()=>{stopPlay();go(si-1);});
+document.getElementById("nextBtn").addEventListener("click",()=>{stopPlay();go(si+1);});
+document.getElementById("playBtn").addEventListener("click",togglePlay);
+document.getElementById("slider").addEventListener("input",e=>{stopPlay();go(+e.target.value);});
+
+/* prefill from URL hash (#<url-encoded code>) so other pages can link here */
+(function boot(){
+  const h=location.hash?decodeURIComponent(location.hash.slice(1)):"";
+  ta.value = h || PRESETS[0].code;
+  visualize();
+})();
+</script>
+</body>
+</html>
