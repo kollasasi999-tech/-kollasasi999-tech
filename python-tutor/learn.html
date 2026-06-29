@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Learn Python — a guided beginner path</title>
+<style>
+  :root{
+    --night-0:#0c0d2b; --night-1:#15123f; --night-2:#1d1850;
+    --surface:#221c57; --surface-soft:#2a2466; --ink:#090a1c;
+    --cream:#f4eddd; --cream-dim:#bdb6d8;
+    --saffron:#f2a93b; --saffron-soft:#f6c878;
+    --jade:#74d6c3; --lotus:#c9a7f0; --coral:#f0856f;
+    --hair:rgba(244,237,221,0.12);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ background:
+      radial-gradient(1200px 700px at 80% -10%, #2a2068 0%, transparent 55%),
+      radial-gradient(900px 600px at 0% 110%, #241a5a 0%, transparent 50%),
+      linear-gradient(160deg, var(--night-0), var(--night-1) 60%, var(--night-2));
+    color:var(--cream); font-family:var(--sans); line-height:1.55; min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .wrap{max-width:700px;margin:0 auto;padding:18px 16px 60px;}
+  header.top{text-align:center;margin-bottom:10px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--saffron);opacity:.85;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,8vw,40px);margin:6px 0 4px;}
+  h1 .glow{color:var(--saffron-soft);}
+  .sub{color:var(--cream-dim);font-size:13.5px;max-width:44ch;margin:0 auto;}
+  .nav{display:flex;justify-content:center;gap:7px;margin:12px 0 12px;flex-wrap:wrap;}
+  .pill{font-size:12.5px;font-weight:600;border:1px solid var(--hair);background:var(--surface);color:var(--cream-dim);border-radius:999px;padding:7px 13px;text-decoration:none;display:inline-block;cursor:pointer;}
+  .pill:hover{color:var(--cream);}
+
+  .pathrow{display:flex;align-items:center;gap:6px;margin-bottom:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+  .pathrow::-webkit-scrollbar{display:none;}
+  .pdot{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:14px;background:var(--surface-soft);border:1.5px solid var(--hair);color:var(--cream-dim);}
+  .pdot.done{background:linear-gradient(160deg,var(--saffron),#d98a23);border-color:var(--saffron);color:var(--night-0);}
+  .pdot.cur{border-color:var(--saffron);color:var(--night-0);background:var(--saffron-soft);box-shadow:0 0 0 4px rgba(242,169,59,.16);}
+  .pline{flex:0 0 14px;height:2px;background:var(--hair);}
+  .pline.done{background:var(--saffron);}
+  .meta{font-family:var(--mono);font-size:11.5px;color:var(--cream-dim);text-align:center;margin-bottom:12px;}
+
+  .card{background:linear-gradient(180deg,var(--surface),rgba(29,24,80,.7));border:1px solid var(--hair);border-radius:20px;padding:20px 17px;box-shadow:0 16px 40px -24px rgba(0,0,0,.8);}
+  .phase{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--saffron);margin-bottom:4px;}
+  .title{font-family:var(--serif);font-size:26px;font-weight:600;margin:2px 0 12px;}
+  .teach{font-size:15.5px;color:var(--cream);}
+  .teach p{margin:0 0 11px;}
+  .teach b{color:var(--saffron-soft);font-weight:600;}
+  .teach code{font-family:var(--mono);font-size:13.5px;background:rgba(9,10,28,.7);padding:1px 6px;border-radius:5px;color:var(--jade);}
+  .blocklbl{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--cream-dim);margin:16px 0 7px;}
+  .taskbox{background:rgba(201,167,240,.10);border:1px solid rgba(201,167,240,.25);border-radius:12px;padding:11px 13px;font-size:14.5px;color:var(--cream);}
+  .taskbox b{color:var(--lotus);}
+
+  .editor{background:var(--ink);border:1px solid rgba(244,237,221,.10);border-radius:13px;overflow:hidden;}
+  .ebar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid rgba(244,237,221,.07);}
+  .ebar .d{width:10px;height:10px;border-radius:50%;}
+  .ebar .r{background:#ff6b6b;}.ebar .y{background:#ffce5b;}.ebar .g{background:#74d6c3;}
+  .ebar .fn{margin-left:6px;font-family:var(--mono);font-size:11px;color:var(--cream-dim);}
+  .code{padding:12px 8px 12px 0;font-family:var(--mono);font-size:13.5px;line-height:1.65;overflow-x:auto;}
+  .cl{display:flex;}.cl .ln{width:32px;flex:0 0 32px;text-align:right;padding-right:11px;color:#5b5687;user-select:none;}.cl .lt{white-space:pre;color:#e9e3ff;}
+  textarea.ta{width:100%;border:0;outline:0;resize:vertical;min-height:88px;background:transparent;color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.7;padding:12px 14px;display:block;tab-size:4;}
+  textarea.ans{width:100%;min-height:54px;resize:vertical;background:var(--ink);border:1px solid var(--hair);border-radius:11px;color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.6;padding:11px 13px;outline:none;}
+  textarea.ans:focus{border-color:var(--saffron);}
+
+  .controls{display:flex;gap:10px;margin-top:13px;flex-wrap:wrap;}
+  button{font-family:var(--sans);font-size:14.5px;font-weight:600;border:0;border-radius:11px;padding:11px 18px;cursor:pointer;transition:transform .1s,filter .15s;}
+  button:active{transform:translateY(1px);}
+  .btn-run{background:var(--surface-soft);color:var(--cream);border:1px solid rgba(116,214,195,.4);}
+  .btn-run:hover{filter:brightness(1.15);}
+  .btn-go{background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);}
+  .btn-next{background:linear-gradient(160deg,var(--jade),#48b6a2);color:var(--night-0);}
+  .btn-ghost{background:transparent;color:var(--cream-dim);border:1px solid var(--hair);font-weight:500;}
+
+  .output{margin-top:12px;border-radius:12px;border:1px solid var(--hair);background:rgba(9,10,28,.6);padding:11px 13px;font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;color:var(--cream);min-height:18px;}
+  .output .ph{color:var(--cream-dim);font-style:italic;}
+  .output.err{border-color:rgba(240,133,111,.5);background:rgba(240,133,111,.08);color:var(--coral);}
+  .fb{margin-top:12px;border-radius:12px;padding:12px 14px;font-size:14.5px;display:none;}
+  .fb.show{display:block;}
+  .fb.win{background:rgba(116,214,195,.12);border:1px solid rgba(116,214,195,.4);}.fb.win b{color:var(--jade);}
+  .fb.miss{background:rgba(242,169,59,.10);border:1px solid rgba(242,169,59,.4);}.fb.miss b{color:var(--saffron-soft);}
+  .fb .real{display:block;margin-top:7px;font-family:var(--mono);font-size:13.5px;background:rgba(9,10,28,.55);border-radius:8px;padding:8px 10px;white-space:pre-wrap;}
+  .fb .why{margin-top:8px;font-size:13.5px;color:var(--cream-dim);}.fb .why b{color:var(--lotus);}
+  .wsol{background:rgba(9,10,28,.6);border:1px solid var(--hair);border-radius:8px;padding:8px 10px;margin-top:6px;font-family:var(--mono);font-size:12.5px;color:#d6e2ff;white-space:pre;overflow-x:auto;}
+  .done-screen{text-align:center;}
+  .done-screen .big{font-family:var(--serif);font-size:46px;color:var(--saffron-soft);margin:8px 0;}
+  .footer{text-align:center;margin-top:16px;}
+  .footer button{background:none;border:0;color:var(--cream-dim);font-size:11.5px;text-decoration:underline;cursor:pointer;}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(40px);background:linear-gradient(160deg,#2a2466,#1d1850);border:1px solid rgba(246,200,120,.5);color:var(--cream);border-radius:14px;padding:12px 18px;font-size:14px;font-weight:600;box-shadow:0 18px 40px -16px rgba(0,0,0,.8);opacity:0;transition:opacity .3s,transform .3s;z-index:60;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}.toast b{color:var(--saffron-soft);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">guided beginner path</div>
+    <h1>Learn <span class="glow">Python</span></h1>
+    <p class="sub">Eight short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
+  </header>
+  <div class="nav">
+    <a class="pill" href="quiz.html">🎯 Practice game</a>
+    <a class="pill" href="index.html">🐍 Quest &amp; AI</a>
+  </div>
+  <div class="pathrow" id="pathrow"></div>
+  <div class="meta" id="meta"></div>
+  <main class="card" id="card"></main>
+  <div class="footer"><button id="resetBtn">Start the course over</button></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   mini-py — a tiny Python interpreter (pure JS). Used here to
+   COMPUTE the correct output of every generated program, so the
+   game's answers are always right. Cross-checked against real
+   CPython during development. Supports: print, variables,
+   f-strings, + - * // % **, comparisons, and/or/not, in, lists,
+   indexing, .append, len, sum, min, max, abs, round, dicts,
+   .items/.get/.keys/.values, range, for, while, if/elif/else,
+   def/return (defaults), .upper/.lower/.title/.count, comments.
+   (Intentionally avoids true division / and slicing.)
+   ============================================================ */
+function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
+function toLogicalLines(src){
+  const phys=src.replace(/\r\n/g,"\n").replace(/\t/g,"    ").split("\n");
+  const res=[]; let i=0;
+  while(i<phys.length){
+    let raw=phys[i]; const indent=raw.length-raw.trimStart().length;
+    let {text,depth,open}=scanLine(raw); let buf=text;
+    while(open && i+1<phys.length){ i++; const nxt=scanLine(phys[i]); buf+=" "+nxt.text.trim(); open=nxt.openFrom(depth); depth=nxt.depthFrom(depth); }
+    if(buf.trim().length>0) res.push({indent,text:buf}); i++;
+  }
+  return res;
+}
+function scanLine(line){
+  let s="",depth=0,inStr=false,q="",esc=false;
+  for(let k=0;k<line.length;k++){ const c=line[k];
+    if(inStr){ s+=c; if(esc){esc=false;} else if(c==="\\"){esc=true;} else if(c===q){inStr=false;} continue; }
+    if(c==="'"||c==='"'){inStr=true;q=c;s+=c;continue;}
+    if(c==="#"){break;}
+    if(c==="("||c==="["||c==="{")depth++;
+    if(c===")"||c==="]"||c==="}")depth--;
+    s+=c;
+  }
+  return {text:s,depth,open:depth>0,openFrom:(d)=>(d+depth)>0,depthFrom:(d)=>d+depth};
+}
+function parseBlock(lines,st,parentIndent){
+  const body=[]; if(st.i>=lines.length) return body;
+  const indent=lines[st.i].indent; if(indent<=parentIndent) return body;
+  while(st.i<lines.length && lines[st.i].indent===indent){ body.push(parseStatement(lines,st,indent)); }
+  return body;
+}
+function parseStatement(lines,st,indent){
+  const text=lines[st.i].text.trim(); let m;
+  if((m=/^if\s+(.*):$/.exec(text))){
+    st.i++; const cond=parseExpr(m[1]); const branches=[{cond,body:parseBlock(lines,st,indent)}]; let els=null;
+    while(st.i<lines.length && lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^elif\s+(.*):$/.exec(t))){ st.i++; branches.push({cond:parseExpr(em[1]),body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); break; } else break; }
+    return {t:"if",branches,els};
+  }
+  if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(",").map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:"for",targets,iter,body:parseBlock(lines,st,indent)}; }
+  if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:"while",cond:parseExpr(m[1]),body:parseBlock(lines,st,indent)}; }
+  if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:"def",name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent)}; }
+  if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:"return",expr:ex?parseExpr(ex):{t:"none"}}; }
+  st.i++;
+  const eq=findTopAssign(text);
+  if(eq>=0){ return {t:"assign",target:text.slice(0,eq).trim(),expr:parseExpr(text.slice(eq+1).trim())}; }
+  return {t:"expr",expr:parseExpr(text)};
+}
+function parseParams(s){ s=s.trim(); if(!s) return []; return splitTop(s,",").map(p=>{ const e=findTopAssign(p); if(e>=0) return {name:p.slice(0,e).trim(),def:parseExpr(p.slice(e+1).trim())}; return {name:p.trim(),def:null}; }); }
+function splitTop(s,sep){ const parts=[]; let depth=0,inStr=false,q="",esc=false,cur=""; for(let k=0;k<s.length;k++){ const c=s[k];
+  if(inStr){ cur+=c; if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+  if(c==="'"||c==='"'){inStr=true;q=c;cur+=c;continue;}
+  if(c==="("||c==="["||c==="{"){depth++;cur+=c;continue;}
+  if(c===")"||c==="]"||c==="}"){depth--;cur+=c;continue;}
+  if(c===sep&&depth===0){parts.push(cur);cur="";continue;} cur+=c; }
+  if(cur.trim().length) parts.push(cur); return parts; }
+function findTopAssign(text){ let depth=0,inStr=false,q="",esc=false; for(let k=0;k<text.length;k++){ const c=text[k];
+  if(inStr){ if(esc)esc=false; else if(c==="\\")esc=true; else if(c===q)inStr=false; continue; }
+  if(c==="'"||c==='"'){inStr=true;q=c;continue;}
+  if(c==="("||c==="["||c==="{")depth++; else if(c===")"||c==="]"||c==="}")depth--;
+  else if(c==="="&&depth===0){ const prev=text[k-1],next=text[k+1]; if(next==="="){k++;continue;} if(prev==="="||prev==="!"||prev===">"||prev==="<")continue; return k; } }
+  return -1; }
+function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),isIdc=c=>/[A-Za-z0-9_]/.test(c),isD=c=>/[0-9]/.test(c);
+  while(k<s.length){ const c=s[k];
+    if(c===" "||c==="\t"){k++;continue;}
+    if((c==="f"||c==="F")&&(s[k+1]==='"'||s[k+1]==="'")){ const q=s[k+1]; let j=k+2,val="",esc=false; while(j<s.length){const d=s[j];if(esc){val+=d;esc=false;}else if(d==="\\"){val+=d;esc=true;}else if(d===q){break;}else val+=d;j++;} toks.push({t:"fstr",v:val}); k=j+1; continue; }
+    if(c==='"'||c==="'"){ const q=c; let j=k+1,val="",esc=false; while(j<s.length){const d=s[j];if(esc){val+=unesc(d);esc=false;}else if(d==="\\"){esc=true;}else if(d===q){break;}else val+=d;j++;} toks.push({t:"str",v:val}); k=j+1; continue; }
+    if(isD(c)||(c==="."&&isD(s[k+1]))){ let j=k,num=""; while(j<s.length&&/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:"num",v:parseFloat(num)}); k=j; continue; }
+    if(isId(c)){ let j=k,id=""; while(j<s.length&&isIdc(s[j])){id+=s[j];j++;}
+      if(id==="True")toks.push({t:"bool",v:true}); else if(id==="False")toks.push({t:"bool",v:false}); else if(id==="None")toks.push({t:"none"});
+      else if(id==="and"||id==="or"||id==="not"||id==="in")toks.push({t:"kw",v:id}); else toks.push({t:"name",v:id}); k=j; continue; }
+    const two=s.slice(k,k+2); if(["==","!=",">=","<="].includes(two)){toks.push({t:"op",v:two});k+=2;continue;}
+    if("+-*/%<>()[]{}:,.".includes(c)){toks.push({t:"op",v:c});k++;continue;}
+    throw pyError("SyntaxError: unexpected character '"+c+"'"); }
+  return toks; }
+function unesc(d){return d==="n"?"\n":d==="t"?"\t":d;}
+function parseExpr(str){ const toks=tokenize(str); const p={toks,i:0}; const node=parseOr(p); if(p.i<toks.length) throw pyError("SyntaxError: unexpected token"); return node; }
+function peek(p){return p.toks[p.i];}
+function eat(p,v){const t=p.toks[p.i];if(!t||(v&&!(t.v===v||t.t===v)))throw pyError("SyntaxError near '"+(t?t.v:"end")+"'");p.i++;return t;}
+function parseOr(p){let l=parseAnd(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="or"){p.i++;l={t:"bin",op:"or",l,r:parseAnd(p)};}return l;}
+function parseAnd(p){let l=parseNot(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="and"){p.i++;l={t:"bin",op:"and",l,r:parseNot(p)};}return l;}
+function parseNot(p){if(peek(p)&&peek(p).t==="kw"&&peek(p).v==="not"){p.i++;return {t:"unary",op:"not",e:parseNot(p)};}return parseCmp(p);}
+function parseCmp(p){let l=parseAdd(p);while(peek(p)&&((peek(p).t==="op"&&["<",">","==","!=",">=","<="].includes(peek(p).v))||(peek(p).t==="kw"&&peek(p).v==="in"))){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseAdd(p)};}return l;}
+function parseAdd(p){let l=parseMul(p);while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="+"||peek(p).v==="-")){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseMul(p)};}return l;}
+function parseMul(p){let l=parseUnary(p);while(peek(p)&&peek(p).t==="op"&&["*","/","%"].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseUnary(p)};}return l;}
+function parseUnary(p){if(peek(p)&&peek(p).t==="op"&&peek(p).v==="-"){p.i++;return {t:"unary",op:"-",e:parseUnary(p)};}return parsePostfix(p);}
+function parsePostfix(p){ let e=parsePrimary(p);
+  while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="."||peek(p).v==="("||peek(p).v==="[")){ const op=peek(p).v;
+    if(op==="."){p.i++;const nm=eat(p,"name").v;e={t:"attr",obj:e,name:nm};}
+    else if(op==="("){p.i++;const args=[];if(!(peek(p)&&peek(p).v===")")){args.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;args.push(parseOr(p));}}eat(p,")");e={t:"call",fn:e,args};}
+    else {p.i++;
+      let first=null;
+      if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) first=parseOr(p);
+      if(peek(p)&&peek(p).v===":"){ p.i++; let stp=null,step=null;
+        if(!(peek(p)&&(peek(p).v===":"||peek(p).v==="]"))) stp=parseOr(p);
+        if(peek(p)&&peek(p).v===":"){ p.i++; if(!(peek(p)&&peek(p).v==="]")) step=parseOr(p); }
+        eat(p,"]"); e={t:"slice",obj:e,start:first,stop:stp,step:step};
+      } else { eat(p,"]"); e={t:"index",obj:e,idx:first}; } } }
+  return e; }
+function parsePrimary(p){ const t=peek(p); if(!t)throw pyError("SyntaxError: unexpected end");
+  if(t.t==="num"){p.i++;return {t:"num",v:t.v};}
+  if(t.t==="str"){p.i++;return {t:"str",v:t.v};}
+  if(t.t==="fstr"){p.i++;return {t:"fstr",v:t.v};}
+  if(t.t==="bool"){p.i++;return {t:"bool",v:t.v};}
+  if(t.t==="none"){p.i++;return {t:"none"};}
+  if(t.t==="name"){p.i++;return {t:"name",v:t.v};}
+  if(t.t==="op"&&t.v==="("){p.i++;const e=parseOr(p);eat(p,")");return e;}
+  if(t.t==="op"&&t.v==="["){p.i++;const items=[];if(!(peek(p)&&peek(p).v==="]")){items.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="]")break;items.push(parseOr(p));}}eat(p,"]");return {t:"list",items};}
+  if(t.t==="op"&&t.v==="{"){p.i++;const pairs=[];if(!(peek(p)&&peek(p).v==="}")){do{if(peek(p)&&peek(p).v==="}")break;const k=parseOr(p);eat(p,":");const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&&peek(p).v===","&&(p.i++,true));}eat(p,"}");return {t:"dict",pairs};}
+  throw pyError("SyntaxError near '"+t.v+"'"); }
+function execBlock(stmts,scope,G){ for(const s of stmts) execStmt(s,scope,G); }
+function execStmt(s,scope,G){ switch(s.t){
+  case "assign":{ const val=evalExpr(s.expr,scope,G); if(!/^[A-Za-z_]\w*$/.test(s.target)) throw pyError("SyntaxError: bad assign target"); scope[s.target]=val; return; }
+  case "expr": evalExpr(s.expr,scope,G); return;
+  case "if":{ for(const b of s.branches){ if(truthy(evalExpr(b.cond,scope,G))){ execBlock(b.body,scope,G); return; } } if(s.els) execBlock(s.els,scope,G); return; }
+  case "for":{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); execBlock(s.body,scope,G); } return; }
+  case "while":{ let guard=0; while(truthy(evalExpr(s.cond,scope,G))){ execBlock(s.body,scope,G); if(++guard>100000) throw pyError("RuntimeError: loop too long"); } return; }
+  case "def":{ scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
+  case "return":{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError("ValueError: cannot unpack"); targets.forEach((t,i)=>scope[t]=item[i]); } }
+function lookup(name,scope,G){ if(name in scope) return scope[name]; if(name in G) return G[name]; throw pyError("NameError: name '"+name+"' is not defined"); }
+function evalExpr(n,scope,G){ switch(n.t){
+  case "num": return n.v; case "str": return n.v; case "bool": return n.v; case "none": return null;
+  case "fstr": return evalFString(n.v,scope,G);
+  case "name": return lookup(n.v,scope,G);
+  case "list": return n.items.map(x=>evalExpr(x,scope,G));
+  case "dict":{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case "unary":{ const v=evalExpr(n.e,scope,G); if(n.op==="-") return -v; if(n.op==="not") return !truthy(v); return; }
+  case "bin": return evalBin(n,scope,G);
+  case "index":{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
+    if(Array.isArray(o)){ let idx=i<0?o.length+i:i; if(idx<0||idx>=o.length) throw pyError("IndexError"); return o[idx]; }
+    if(o instanceof Map){ if(!o.has(i)) throw pyError("KeyError: "+pyRepr(i)); return o.get(i); }
+    if(typeof o==="string"){ let idx=i<0?o.length+i:i; return o[idx]; }
+    throw pyError("TypeError: not indexable"); }
+  case "slice":{ const o=evalExpr(n.obj,scope,G); const a=n.start?evalExpr(n.start,scope,G):null; const b=n.stop?evalExpr(n.stop,scope,G):null; const c=n.step?evalExpr(n.step,scope,G):null; if(!(Array.isArray(o)||typeof o==="string")) throw pyError("TypeError: not sliceable"); return pySlice(o,a,b,c); }
+  case "attr": return {__bound:true,obj:evalExpr(n.obj,scope,G),name:n.name};
+  case "call": return evalCall(n,scope,G); } }
+function evalBin(n,scope,G){ const op=n.op;
+  if(op==="and"){const l=evalExpr(n.l,scope,G);return truthy(l)?evalExpr(n.r,scope,G):l;}
+  if(op==="or"){const l=evalExpr(n.l,scope,G);return truthy(l)?l:evalExpr(n.r,scope,G);}
+  const a=evalExpr(n.l,scope,G),b=evalExpr(n.r,scope,G);
+  switch(op){
+    case "+": if(typeof a==="string"||typeof b==="string"){ if(typeof a!=="string"||typeof b!=="string") throw pyError("TypeError: str + non-str"); return a+b; } if(Array.isArray(a)&&Array.isArray(b)) return a.concat(b); return a+b;
+    case "-": return a-b;
+    case "*": if(typeof a==="string"&&typeof b==="number") return a.repeat(b); if(typeof a==="number"&&typeof b==="string") return b.repeat(a); return a*b;
+    case "/": return a/b;
+    case "%": return ((a%b)+b)%b;
+    case "<": return a<b; case ">": return a>b; case "<=": return a<=b; case ">=": return a>=b;
+    case "==": return pyEq(a,b); case "!=": return !pyEq(a,b);
+    case "in":{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b==="string") return b.includes(a); return false; } } }
+function evalCall(n,scope,G){
+  if(n.fn.t==="attr"){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
+  if(n.fn.t==="name"){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
+    if(name==="print"){ G.__out.push(args.map(pyStr).join(" ")+"\n"); return null; }
+    if(name==="len"){ const x=args[0]; if(Array.isArray(x)||typeof x==="string")return x.length; if(x instanceof Map)return x.size; throw pyError("TypeError: no len()"); }
+    if(name==="range"){ let a=0,b,step=1; if(args.length===1){b=args[0];}else{a=args[0];b=args[1];if(args.length>2)step=args[2];} const r=[]; if(step>0)for(let i=a;i<b;i+=step)r.push(i); else for(let i=a;i>b;i+=step)r.push(i); return r; }
+    if(name==="str"){ return pyStr(args[0]); }
+    if(name==="int"){ return Math.trunc(Number(args[0])); }
+    if(name==="float"){ return Number(args[0]); }
+    if(name==="sum"){ return (args[0]||[]).reduce((x,y)=>x+y,0); }
+    if(name==="min"){ return Math.min.apply(null,args); }
+    if(name==="max"){ return Math.max.apply(null,args); }
+    if(name==="abs"){ return Math.abs(args[0]); }
+    if(name==="round"){ return Math.round(args[0]); }
+    if(name==="enumerate"){ const seq=iterate(args[0]); const start=args.length>1?args[1]:0; return seq.map((x,i)=>[start+i,x]); }
+    return callUser(lookup(name,scope,G),args,G); }
+  return callUser(evalExpr(n.fn,scope,G),n.args.map(a=>evalExpr(a,scope,G)),G); }
+function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError("TypeError: not callable"); const local=Object.create(null);
+  fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError("TypeError: missing arg '"+p.name+"'"); });
+  try{ execBlock(fn.body,local,G); }catch(e){ if(e&&e.__ret) return e.value; throw e; } return null; }
+function callMethod(obj,name,args){
+  if(Array.isArray(obj)){ if(name==="append"){obj.push(args[0]);return null;} if(name==="pop"){return obj.pop();} if(name==="count"){return obj.filter(x=>pyEq(x,args[0])).length;} throw pyError("AttributeError: list."+name); }
+  if(obj instanceof Map){ if(name==="items")return Array.from(obj.entries()).map(([k,v])=>[k,v]); if(name==="keys")return Array.from(obj.keys()); if(name==="values")return Array.from(obj.values()); if(name==="get")return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); throw pyError("AttributeError: dict."+name); }
+  if(typeof obj==="string"){ if(name==="upper")return obj.toUpperCase(); if(name==="lower")return obj.toLowerCase(); if(name==="title")return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name==="capitalize")return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name==="count"){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;} throw pyError("AttributeError: str."+name); }
+  throw pyError("AttributeError"); }
+function evalFString(raw,scope,G){ let res="",i=0; while(i<raw.length){ const c=raw[i];
+  if(c==="{"){ if(raw[i+1]==="{"){res+="{";i+=2;continue;} let j=i+1,depth=1,ex=""; while(j<raw.length&&depth>0){const d=raw[j];if(d==="{")depth++;else if(d==="}"){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
+  else if(c==="}"){ if(raw[i+1]==="}"){res+="}";i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
+function truthy(v){ if(v===null||v===false)return false; if(v===0||v==="")return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
+function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((x,i)=>pyEq(x,b[i])); return a===b; }
+function pyStr(v){ if(v===null)return "None"; if(v===true)return "True"; if(v===false)return "False"; if(typeof v==="number")return String(v); if(typeof v==="string")return v; if(Array.isArray(v))return "["+v.map(pyRepr).join(", ")+"]"; if(v instanceof Map)return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}"; if(v&&v.__fn)return "<function>"; return String(v); }
+function pyRepr(v){ if(typeof v==="string")return "'"+v+"'"; return pyStr(v); }
+function iterate(v){ if(Array.isArray(v))return v; if(typeof v==="string")return v.split(""); if(v instanceof Map)return Array.from(v.keys()); throw pyError("TypeError: not iterable"); }
+/* Python slice semantics (mirrors CPython's slice.indices) */
+function pySlice(seq,start,stop,step){
+  const isStr=typeof seq==="string"; const arr=isStr?seq.split(""):seq; const len=arr.length;
+  step=(step==null)?1:step; if(step===0) throw pyError("ValueError: slice step cannot be zero");
+  let lower,upper; if(step<0){lower=-1;upper=len-1;}else{lower=0;upper=len;}
+  let s; if(start==null){s=step<0?upper:lower;} else { s=start; if(s<0){s+=len; if(s<lower)s=lower;} else if(s>upper)s=upper; }
+  let e; if(stop==null){e=step<0?lower:upper;} else { e=stop; if(e<0){e+=len; if(e<lower)e=lower;} else if(e>upper)e=upper; }
+  const out=[]; if(step>0){ for(let i=s;i<e;i+=step) out.push(arr[i]); } else { for(let i=s;i>e;i+=step) out.push(arr[i]); }
+  return isStr?out.join(""):out;
+}
+function runPy(src){ const out=[]; try{ const prog=parseBlock(toLogicalLines(src),{i:0},-1); const G=Object.create(null); G.__out=out; execBlock(prog,G,G); return {out:out.join(""),err:null}; }catch(e){ if(e&&e.__ret)return {out:out.join(""),err:null}; if(e&&e.__pyerr)return {out:out.join(""),err:e.message}; return {out:out.join(""),err:(e&&e.message)?e.message:String(e)}; } }
+</script>
+
+<script>
+/* ===== Guided Learn Path ===== */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function norm(s){return String(s).replace(/\r/g,"").split("\n").map(x=>x.replace(/[ \t]+/g," ").trim()).join("\n").replace(/\n+$/,"").replace(/^\n+/,"");}
+function ld(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function codeHtml(code){return code.split("\n").map((ln,i)=>`<div class="cl"><span class="ln">${i+1}</span><span class="lt">${esc(ln)||" "}</span></div>`).join("");}
+
+const MODULES=[
+ {icon:"💬",title:"Printing",
+  teach:`<p>Every program needs to <b>show</b> something. In Python you do that with <code>print()</code>.</p><p>Whatever you put <b>inside the quotes</b> gets shown on screen, exactly as written. You can print as many lines as you like.</p>`,
+  example:`print("Hello!")\nprint("I am learning Python")`,
+  predict:{code:`print("Python is fun")`,out:`Python is fun`,why:`print() shows the text between the quotes, exactly.`},
+  write:{prompt:`Make Python print exactly:  <b>I love coding</b>`,starter:``,kind:"output",expected:`I love coding`,need:["print"],solution:`print("I love coding")`,why:`print("I love coding") sends that text to the screen.`}},
+
+ {icon:"📦",title:"Variables",
+  teach:`<p>A <b>variable</b> is a labelled box that stores a value. Create one with <code>label = value</code>.</p><p>Use the label later to get the value back. The label has <b>no quotes</b>; quotes are only for text values like <code>"Paris"</code>.</p>`,
+  example:`city = "Paris"\nprint(city)`,
+  predict:{code:`food = "pizza"\nprint(food)`,out:`pizza`,why:`food holds "pizza", and print(food) shows what's inside the box.`},
+  write:{prompt:`Make a variable called <b>color</b> set to <b>"blue"</b>, then print it.`,starter:``,kind:"output",expected:`blue`,need:["color","="],solution:`color = "blue"\nprint(color)`,why:`color stores "blue"; print(color) shows it.`}},
+
+ {icon:"➕",title:"Numbers & math",
+  teach:`<p>Python is a calculator: <code>+</code> add, <code>-</code> subtract, <code>*</code> multiply, <code>**</code> power, <code>%</code> remainder.</p><p>Numbers do <b>not</b> use quotes — <code>5</code> is a number, <code>"5"</code> is text.</p>`,
+  example:`a = 6\nb = 4\nprint(a + b)\nprint(a * b)`,
+  predict:{code:`print(7 * 3)`,out:`21`,why:`* means multiply, so 7 * 3 = 21.`},
+  write:{prompt:`Print the result of <b>100 minus 45</b>.`,starter:``,kind:"output",expected:`55`,solution:`print(100 - 45)`,why:`100 - 45 = 55.`}},
+
+ {icon:"🔤",title:"f-strings",
+  teach:`<p>To mix text with a variable's value, put an <b>f</b> before the quotes and wrap the variable in <code>{ }</code>.</p><p>This is the easiest way to build sentences from your data.</p>`,
+  example:`name = "Sam"\nage = 9\nprint(f"{name} is {age}")`,
+  predict:{code:`score = 50\nprint(f"Score: {score}")`,out:`Score: 50`,why:`The f-string drops the value of score into the { }.`},
+  write:{prompt:`The name is set for you. Use an <b>f-string</b> to print:  <b>Hello, Maya</b>`,starter:`name = "Maya"\n`,kind:"output",expected:`Hello, Maya`,need:['f"'],solution:`name = "Maya"\nprint(f"Hello, {name}")`,why:`f"Hello, {name}" fills in Maya.`}},
+
+ {icon:"📋",title:"Lists",
+  teach:`<p>A <b>list</b> holds many items in order, inside <code>[ ]</code>. Counting starts at <b>0</b>, so the first item is <code>list[0]</code>.</p><p><code>len(list)</code> counts the items, and <code>list.append(x)</code> adds a new one to the end.</p>`,
+  example:`fruits = ["apple", "mango"]\nprint(fruits[0])\nprint(len(fruits))`,
+  predict:{code:`nums = [10, 20, 30]\nprint(nums[1])`,out:`20`,why:`Index 1 is the second item (counting from 0): 20.`},
+  write:{prompt:`A list <b>nums = [1, 2, 3]</b> is given. <b>Append 4</b>, then print the list. (Expected: [1, 2, 3, 4])`,starter:`nums = [1, 2, 3]\n`,kind:"output",expected:`[1, 2, 3, 4]`,need:["append"],solution:`nums = [1, 2, 3]\nnums.append(4)\nprint(nums)`,why:`.append(4) adds 4 to the end of the list.`}},
+
+ {icon:"🔁",title:"Loops",
+  teach:`<p>A <b>for loop</b> repeats an action. <code>range(n)</code> gives the numbers <code>0</code> up to <code>n-1</code>.</p><p>The <b>indented</b> lines (4 spaces) run once each time through the loop.</p>`,
+  example:`for i in range(3):\n    print(i)`,
+  predict:{code:`for i in range(1, 4):\n    print(i)`,out:`1\n2\n3`,why:`range(1, 4) gives 1, 2, 3 — each printed on its own line.`},
+  write:{prompt:`Print the numbers <b>1 to 5</b>, each on its own line. (Use a <code>for</code> loop.)`,starter:`for i in range(1, 6):\n    `,kind:"output",expected:`1\n2\n3\n4\n5`,need:["for"],solution:`for i in range(1, 6):\n    print(i)`,why:`range(1, 6) gives 1..5; print(i) shows each.`}},
+
+ {icon:"🔀",title:"If / Else",
+  teach:`<p><code>if</code> runs code when something is <b>True</b>; <code>else</code> runs otherwise. End the line with a <b>colon</b> <code>:</code> and indent what's inside.</p><p>Compare with <code>==</code> (equal), <code>></code>, <code>&lt;</code>, <code>>=</code>. <code>%</code> helps test even/odd: <code>n % 2 == 0</code>.</p>`,
+  example:`x = 7\nif x > 5:\n    print("big")\nelse:\n    print("small")`,
+  predict:{code:`n = 3\nif n % 2 == 0:\n    print("even")\nelse:\n    print("odd")`,out:`odd`,why:`3 % 2 is 1 (not 0), so the else branch runs → "odd".`},
+  write:{prompt:`<b>x = 12</b> is given. Print <b>"big"</b> if x is greater than 10, otherwise <b>"small"</b>.`,starter:`x = 12\n`,kind:"output",expected:`big`,need:["if"],solution:`x = 12\nif x > 10:\n    print("big")\nelse:\n    print("small")`,why:`12 > 10 is True, so it prints "big".`}},
+
+ {icon:"🛠️",title:"Functions",
+  teach:`<p>A <b>function</b> is reusable code you name once and call many times. Define it with <code>def name(inputs):</code> and hand back a result with <code>return</code>.</p><p>Call it by writing its name with values: <code>greet("Ada")</code>.</p>`,
+  example:`def greet(name):\n    return "Hi " + name\n\nprint(greet("Ada"))`,
+  predict:{code:`def square(n):\n    return n * n\n\nprint(square(5))`,out:`25`,why:`square(5) returns 5 * 5 = 25.`},
+  write:{prompt:`Write a function <b>triple(n)</b> that <b>returns</b> n times 3. (It will be tested.)`,starter:`def triple(n):\n    `,kind:"func",tests:`print(triple(2))\nprint(triple(10))`,expectedTests:`6\n30`,need:["def","return"],solution:`def triple(n):\n    return n * 3`,why:`triple(2) → 6 and triple(10) → 30.`}},
+];
+
+const PHASES=["Learn","Predict","Write"];
+let li=ld("learn-mod",0), lp=ld("learn-phase",0);
+let attempts=0;
+
+function toastMsg(m){const t=document.getElementById("toast");t.innerHTML=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2400);}
+function renderPath(){
+  let h="";
+  for(let i=0;i<MODULES.length;i++){
+    if(i>0) h+=`<span class="pline ${i<=li?"done":""}"></span>`;
+    const cls = i<li?"done":(i===li?"cur":"");
+    h+=`<span class="pdot ${cls}" title="${MODULES[i].title}">${i<li?"★":MODULES[i].icon}</span>`;
+  }
+  document.getElementById("pathrow").innerHTML=h;
+  document.getElementById("meta").textContent = li>=MODULES.length ? "Course complete" : `Lesson ${li+1} of ${MODULES.length} · ${MODULES[li].title} · ${PHASES[lp]}`;
+}
+
+function render(){
+  attempts=0; renderPath();
+  if(li>=MODULES.length){ renderDone(); return; }
+  if(lp===0) renderTeach();
+  else if(lp===1) renderPredict();
+  else renderWrite();
+}
+
+function bindTa(id){const t=document.getElementById(id);if(!t)return;t.addEventListener("keydown",e=>{if(e.key==="Tab"){e.preventDefault();const s=t.selectionStart,en=t.selectionEnd;t.value=t.value.slice(0,s)+"    "+t.value.slice(en);t.selectionStart=t.selectionEnd=s+4;}});}
+function showOut(id,res){const o=document.getElementById(id);if(res.err){o.className="output err";o.textContent="🤔 Python hit an error:\n"+res.err;}else{o.className="output";o.textContent=res.out.trim().length?res.out:"(ran, but nothing was printed)";}}
+
+function renderTeach(){
+  const m=MODULES[li];
+  document.getElementById("card").innerHTML=`
+    <div class="phase">${m.icon} Learn · step 1 of 3</div>
+    <div class="title">${m.title}</div>
+    <div class="teach">${m.teach}</div>
+    <div class="blocklbl"><span>▶</span> Try the example — press Run, then change it</div>
+    <div class="editor"><div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">example.py</span></div>
+      <textarea class="ta" id="exCode" spellcheck="false">${esc(m.example)}</textarea></div>
+    <div class="controls"><button class="btn-run" id="exRun">▶ Run</button><button class="btn-go" id="toPredict">I've got it — practice →</button></div>
+    <div class="output" id="exOut"><span class="ph">Press Run to see the example work…</span></div>`;
+  bindTa("exCode");
+  document.getElementById("exRun").addEventListener("click",()=>showOut("exOut",runPy(document.getElementById("exCode").value)));
+  document.getElementById("toPredict").addEventListener("click",()=>{lp=1;sv("learn-phase",lp);render();});
+}
+
+function renderPredict(){
+  const m=MODULES[li], q=m.predict;
+  document.getElementById("card").innerHTML=`
+    <div class="phase">🔍 Predict · step 2 of 3</div>
+    <div class="title">${m.title}</div>
+    <div class="taskbox"><b>What will this print?</b> Read it carefully and type the output.</div>
+    <div class="editor" style="margin-top:11px;"><div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">guess.py</span></div>
+      <div class="code">${codeHtml(q.code)}</div></div>
+    <div class="blocklbl"><span>⌨</span> Your answer</div>
+    <textarea class="ans" id="pans" spellcheck="false" placeholder="Type exactly what gets printed…"></textarea>
+    <div class="controls"><button class="btn-go" id="pcheck">Check</button><button class="btn-ghost" id="pshow">Show answer</button></div>
+    <div class="fb" id="fb"></div>`;
+  document.getElementById("pans").focus();
+  document.getElementById("pans").addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter")pcheck();});
+  document.getElementById("pcheck").addEventListener("click",pcheck);
+  document.getElementById("pshow").addEventListener("click",pshow);
+}
+function predictReal(){const q=MODULES[li].predict;return `<span class="real">${esc(q.out)}</span><div class="why"><b>Why:</b> ${q.why}</div>`;}
+function predictAdvance(label){
+  const fb=document.getElementById("fb");
+  fb.insertAdjacentHTML("beforeend",`<div class="controls" style="margin-top:11px;"><button class="btn-next" id="pnext">${label} →</button></div>`);
+  document.getElementById("pnext").addEventListener("click",()=>{lp=2;sv("learn-phase",lp);render();});
+  ["pcheck","pshow"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display="none";});
+}
+function pcheck(){
+  const q=MODULES[li].predict, user=norm(document.getElementById("pans").value), fb=document.getElementById("fb");
+  if(user===norm(q.out)){ fb.className="fb win show"; fb.innerHTML="<b>✓ Correct!</b> You read it just like Python does."+predictReal(); predictAdvance("Continue"); }
+  else { attempts++; if(attempts>=2){ fb.className="fb miss show"; fb.innerHTML="<b>Let's look together.</b> The output is:"+predictReal(); predictAdvance("Continue"); }
+    else { fb.className="fb miss show"; fb.innerHTML="<b>Not quite — try once more.</b> Go line by line. <span style='color:var(--cream-dim)'>Tip: count exactly what each <code>print</code> shows.</span>"; } }
+}
+function pshow(){const fb=document.getElementById("fb");fb.className="fb miss show";fb.innerHTML="<b>Here's the answer:</b>"+predictReal();predictAdvance("Continue");}
+
+function renderWrite(){
+  const m=MODULES[li], w=m.write;
+  document.getElementById("card").innerHTML=`
+    <div class="phase">✍️ Write · step 3 of 3</div>
+    <div class="title">${m.title}</div>
+    <div class="taskbox"><b>Task:</b> ${w.prompt}</div>
+    <div class="editor" style="margin-top:11px;"><div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">solution.py</span></div>
+      <textarea class="ta" id="wcode" spellcheck="false" style="min-height:108px;">${esc(w.starter||"")}</textarea></div>
+    <div class="controls"><button class="btn-run" id="wrun">▶ Run</button><button class="btn-go" id="wsubmit">Submit ✓</button><button class="btn-ghost" id="wshow">Show answer</button></div>
+    <div class="output" id="wout"><span class="ph">Write your code, then press Run to test it…</span></div>
+    <div class="fb" id="fb"></div>`;
+  bindTa("wcode"); document.getElementById("wcode").focus();
+  document.getElementById("wrun").addEventListener("click",()=>showOut("wout",runPy(document.getElementById("wcode").value)));
+  document.getElementById("wsubmit").addEventListener("click",wsubmit);
+  document.getElementById("wshow").addEventListener("click",wshow);
+}
+function checkWrite(code){
+  const w=MODULES[li].write, res=runPy(code);
+  if(res.err) return {ok:false,err:res.err};
+  if(w.need){for(const s of w.need){if(!code.includes(s))return {ok:false,msg:`Make sure your code uses <code>${esc(s)}</code>.`};}}
+  if(w.kind==="output") return {ok:norm(res.out)===norm(w.expected),got:res.out};
+  const full=runPy(code+"\n"+w.tests); if(full.err) return {ok:false,err:full.err};
+  let t=full.out; if(t.startsWith(res.out)) t=t.slice(res.out.length);
+  return {ok:norm(t)===norm(w.expectedTests),got:t};
+}
+function writeAdvance(){
+  const fb=document.getElementById("fb");
+  const last=li===MODULES.length-1;
+  fb.insertAdjacentHTML("beforeend",`<div class="controls" style="margin-top:11px;"><button class="btn-next" id="wnext">${last?"Finish course 🎉":"Finish lesson →"}</button></div>`);
+  document.getElementById("wnext").addEventListener("click",()=>{ li++; lp=0; sv("learn-mod",li); sv("learn-phase",lp); render(); window.scrollTo({top:0,behavior:"smooth"}); });
+  ["wrun","wsubmit","wshow"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display="none";});
+}
+function award(){ // tie into the practice game's stars/xp
+  let s=ld("ct-stars",5)+3, x=ld("ct-xp",0)+30; sv("ct-stars",s); sv("ct-xp",x);
+  toastMsg("<b>Lesson complete!</b> +3⭐ +30 XP for the practice game");
+}
+function wsubmit(){
+  const w=MODULES[li].write, r=checkWrite(document.getElementById("wcode").value), fb=document.getElementById("fb");
+  if(r.ok){ fb.className="fb win show"; fb.innerHTML="<b>✓ Your code works!</b><div class='why' style='margin-top:7px;'><b>Why:</b> "+w.why+"</div><div class='why' style='margin-top:5px;'><b>A clean solution:</b></div><div class='wsol'>"+esc(w.solution)+"</div>"; award(); writeAdvance(); return; }
+  attempts++;
+  let msg;
+  if(r.err) msg="Your code hit an error: <code>"+esc(r.err)+"</code>. Read it, fix it, and Submit again.";
+  else if(r.msg) msg=r.msg;
+  else msg="Not matching yet. Your output:<div class='wsol'>"+esc((r.got||"").replace(/\n$/,"").trim()||"(nothing printed)")+"</div>Expected:<div class='wsol'>"+esc(w.kind==="output"?w.expected:w.expectedTests)+"</div>";
+  if(attempts>=3){ fb.className="fb miss show"; fb.innerHTML="<b>Here's one way to do it.</b> "+msg+"<div class='why' style='margin-top:7px;'><b>Solution:</b></div><div class='wsol'>"+esc(w.solution)+"</div>"; writeAdvance(); }
+  else { fb.className="fb miss show"; fb.innerHTML="<b>Almost — try again.</b> "+msg+"<div class='why' style='margin-top:6px;'>Press <b>Run</b> to see your output and compare.</div>"; }
+}
+function wshow(){const w=MODULES[li].write,fb=document.getElementById("fb");fb.className="fb miss show";fb.innerHTML="<b>Here's a working solution:</b><div class='wsol'>"+esc(w.solution)+"</div><div class='why' style='margin-top:6px;'>"+w.why+"</div>";writeAdvance();}
+
+function renderDone(){
+  document.getElementById("card").innerHTML=`
+    <div class="done-screen">
+      <div class="phase" style="text-align:center;">Course complete</div>
+      <div class="big">🎓</div>
+      <div class="title" style="font-size:24px;">You've learned the Python basics!</div>
+      <p style="color:var(--cream-dim);">You can now use printing, variables, math, f-strings, lists, loops, if/else, and functions — the foundation everything else builds on.</p>
+      <p style="color:var(--cream-dim);">Keep them sharp with endless practice:</p>
+      <div class="controls" style="justify-content:center;margin-top:8px;">
+        <a class="pill" style="background:linear-gradient(160deg,var(--saffron),#dd8e23);color:var(--night-0);border:0;padding:11px 18px;font-weight:700;border-radius:11px;" href="quiz.html">🎯 Practice game →</a>
+      </div>
+    </div>`;
+}
+
+document.getElementById("resetBtn").addEventListener("click",()=>{li=0;lp=0;sv("learn-mod",0);sv("learn-phase",0);render();window.scrollTo({top:0,behavior:"smooth"});});
+render();
+</script>
+</body>
+</html>

@@ -22,6 +22,21 @@ xdg-open python-tutor/index.html    # Linux
 Works with no internet for the lessons themselves. Share the file with anyone —
 they can learn too, no account needed.
 
+## Start here: the Guided Learn Path (`learn.html`)
+
+The best place for a beginner. **8 short lessons** (Printing → Variables →
+Numbers → f-strings → Lists → Loops → If/Else → Functions). Each lesson follows
+the proven *teach → try* loop:
+
+1. **Learn** — a one-screen explanation with a **runnable example** you can edit.
+2. **Predict** — read a snippet, type its output (with a "why").
+3. **Write** — write the code yourself; it's **run and checked** (output- or
+   test-based), with retries and a clean sample solution.
+
+Progress saves and resumes; finishing a lesson adds ⭐/XP to the practice game.
+Every example, predicted output, and sample solution was **verified against real
+`python3`** (0 issues).
+
 ## What's inside
 
 - **24 lessons** across 6 chapters (print → variables → lists/dicts → loops →
