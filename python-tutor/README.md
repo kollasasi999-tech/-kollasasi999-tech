@@ -37,6 +37,18 @@ Progress saves and resumes; finishing a lesson adds ⭐/XP to the practice game.
 Every example, predicted output, and sample solution was **verified against real
 `python3`** (0 issues).
 
+## Watch It Run — step-by-step visualizer (`visualize.html`)
+
+The best tool for *understanding* (not memorizing) how code works. Paste or pick
+code, press **Visualize**, and **step through it line by line** — the current
+line is highlighted while the **Variables** panel and **Output** update live
+(like pythontutor.com, but offline and built in). Step / Back / Play / slider,
+plus presets (loop, list-building, if/else, function, while, enumerate).
+
+Reachable from the **🔎 Watch it run** buttons in the Learn lessons and after
+each Practice question (they pass the exact code over). The tracer's output was
+verified against real `python3`.
+
 ## What's inside
 
 - **24 lessons** across 6 chapters (print → variables → lists/dicts → loops →

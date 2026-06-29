@@ -137,6 +137,7 @@
   <div class="nav">
     <a class="pill" href="index.html" style="text-decoration:none;">← Lessons &amp; AI</a>
     <a class="pill" href="learn.html" style="text-decoration:none;">📚 Learn</a>
+    <a class="pill" href="visualize.html" style="text-decoration:none;">🔎 Visualize</a>
     <button class="pill lvl active" data-mode="easy">Easy</button>
     <button class="pill lvl" data-mode="medium">Medium</button>
     <button class="pill lvl" data-mode="hard">Hard</button>
@@ -594,7 +595,8 @@ function renderPredict(){
 }
 function realBlock(){ return `<span class="real">${esc(cur.out)}</span>`
   +`<div class="why"><b>Step by step:</b> ${cur.why}</div>`
-  +`<div class="why" style="margin-top:5px;"><b>The idea:</b> ${cur.concept}.</div>`; }
+  +`<div class="why" style="margin-top:5px;"><b>The idea:</b> ${cur.concept}.</div>`
+  +`<div class="why" style="margin-top:6px;"><a href="visualize.html#${encodeURIComponent(cur.code)}" target="_blank" rel="noopener" style="color:var(--jade);font-weight:600;">🔎 Watch this run line by line →</a></div>`; }
 function showFb(kind,html){ const fb=document.getElementById("fb"); fb.className="fb "+kind+" show"; fb.innerHTML=html; }
 function lockSolved(){
   solvedThis=true;

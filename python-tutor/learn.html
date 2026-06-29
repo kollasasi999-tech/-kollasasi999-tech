@@ -100,6 +100,7 @@
   </header>
   <div class="nav">
     <a class="pill" href="quiz.html">🎯 Practice game</a>
+    <a class="pill" href="visualize.html">🔎 Watch It Run</a>
     <a class="pill" href="index.html">🐍 Quest &amp; AI</a>
   </div>
   <div class="pathrow" id="pathrow"></div>
@@ -411,10 +412,11 @@ function renderTeach(){
     <div class="blocklbl"><span>▶</span> Try the example — press Run, then change it</div>
     <div class="editor"><div class="ebar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="fn">example.py</span></div>
       <textarea class="ta" id="exCode" spellcheck="false">${esc(m.example)}</textarea></div>
-    <div class="controls"><button class="btn-run" id="exRun">▶ Run</button><button class="btn-go" id="toPredict">I've got it — practice →</button></div>
+    <div class="controls"><button class="btn-run" id="exRun">▶ Run</button><button class="btn-ghost" id="exViz">🔎 Watch it run</button><button class="btn-go" id="toPredict">I've got it — practice →</button></div>
     <div class="output" id="exOut"><span class="ph">Press Run to see the example work…</span></div>`;
   bindTa("exCode");
   document.getElementById("exRun").addEventListener("click",()=>showOut("exOut",runPy(document.getElementById("exCode").value)));
+  document.getElementById("exViz").addEventListener("click",()=>window.open("visualize.html#"+encodeURIComponent(document.getElementById("exCode").value),"_blank","noopener"));
   document.getElementById("toPredict").addEventListener("click",()=>{lp=1;sv("learn-phase",lp);render();});
 }
 
