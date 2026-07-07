@@ -180,11 +180,16 @@
    COMPUTE the correct output of every generated program, so the
    game's answers are always right. Cross-checked against real
    CPython during development. Supports: print, variables,
-   f-strings, + - * // % **, comparisons, and/or/not, in, lists,
-   indexing, .append, len, sum, min, max, abs, round, dicts,
-   .items/.get/.keys/.values, range, for, while, if/elif/else,
-   def/return (defaults), .upper/.lower/.title/.count, comments.
-   (Intentionally avoids true division / and slicing.)
+   f-strings, + - * // % **, augmented assignment (+= -= *= //= %= **=),
+   comparisons, and/or/not, in, lists, tuples & unpacking, indexing,
+   slicing, item assignment, break/continue/pass, dicts, range, for,
+   while, if/elif/else, def/return (defaults), and many builtins
+   (len, sum, min, max, abs, round, sorted, reversed, zip, enumerate,
+   any, all, list, tuple, set, bool) plus string methods (upper, lower,
+   title, split, join, replace, strip, startswith, find, ...) and list
+   methods (append, pop, sort, reverse, insert, index, extend, remove).
+   (Numbers are unified — no separate float type — so it avoids true
+   division / and float-precision cases like round(x, n).)
    ============================================================ */
 function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
 function toLogicalLines(src){
@@ -476,11 +481,17 @@ function pick(a){return a[Math.floor(Math.random()*a.length)];}
 function pickn(a,n){const c=a.slice();const r=[];while(r.length<n&&c.length){r.push(c.splice(Math.floor(Math.random()*c.length),1)[0]);}return r;}
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function norm(s){return String(s).replace(/\r/g,"").split("\n").map(x=>x.replace(/[ \t]+/g," ").trim()).join("\n").replace(/\n+$/,"").replace(/^\n+/,"");}
+function pyItem(x){return typeof x==="string"?"'"+x+"'":(x===true?"True":x===false?"False":x);}
+function pyList(a){return "["+a.map(pyItem).join(", ")+"]";}
+function pyTup(a){return (a.length===1?"("+pyItem(a[0])+",)":"("+a.map(pyItem).join(", ")+")");}
+function fdiv(a,b){return Math.floor(a/b);}
+function pmod(a,b){return ((a%b)+b)%b;}
 
 const NAMES=["Sasi","Ravi","Ada","Sam","Maya","Leo","Nila","Arjun","Tara","Kiran"];
 const WORDS=["cat","sun","moon","code","star","data","loop","tree","fish","gold","bird","city"];
 const FRUITS=["apple","mango","grape","lemon","peach","melon","berry","plum"];
 const LETTERS=["a","b","c","x","y","z"];
+const PHRASES=["the quick fox","learn to code","open the door","keep it simple","time to shine","one step ahead"];
 
 /* Each generator returns {code, concept, why}. Output is computed by runPy().
    topic ∈ basics | loops | conditionals | functions | strings | lists | dicts */
@@ -497,6 +508,15 @@ const GEN={
   {topic:"strings",gen:()=>{const w=pick(WORDS);return{code:`word = "${w}"\nprint(word.upper())`,concept:".upper() makes text uppercase",why:`"${w}" becomes "${w.toUpperCase()}".`};}},
   {topic:"lists",gen:()=>{const arr=pickn([5,10,15,20,25,30],ri(3,4));return{code:`nums = [${arr.join(", ")}]\nprint(nums[0])\nprint(nums[-1])`,concept:"[0] is first, [-1] is last",why:`First is ${arr[0]}, last is ${arr[arr.length-1]}.`};}},
   {topic:"basics",gen:()=>{const a=ri(20,40),b=ri(2,9);return{code:`a = ${a}\nb = ${b}\nprint(a - b)\nprint(a * b)`,concept:"two prints make two lines",why:`${a}-${b}=${a-b}, then ${a}*${b}=${a*b}.`};}},
+  {topic:"basics",gen:()=>{const a=ri(3,15),b=ri(2,8);return{code:`x = ${a}\nx += ${b}\nprint(x)`,concept:"x += n is shorthand for x = x + n",why:`x starts at ${a}. x += ${b} adds ${b} to it, so x becomes ${a+b}.`};}},
+  {topic:"basics",gen:()=>{const a=ri(2,6),b=ri(2,4);return{code:`x = ${a}\nx *= ${b}\nprint(x)`,concept:"x *= n multiplies x in place",why:`x = ${a}, then x *= ${b} means x = x * ${b} = ${a*b}.`};}},
+  {topic:"basics",gen:()=>{const b=ri(2,5),e=ri(2,3);return{code:`print(${b} ** ${e})`,concept:"** means 'to the power of'",why:`${b} ** ${e} is ${b} multiplied by itself ${e} times = ${Math.pow(b,e)}.`};}},
+  {topic:"basics",gen:()=>{const a=ri(13,40),b=ri(3,7);return{code:`print(${a} // ${b})\nprint(${a} % ${b})`,concept:"// is whole-number division; % is the remainder",why:`${a} // ${b} = ${fdiv(a,b)} (how many whole ${b}s fit), and ${a} % ${b} = ${pmod(a,b)} (what's left over).`};}},
+  {topic:"tuples",gen:()=>{const a=ri(1,9),b=ri(1,9);return{code:`point = (${a}, ${b})\nprint(point)\nprint(point[0])`,concept:"a tuple is a fixed group of values, written with ( )",why:`point holds ${pyTup([a,b])}. Printing it shows the whole tuple; point[0] is the first value, ${a}.`};}},
+  {topic:"tuples",gen:()=>{const a=ri(1,9),b=ri(1,9),c=ri(1,9);return{code:`x, y, z = ${a}, ${b}, ${c}\nprint(y)`,concept:"unpacking: give several variables values in one line",why:`x, y, z = ${a}, ${b}, ${c} sets x=${a}, y=${b}, z=${c}. So print(y) shows ${b}.`};}},
+  {topic:"methods",gen:()=>{const w=pick(["apple","banana","cherry","orange","pepper","kitten"]);const from=pick([...new Set(w.split(""))]);const to=pick(["_","*",from.toUpperCase()].filter(x=>x!==from));return{code:`s = "${w}"\nprint(s.replace("${from}", "${to}"))`,concept:".replace(old, new) swaps every match",why:`Every "${from}" in "${w}" becomes "${to}" → "${w.split(from).join(to)}".`};}},
+  {topic:"methods",gen:()=>{const parts=pickn(WORDS,ri(2,3));return{code:`text = "${parts.join(",")}"\nprint(text.split(","))`,concept:".split(sep) breaks text into a list at each separator",why:`Splitting "${parts.join(",")}" on "," gives ${pyList(parts)}.`};}},
+  {topic:"builtins",gen:()=>{const arr=pickn([3,7,2,9,5,1,8,6,4],ri(4,5));return{code:`nums = [${arr.join(", ")}]\nprint(sorted(nums))`,concept:"sorted() returns a new list in order (smallest first)",why:`sorted rearranges ${pyList(arr)} into ${pyList(arr.slice().sort((x,y)=>x-y))}.`};}},
  ],
  2:[ /* ===== MEDIUM: 4–6 lines, one loop or branch ===== */
   {topic:"loops",gen:()=>{const n=ri(3,6);const s=n*(n+1)/2;return{code:`total = 0\nfor i in range(1, ${n+1}):\n    total = total + i\nprint(total)`,concept:"a loop that adds numbers up (accumulation)",why:`total starts at 0, then the loop adds 1, 2, … up to ${n}: 1+2+…+${n} = ${s}.`};}},
@@ -511,6 +531,14 @@ const GEN={
   {topic:"functions",gen:()=>{const nm=pick(NAMES);return{code:`def greet(name):\n    return "Hi " + name\n\nprint(greet("${nm}"))`,concept:"define a function once, then call it",why:`greet("${nm}") runs the function, which returns "Hi " + "${nm}" = "Hi ${nm}", and that result is printed.`};}},
   {topic:"loops",gen:()=>{const n=ri(2,4);const lines=Array.from({length:n},(_,k)=>`${k+1} squared is ${(k+1)*(k+1)}`).join("  |  ");return{code:`for i in range(1, ${n+1}):\n    print(f"{i} squared is {i * i}")`,concept:"an f-string can do math inside { }",why:`For i = 1..${n}, {i * i} works out the square each time: ${lines}.`};}},
   {topic:"conditionals",gen:()=>{const a=ri(1,9),b=ri(1,9),c=ri(1,9);const r=(a>b)&&(b>c);return{code:`a = ${a}\nb = ${b}\nc = ${c}\nprint(a > b and b > c)`,concept:"'and' is True only when BOTH sides are True",why:`${a} > ${b} is ${a>b?"True":"False"} and ${b} > ${c} is ${b>c?"True":"False"}; "and" combines them → ${r?"True":"False"}.`};}},
+  {topic:"tuples",gen:()=>{const a=ri(1,9),b=ri(1,9);return{code:`a = ${a}\nb = ${b}\na, b = b, a\nprint(a, b)`,concept:"swap two variables in one line with tuples",why:`a, b = b, a builds the pair (${b}, ${a}) and unpacks it back, so a and b trade places → ${b} ${a}. No temp variable needed.`};}},
+  {topic:"tuples",gen:()=>{const nm=pick(NAMES),sc=ri(50,99),ag=ri(12,18);return{code:`record = ("${nm}", ${sc}, ${ag})\nname, score, age = record\nprint(name, "scored", score)`,concept:"unpack a tuple into named variables",why:`record is ${pyTup([nm,sc,ag])}. Unpacking gives name="${nm}", score=${sc}, age=${ag}, so it prints "${nm} scored ${sc}".`};}},
+  {topic:"methods",gen:()=>{const arr=pickn(WORDS,ri(3,4));const sep=pick(["-","/"," "]);return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint("${sep}".join(words))`,concept:".join() glues a list of strings together with a separator",why:`Putting "${sep}" between each word joins ${pyList(arr)} into "${arr.join(sep)}".`};}},
+  {topic:"methods",gen:()=>{const arr=pickn([3,7,2,9,5,1,8,6],ri(4,5));return{code:`nums = [${arr.join(", ")}]\nnums.sort()\nprint(nums)`,concept:".sort() reorders the list itself (in place)",why:`Unlike sorted(), .sort() changes nums directly. Afterwards it is ${pyList(arr.slice().sort((x,y)=>x-y))}.`};}},
+  {topic:"loops",gen:()=>{const n=ri(6,9),k=ri(2,4);const printed=[];for(let i=0;i<n;i++){if(i===k)break;printed.push(i);}return{code:`for i in range(${n}):\n    if i == ${k}:\n        break\n    print(i)`,concept:"break stops the loop immediately",why:`It prints ${printed.join(", ")}, but when i reaches ${k} the break ends the loop right away — ${k} and beyond are never printed.`};}},
+  {topic:"loops",gen:()=>{const n=ri(5,7),k=ri(1,3);const printed=[];for(let i=0;i<n;i++){if(i===k)continue;printed.push(i);}return{code:`for i in range(${n}):\n    if i == ${k}:\n        continue\n    print(i)`,concept:"continue skips the rest of THIS turn, then keeps going",why:`When i == ${k}, continue jumps to the next turn, so ${k} is skipped but the loop carries on. It prints ${printed.join(", ")}.`};}},
+  {topic:"builtins",gen:()=>{const arr=pickn([12,4,19,7,23,8,15,3],ri(4,5));const s=arr.reduce((a,b)=>a+b,0);return{code:`nums = [${arr.join(", ")}]\nprint(min(nums), max(nums), sum(nums))`,concept:"min(), max() and sum() summarise a list at a glance",why:`Smallest is ${Math.min(...arr)}, largest is ${Math.max(...arr)}, and they add to ${s}. print shows all three with spaces.`};}},
+  {topic:"basics",gen:()=>{const arr=pickn([2,3,4,5,6,7],ri(3,4));const s=arr.reduce((a,b)=>a+b,0);return{code:`total = 0\nfor n in [${arr.join(", ")}]:\n    total += n\nprint(total)`,concept:"total += n is the tidy way to accumulate",why:`total starts at 0 and each turn grows by n: ${arr.join(" + ")} = ${s}.`};}},
  ],
  3:[ /* ===== HARD: 5–10 lines, nested / functions / multi-step ===== */
   {topic:"functions",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8],ri(3,4));const map=arr.map(n=>`${n}→${n%2===0?"even":"odd"}`).join(", ");return{code:`def label(n):\n    if n % 2 == 0:\n        return "even"\n    else:\n        return "odd"\n\nfor n in [${arr.join(", ")}]:\n    print(n, label(n))`,concept:"a function with an if, called inside a loop",why:`label(n) returns "even" when n % 2 == 0, otherwise "odd". The loop tags each number: ${map}. print(n, label(n)) puts the number and its tag on one line, separated by a space.`};}},
@@ -526,6 +554,12 @@ const GEN={
   {topic:"loops",gen:()=>{const n=ri(2,5);const lines=[1,2,3].map(i=>`${n} x ${i} = ${n*i}`).join("  |  ");return{code:`n = ${n}\nfor i in range(1, 4):\n    print(n, "x", i, "=", n * i)`,concept:"print() joins several values with spaces",why:`i runs 1, 2, 3. Each line prints n, "x", i, "=", and n*i with spaces between: ${lines}.`};}},
   {topic:"strings",gen:()=>{const arr=pickn(LETTERS,3);const res=arr.map(w=>w+"-").join("");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nsentence = ""\nfor w in words:\n    sentence = sentence + w + "-"\nprint(sentence)`,concept:"build one string from a list of pieces",why:`sentence starts empty. Each loop adds the word plus "-", in order, giving "${res}". Note the trailing dash — every word gets one, including the last.`};}},
   {topic:"functions",gen:()=>{const arr=pickn([2,3,4,5,6],3);const dbl=arr.map(n=>n*2);const t=dbl.reduce((a,b)=>a+b,0);return{code:`def double(n):\n    return n * 2\n\ntotal = 0\nfor n in [${arr.join(", ")}]:\n    total = total + double(n)\nprint(total)`,concept:"use a function's result inside a running total",why:`double(n) returns n*2. The loop adds each doubled value: ${dbl.join(" + ")} = ${t}.`};}},
+  {topic:"builtins",gen:()=>{const a=pickn([1,2,3,4,5],3),b=pickn([10,20,30,40,50],3);const lines=a.map((x,i)=>`${x}+${b[i]}=${x+b[i]}`).join("  |  ");return{code:`a = [${a.join(", ")}]\nb = [${b.join(", ")}]\nfor x, y in zip(a, b):\n    print(x + y)`,concept:"zip() pairs up two lists item by item",why:`zip walks both lists together: ${lines}. Each turn unpacks a pair into x and y.`};}},
+  {topic:"methods",gen:()=>{const p=pick(PHRASES);const lines=p.split(" ").map(w=>`${w} ${w.length}`).join("  |  ");return{code:`sentence = "${p}"\nfor word in sentence.split():\n    print(word, len(word))`,concept:"split a sentence, then loop over the words",why:`split() with no argument cuts "${p}" at the spaces. For each word it prints the word and its length: ${lines}.`};}},
+  {topic:"tuples",gen:()=>{const ns=pickn(NAMES,3),ss=pickn([80,85,90,95,70,75],3);const lines=ns.map((n,i)=>`${n} ${ss[i]}`).join("  |  ");return{code:`pairs = [${ns.map((n,i)=>`("${n}", ${ss[i]})`).join(", ")}]\nfor name, score in pairs:\n    print(name, score)`,concept:"a list of tuples, unpacked in the loop header",why:`Each item is a (name, score) pair. The loop unpacks it into two variables and prints them: ${lines}.`};}},
+  {topic:"loops",gen:()=>{const arr=pickn([3,8,1,6,10,4,7],ri(4,5));const t=pick([5,6]);const found=arr.find(n=>n>t);return{code:`nums = [${arr.join(", ")}]\nfor n in nums:\n    if n > ${t}:\n        print("found", n)\n        break`,concept:"scan until you find a match, then break",why:`It walks the list and stops at the FIRST value over ${t}. That is ${found}, so it prints "found ${found}" and breaks — later items are ignored.`};}},
+  {topic:"methods",gen:()=>{const arr=pickn([10,20,30,40,50],ri(3,4));const i=ri(1,2);const after=arr.slice();after.splice(i,0,99);return{code:`nums = [${arr.join(", ")}]\nnums.insert(${i}, 99)\nprint(nums)\nprint(nums.index(99))`,concept:".insert(i, x) adds at a position; .index(x) finds where a value sits",why:`insert puts 99 at index ${i} → ${pyList(after)}. Then .index(99) reports its position, ${i}.`};}},
+  {topic:"builtins",gen:()=>{const arr=pickn(["pear","kiwi","lime","fig","date"],3);const sorted=arr.slice().sort();const lines=sorted.map((w,i)=>`${i} ${w}`).join("  |  ");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, w in enumerate(sorted(words)):\n    print(i, w)`,concept:"sort first, then enumerate to number them",why:`sorted(words) puts them alphabetically: ${pyList(sorted)}. enumerate then pairs each with its position: ${lines}.`};}},
  ],
  4:[ /* ===== EXPERT: slicing & enumerate ===== */
   {topic:"strings",gen:()=>{const w=pick(["rainbow","sunlight","diamond","picture","library"]);const k=ri(2,4);return{code:`w = "${w}"\nprint(w[:${k}])\nprint(w[${k}:])`,concept:"slicing: [:k] is the start, [k:] is the rest",why:`w[:${k}] takes the first ${k} letters → "${w.slice(0,k)}". w[${k}:] takes from index ${k} to the end → "${w.slice(k)}".`};}},
@@ -541,11 +575,16 @@ const GEN={
   {topic:"strings",gen:()=>{const w=pick(["elephant","umbrella","mountain","notebook","triangle"]);const k=ri(3,5);const part=w.slice(0,k);return{code:`w = "${w}"\npart = w[:${k}]\nprint(part)\nprint(len(part))`,concept:"store a slice in a variable, then use it",why:`part = w[:${k}] is "${part}". Then len(part) counts its letters → ${part.length}.`};}},
   {topic:"loops",gen:()=>{const arr=pickn(["a","b","c","d","e"],4);const target=pick(arr);const pos=arr.indexOf(target);return{code:`letters = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, ch in enumerate(letters):\n    if ch == "${target}":\n        print("found at", i)`,concept:"enumerate to find WHERE an item sits",why:`Scanning with positions, when ch == "${target}" (at index ${pos}) it prints "found at ${pos}".`};}},
   {topic:"loops",gen:()=>{const arr=pickn([10,20,30,40,50],3);let t=0;arr.forEach((v,i)=>t+=i+v);const parts=arr.map((v,i)=>`(${i}+${v})`).join(" + ");return{code:`vals = [${arr.join(", ")}]\ntotal = 0\nfor i, v in enumerate(vals):\n    total = total + i + v\nprint(total)`,concept:"enumerate gives both index and value to use",why:`Each turn adds index + value: ${parts} = ${t}.`};}},
+  {topic:"builtins",gen:()=>{const arr=pickn([34,12,88,5,47,20,63,9],ri(5,6));const k=ri(2,3);const top=arr.slice().sort((x,y)=>y-x).slice(0,k);return{code:`scores = [${arr.join(", ")}]\ntop = sorted(scores)[-${k}:]\nprint(top)`,concept:"sort, then slice to grab the biggest values",why:`sorted(scores) is ascending, so the last ${k} items are the biggest. [-${k}:] takes them → ${pyList(arr.slice().sort((x,y)=>x-y).slice(-k))}.`};}},
+  {topic:"methods",gen:()=>{const arr=pickn(WORDS,ri(3,4));const csv=arr.join(",");return{code:`s = "${csv}"\nparts = s.split(",")\nprint(len(parts))\nprint("-".join(parts))`,concept:"split into a list, then join it back a new way",why:`split(",") turns "${csv}" into ${pyList(arr)} (${arr.length} items). Then join with "-" rebuilds it as "${arr.join("-")}".`};}},
+  {topic:"tuples",gen:()=>{const ns=pickn(NAMES,3),ag=pickn([21,34,28,45,19],3);const win=ns.map((n,i)=>({n,a:ag[i]})).reduce((a,b)=>b.a>a.a?b:a);return{code:`names = [${ns.map(x=>`"${x}"`).join(", ")}]\nages = [${ag.join(", ")}]\noldest = names[0]\nbest = ages[0]\nfor name, age in zip(names, ages):\n    if age > best:\n        best = age\n        oldest = name\nprint(oldest, best)`,concept:"zip two lists and track a running best",why:`zip pairs each name with its age. Whenever an age beats the best so far, both update. The oldest is ${win.n} at ${win.a}.`};}},
+  {topic:"builtins",gen:()=>{const arr=pickn([2,4,6,8,10,3,5],4);const allEven=arr.every(n=>n%2===0);const anyEven=arr.some(n=>n%2===0);const flags=arr.map(n=>n%2===0);return{code:`nums = [${arr.join(", ")}]\nchecks = [${flags.map(f=>f?"True":"False").join(", ")}]\nprint(any(checks), all(checks))`,concept:"any() is True if ANY item is true; all() needs EVERY item true",why:`checks is ${pyList(flags)}. any() → ${anyEven?"True":"False"} (at least one True), all() → ${allEven?"True":"False"} (${allEven?"they are all True":"not every one is True"}).`};}},
+  {topic:"tuples",gen:()=>{const arr=pickn(FRUITS,3);return{code:`fruits = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint(list(enumerate(fruits)))`,concept:"enumerate produces (index, item) tuples",why:`Wrapping enumerate in list() shows the pairs it makes: [${arr.map((f,i)=>pyTup([i,f])).join(", ")}].`};}},
  ]
 };
 
 /* ===== topics for the filter ===== */
-const TOPICS=[["all","All"],["loops","Loops"],["conditionals","If/Else"],["functions","Functions"],["strings","Strings"],["lists","Lists"],["dicts","Dicts"]];
+const TOPICS=[["all","All"],["loops","Loops"],["conditionals","If/Else"],["functions","Functions"],["strings","Strings"],["lists","Lists"],["dicts","Dicts"],["tuples","Tuples"],["methods","Str/List tools"],["builtins","Built-ins"]];
 
 /* ===== ranks ===== */
 const RANKS=[[0,"🥚 Hatchling"],[40,"🌱 Sprout"],[110,"🐍 Coder"],[220,"🔥 Sharp"],[380,"⚡ Pro"],[600,"🏆 Master"],[900,"🧙 Wizard"],[1300,"🌟 Legend"]];
@@ -561,7 +600,7 @@ let srs=ld(SK.srs,{}), clock=ld(SK.clock,0);
 let mode="easy", topic="all", cur=null, attempts=0, solvedThis=false, bought=[];
 let gameMode=ld("ct-mode","alt"), qIndex=0, curW=null, __lvl=0;
 let forceTopic=null, forceLevel=null, reviewed=false;
-const TOPIC_KEYS=["basics","strings","loops","conditionals","functions","lists","dicts"];
+const TOPIC_KEYS=["basics","strings","loops","conditionals","functions","lists","dicts","tuples","methods","builtins"];
 const SRS_INT=[0,1,3,8,20,50];
 function levelFromBox(box){ return box<=2?1:(box<=4?2:3); }
 function recordReview(t,success){ if(reviewed) return; reviewed=true; clock++; sv(SK.clock,clock);
@@ -773,6 +812,9 @@ const WGEN={
   {topic:"basics",gen:()=>{const nm=pick(NAMES);return{prompt:`Make a variable called <b>name</b> set to <b>"${nm}"</b>, then print it.`,starter:``,kind:"output",expected:nm,need:["name","="],solution:`name = "${nm}"\nprint(name)`,concept:"store a value in a variable, then use its name",why:`name holds "${nm}", and print(name) shows what's inside.`};}},
   {topic:"strings",gen:()=>{const w=pick(["hello","python","code","star"]);return{prompt:`Print the word <b>"${w}"</b> in ALL CAPITALS using <span class='c'>.upper()</span>.`,starter:``,kind:"output",expected:w.toUpperCase(),need:[".upper("],solution:`print("${w}".upper())`,concept:".upper() returns the uppercase version of text",why:`"${w}".upper() gives "${w.toUpperCase()}".`};}},
   {topic:"strings",gen:()=>{const a=pick(NAMES);return{prompt:`Using an <b>f-string</b>, print:  <b>Hi ${a}</b>  (the name is already in a variable).`,starter:`name = "${a}"\n`,kind:"output",expected:`Hi ${a}`,need:['f"'],solution:`name = "${a}"\nprint(f"Hi {name}")`,concept:"f-strings drop a variable's value into text with { }",why:`f"Hi {name}" fills in ${a}.`};}},
+  {topic:"basics",gen:()=>{const a=ri(5,20),b=ri(2,9);return{prompt:`Set <b>x = ${a}</b>, then use <b>+=</b> to add <b>${b}</b>, and print x.`,starter:`x = ${a}\n`,kind:"output",expected:String(a+b),need:["+="],solution:`x = ${a}\nx += ${b}\nprint(x)`,concept:"x += n is shorthand for x = x + n",why:`${a} + ${b} = ${a+b}.`};}},
+  {topic:"tuples",gen:()=>{const a=ri(1,9),b=ri(1,9);return{prompt:`Create a tuple <b>point = (${a}, ${b})</b> and print it.`,starter:``,kind:"output",expected:`(${a}, ${b})`,solution:`point = (${a}, ${b})\nprint(point)`,concept:"a tuple groups values with ( )",why:`Printing the tuple shows (${a}, ${b}).`};}},
+  {topic:"methods",gen:()=>{const arr=pickn(WORDS,3);const csv=arr.join(",");return{prompt:`The text <b>s = "${csv}"</b> is given. Print it <b>split on commas</b> into a list.`,starter:`s = "${csv}"\n`,kind:"output",expected:pyList(arr),need:[".split("],solution:`s = "${csv}"\nprint(s.split(","))`,concept:".split(sep) makes a list of pieces",why:`Splitting on "," gives ${pyList(arr)}.`};}},
  ],
  2:[
   {topic:"loops",gen:()=>({prompt:`Print the numbers <b>1 to 5</b>, each on its own line. (Use a <span class='c'>for</span> loop.)`,starter:`for i in range(1, 6):\n    `,kind:"output",expected:"1\n2\n3\n4\n5",need:["for"],solution:`for i in range(1, 6):\n    print(i)`,concept:"range(1, 6) gives 1,2,3,4,5",why:`The loop runs once per number and prints it.`})},
@@ -780,6 +822,9 @@ const WGEN={
   {topic:"conditionals",gen:()=>{const a=ri(1,20);return{prompt:`The variable <b>x = ${a}</b> is set for you. Print <b>"big"</b> if x is greater than 10, otherwise print <b>"small"</b>.`,starter:`x = ${a}\n`,kind:"output",expected:a>10?"big":"small",need:["if"],solution:`x = ${a}\nif x > 10:\n    print("big")\nelse:\n    print("small")`,concept:"if/else chooses what to do",why:`${a} > 10 is ${a>10}, so it prints "${a>10?"big":"small"}".`};}},
   {topic:"loops",gen:()=>{const arr=pickn([2,3,4,5,6,7],3);const s=arr.reduce((p,c)=>p+c,0);return{prompt:`The list <b>nums = [${arr.join(", ")}]</b> is given. Print the <b>total</b> of its numbers.`,starter:`nums = [${arr.join(", ")}]\n`,kind:"output",expected:String(s),solution:`nums = [${arr.join(", ")}]\nprint(sum(nums))`,concept:"sum() adds a whole list (a loop works too)",why:`${arr.join(" + ")} = ${s}.`};}},
   {topic:"functions",gen:()=>({prompt:`Write a function <b>add(a, b)</b> that <b>returns</b> a + b. (It will be tested with a few values.)`,starter:`def add(a, b):\n    `,kind:"func",tests:`print(add(2, 3))\nprint(add(10, 20))`,expectedTests:"5\n30",need:["def","return"],solution:`def add(a, b):\n    return a + b`,concept:"a function hands back a value with 'return'",why:`add(2, 3) → 5 and add(10, 20) → 30.`})},
+  {topic:"builtins",gen:()=>{const arr=pickn([7,2,9,4,1,8,5],4);return{prompt:`The list <b>nums = [${arr.join(", ")}]</b> is given. Print them <b>sorted</b> (smallest first).`,starter:`nums = [${arr.join(", ")}]\n`,kind:"output",expected:pyList(arr.slice().sort((x,y)=>x-y)),need:["sorted"],solution:`nums = [${arr.join(", ")}]\nprint(sorted(nums))`,concept:"sorted() returns an ordered copy",why:`In order: ${pyList(arr.slice().sort((x,y)=>x-y))}.`};}},
+  {topic:"methods",gen:()=>{const arr=pickn(WORDS,3);return{prompt:`Join the list <b>words = [${arr.map(x=>`"${x}"`).join(", ")}]</b> into one string with <b>"-"</b> between the words, and print it.`,starter:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\n`,kind:"output",expected:arr.join("-"),need:[".join("],solution:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint("-".join(words))`,concept:'"sep".join(list) glues text together',why:`Result: "${arr.join("-")}".`};}},
+  {topic:"loops",gen:()=>{const k=ri(3,5);const exp=Array.from({length:k},(_,i)=>i).join("\n");return{prompt:`Print <b>0 up to ${k-1}</b>, then <b>stop</b> before ${k} using <b>break</b>. (Loop over range(10).)`,starter:`for i in range(10):\n    `,kind:"output",expected:exp,need:["break"],solution:`for i in range(10):\n    if i == ${k}:\n        break\n    print(i)`,concept:"break leaves the loop early",why:`It prints 0..${k-1}, then break stops the loop before ${k}.`};}},
  ],
  3:[
   {topic:"functions",gen:()=>({prompt:`Write a function <b>double(n)</b> that returns <b>n times 2</b>.`,starter:`def double(n):\n    `,kind:"func",tests:`print(double(4))\nprint(double(25))`,expectedTests:"8\n50",need:["def","return"],solution:`def double(n):\n    return n * 2`,concept:"a function transforms its input and returns it",why:`double(4) → 8, double(25) → 50.`})},
@@ -787,6 +832,8 @@ const WGEN={
   {topic:"loops",gen:()=>({prompt:`Print the numbers <b>5 down to 1</b> (a countdown), each on its own line.`,starter:``,kind:"output",expected:"5\n4\n3\n2\n1",solution:`for i in range(5, 0, -1):\n    print(i)`,concept:"range can count down with a negative step",why:`range(5, 0, -1) → 5, 4, 3, 2, 1.`})},
   {topic:"lists",gen:()=>({prompt:`Build a list of the <b>squares</b> of 1, 2, 3, 4 and print it. (Expected: [1, 4, 9, 16])`,starter:`result = []\n`,kind:"output",expected:"[1, 4, 9, 16]",need:["append"],solution:`result = []\nfor i in range(1, 5):\n    result.append(i * i)\nprint(result)`,concept:"grow a list with .append() inside a loop",why:`The squares of 1..4 are 1, 4, 9, 16.`})},
   {topic:"functions",gen:()=>({prompt:`Write a function <b>is_even(n)</b> that returns <b>True</b> if n is even, otherwise <b>False</b>.`,starter:`def is_even(n):\n    `,kind:"func",tests:`print(is_even(4))\nprint(is_even(7))`,expectedTests:"True\nFalse",need:["def","return"],solution:`def is_even(n):\n    return n % 2 == 0`,concept:"you can return a comparison (it's True or False)",why:`4 is even → True, 7 is odd → False.`})},
+  {topic:"tuples",gen:()=>({prompt:`Write a function <b>swap(a, b)</b> that <b>returns them reversed</b>, as (b, a).`,starter:`def swap(a, b):\n    `,kind:"func",tests:`print(swap(1, 2))\nprint(swap("x", "y"))`,expectedTests:`(2, 1)\n('y', 'x')`,need:["def","return"],solution:`def swap(a, b):\n    return b, a`,concept:"a function can return several values as a tuple",why:`swap(1, 2) → (2, 1) and swap("x", "y") → ('y', 'x').`})},
+  {topic:"builtins",gen:()=>{const a=pickn([1,2,3,4,5],3),b=pickn([10,20,30,40],3);const exp=a.map((x,i)=>`${x} ${b[i]}`).join("\n");return{prompt:`Two lists <b>a = [${a.join(", ")}]</b> and <b>b = [${b.join(", ")}]</b> are given. Use <b>zip</b> to print each pair as "<b>x y</b>" on its own line.`,starter:`a = [${a.join(", ")}]\nb = [${b.join(", ")}]\n`,kind:"output",expected:exp,need:["zip"],solution:`a = [${a.join(", ")}]\nb = [${b.join(", ")}]\nfor x, y in zip(a, b):\n    print(x, y)`,concept:"zip pairs two lists item by item",why:`Each pair prints on its own line: ${a.map((x,i)=>`${x} ${b[i]}`).join(", ")}.`};}},
  ]
 };
 const WHINTS=[

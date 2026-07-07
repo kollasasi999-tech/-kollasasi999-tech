@@ -390,6 +390,10 @@ const PRESETS=[
  {name:"Function",code:`def double(n):\n    return n * 2\n\nx = double(5)\nprint(x)`},
  {name:"While countdown",code:`n = 3\nwhile n > 0:\n    print(n)\n    n = n - 1\nprint("Go!")`},
  {name:"Enumerate",code:`fruits = ["apple", "mango", "pear"]\nfor i, fruit in enumerate(fruits):\n    print(i, fruit)`},
+ {name:"Swap (tuples)",code:`a = 1\nb = 2\na, b = b, a\nprint(a, b)`},
+ {name:"break early",code:`for n in [3, 8, 1, 9, 4]:\n    if n > 5:\n        print("found", n)\n        break`},
+ {name:"zip two lists",code:`names = ["Ada", "Leo", "Mia"]\nscores = [90, 75, 88]\nfor name, score in zip(names, scores):\n    print(name, score)`},
+ {name:"Running total (+=)",code:`total = 0\nfor n in [5, 8, 2]:\n    total += n\nprint(total)`},
 ];
 let steps=[], si=0, srcLines=[], playTimer=null, prevVars={};
 
