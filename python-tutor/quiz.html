@@ -183,13 +183,17 @@
    f-strings, + - * // % **, augmented assignment (+= -= *= //= %= **=),
    comparisons, and/or/not, in, lists, tuples & unpacking, indexing,
    slicing, item assignment, break/continue/pass, dicts, range, for,
-   while, if/elif/else, def/return (defaults), and many builtins
-   (len, sum, min, max, abs, round, sorted, reversed, zip, enumerate,
-   any, all, list, tuple, set, bool) plus string methods (upper, lower,
-   title, split, join, replace, strip, startswith, find, ...) and list
-   methods (append, pop, sort, reverse, insert, index, extend, remove).
+   while, if/elif/else, break/continue/pass, def/return (defaults),
+   try/except/else/finally + raise, not in / is / is not, list/set/dict
+   comprehensions, sets, and many builtins (len, sum, min, max, abs,
+   round, sorted, reversed, zip, enumerate, any, all, list, tuple, set,
+   bool) plus string methods (upper, lower, title, split, join, replace,
+   strip, startswith, find, ...) and list methods (append, pop, sort,
+   reverse, insert, index, extend, remove).
    (Numbers are unified — no separate float type — so it avoids true
-   division / and float-precision cases like round(x, n).)
+   division / and float-precision cases like round(x, n). Set iteration
+   order is insertion order, so generated content prints sorted(set) not
+   raw sets.)
    ============================================================ */
 function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
 function toLogicalLines(src){
@@ -625,6 +629,12 @@ const GEN={
   {topic:"loops",gen:()=>{const n=ri(5,7),k=ri(1,3);const printed=[];for(let i=0;i<n;i++){if(i===k)continue;printed.push(i);}return{code:`for i in range(${n}):\n    if i == ${k}:\n        continue\n    print(i)`,concept:"continue skips the rest of THIS turn, then keeps going",why:`When i == ${k}, continue jumps to the next turn, so ${k} is skipped but the loop carries on. It prints ${printed.join(", ")}.`};}},
   {topic:"builtins",gen:()=>{const arr=pickn([12,4,19,7,23,8,15,3],ri(4,5));const s=arr.reduce((a,b)=>a+b,0);return{code:`nums = [${arr.join(", ")}]\nprint(min(nums), max(nums), sum(nums))`,concept:"min(), max() and sum() summarise a list at a glance",why:`Smallest is ${Math.min(...arr)}, largest is ${Math.max(...arr)}, and they add to ${s}. print shows all three with spaces.`};}},
   {topic:"basics",gen:()=>{const arr=pickn([2,3,4,5,6,7],ri(3,4));const s=arr.reduce((a,b)=>a+b,0);return{code:`total = 0\nfor n in [${arr.join(", ")}]:\n    total += n\nprint(total)`,concept:"total += n is the tidy way to accumulate",why:`total starts at 0 and each turn grows by n: ${arr.join(" + ")} = ${s}.`};}},
+  {topic:"comprehensions",gen:()=>{const n=ri(3,6);const arr=Array.from({length:n},(_,i)=>(i+1)*2);return{code:`print([x * 2 for x in range(1, ${n+1})])`,concept:"a list comprehension builds a whole list in one line",why:`For each x in 1..${n} it works out x*2 and collects the results: ${pyList(arr)}.`};}},
+  {topic:"comprehensions",gen:()=>{const arr=pickn(WORDS,ri(3,4));return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint([w.upper() for w in words])`,concept:"a comprehension transforms every item of a list",why:`It upper-cases each word in turn: ${pyList(arr.map(w=>w.toUpperCase()))}.`};}},
+  {topic:"sets",gen:()=>{const base=pickn([1,2,3,4,5],3);const arr=base.concat(pickn(base,2));return{code:`nums = [${arr.join(", ")}]\nprint(len(set(nums)))`,concept:"a set keeps only the unique values",why:`nums has ${arr.length} items, but only ${new Set(arr).size} are different, so len(set(nums)) is ${new Set(arr).size}.`};}},
+  {topic:"sets",gen:()=>{const w=pick(["banana","apple","letter","coffee","balloon"]);const uniq=[...new Set(w.split(""))].sort();return{code:`print(sorted(set("${w}")))`,concept:"set() on a word finds its unique letters",why:`The distinct letters of "${w}", put in order, are ${pyList(uniq)}.`};}},
+  {topic:"errors",gen:()=>{return{code:`try:\n    print(10 // 0)\nexcept ZeroDivisionError:\n    print("cannot divide by zero")`,concept:"try/except catches an error instead of crashing",why:`10 // 0 would raise ZeroDivisionError, so the except block runs and prints the message instead of stopping the program.`};}},
+  {topic:"errors",gen:()=>{const arr=pickn([10,20,30,40],3);const i=ri(4,7);return{code:`nums = [${arr.join(", ")}]\ntry:\n    print(nums[${i}])\nexcept IndexError:\n    print("out of range")`,concept:"catch an IndexError for a position that doesn't exist",why:`nums has ${arr.length} items (indexes 0–${arr.length-1}); nums[${i}] doesn't exist, so the except prints "out of range".`};}},
  ],
  3:[ /* ===== HARD: 5–10 lines, nested / functions / multi-step ===== */
   {topic:"functions",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8],ri(3,4));const map=arr.map(n=>`${n}→${n%2===0?"even":"odd"}`).join(", ");return{code:`def label(n):\n    if n % 2 == 0:\n        return "even"\n    else:\n        return "odd"\n\nfor n in [${arr.join(", ")}]:\n    print(n, label(n))`,concept:"a function with an if, called inside a loop",why:`label(n) returns "even" when n % 2 == 0, otherwise "odd". The loop tags each number: ${map}. print(n, label(n)) puts the number and its tag on one line, separated by a space.`};}},
@@ -646,6 +656,10 @@ const GEN={
   {topic:"loops",gen:()=>{const arr=pickn([3,8,1,6,10,4,7],ri(4,5));const t=pick([5,6]);const found=arr.find(n=>n>t);return{code:`nums = [${arr.join(", ")}]\nfor n in nums:\n    if n > ${t}:\n        print("found", n)\n        break`,concept:"scan until you find a match, then break",why:`It walks the list and stops at the FIRST value over ${t}. That is ${found}, so it prints "found ${found}" and breaks — later items are ignored.`};}},
   {topic:"methods",gen:()=>{const arr=pickn([10,20,30,40,50],ri(3,4));const i=ri(1,2);const after=arr.slice();after.splice(i,0,99);return{code:`nums = [${arr.join(", ")}]\nnums.insert(${i}, 99)\nprint(nums)\nprint(nums.index(99))`,concept:".insert(i, x) adds at a position; .index(x) finds where a value sits",why:`insert puts 99 at index ${i} → ${pyList(after)}. Then .index(99) reports its position, ${i}.`};}},
   {topic:"builtins",gen:()=>{const arr=pickn(["pear","kiwi","lime","fig","date"],3);const sorted=arr.slice().sort();const lines=sorted.map((w,i)=>`${i} ${w}`).join("  |  ");return{code:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nfor i, w in enumerate(sorted(words)):\n    print(i, w)`,concept:"sort first, then enumerate to number them",why:`sorted(words) puts them alphabetically: ${pyList(sorted)}. enumerate then pairs each with its position: ${lines}.`};}},
+  {topic:"comprehensions",gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8,9,10],6);const ev=arr.filter(n=>n%2===0);return{code:`nums = [${arr.join(", ")}]\nprint([n for n in nums if n % 2 == 0])`,concept:"a comprehension with 'if' keeps only some items (a filter)",why:`It keeps the numbers where n % 2 == 0 — the evens ${pyList(ev)}.`};}},
+  {topic:"comprehensions",gen:()=>{const arr=pickn(FRUITS,4);const lens=arr.map(w=>w.length);return{code:`fruits = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint([len(f) for f in fruits])`,concept:"build a new list of results from another list",why:`It takes the length of each word: ${arr.map((w,i)=>`${w}→${lens[i]}`).join(", ")} → ${pyList(lens)}.`};}},
+  {topic:"sets",gen:()=>{const a=pickn([1,2,3,4,5],3),b=pickn([3,4,5,6,7],3);const inter=a.filter(x=>b.includes(x)).sort((x,y)=>x-y);return{code:`a = {${a.join(", ")}}\nb = {${b.join(", ")}}\nprint(sorted(a.intersection(b)))`,concept:"intersection = the items in BOTH sets",why:`The values found in both a and b, sorted, are ${pyList(inter)}.`};}},
+  {topic:"errors",gen:()=>{const b1=ri(2,5);return{code:`def safe_div(a, b):\n    try:\n        return a // b\n    except ZeroDivisionError:\n        return -1\n\nprint(safe_div(20, ${b1}))\nprint(safe_div(20, 0))`,concept:"a function can catch its own error and return a fallback value",why:`20 // ${b1} = ${Math.floor(20/b1)}. 20 // 0 would raise ZeroDivisionError, so except returns -1.`};}},
  ],
  4:[ /* ===== EXPERT: slicing & enumerate ===== */
   {topic:"strings",gen:()=>{const w=pick(["rainbow","sunlight","diamond","picture","library"]);const k=ri(2,4);return{code:`w = "${w}"\nprint(w[:${k}])\nprint(w[${k}:])`,concept:"slicing: [:k] is the start, [k:] is the rest",why:`w[:${k}] takes the first ${k} letters → "${w.slice(0,k)}". w[${k}:] takes from index ${k} to the end → "${w.slice(k)}".`};}},
@@ -666,11 +680,15 @@ const GEN={
   {topic:"tuples",gen:()=>{const ns=pickn(NAMES,3),ag=pickn([21,34,28,45,19],3);const win=ns.map((n,i)=>({n,a:ag[i]})).reduce((a,b)=>b.a>a.a?b:a);return{code:`names = [${ns.map(x=>`"${x}"`).join(", ")}]\nages = [${ag.join(", ")}]\noldest = names[0]\nbest = ages[0]\nfor name, age in zip(names, ages):\n    if age > best:\n        best = age\n        oldest = name\nprint(oldest, best)`,concept:"zip two lists and track a running best",why:`zip pairs each name with its age. Whenever an age beats the best so far, both update. The oldest is ${win.n} at ${win.a}.`};}},
   {topic:"builtins",gen:()=>{const arr=pickn([2,4,6,8,10,3,5],4);const allEven=arr.every(n=>n%2===0);const anyEven=arr.some(n=>n%2===0);const flags=arr.map(n=>n%2===0);return{code:`nums = [${arr.join(", ")}]\nchecks = [${flags.map(f=>f?"True":"False").join(", ")}]\nprint(any(checks), all(checks))`,concept:"any() is True if ANY item is true; all() needs EVERY item true",why:`checks is ${pyList(flags)}. any() → ${anyEven?"True":"False"} (at least one True), all() → ${allEven?"True":"False"} (${allEven?"they are all True":"not every one is True"}).`};}},
   {topic:"tuples",gen:()=>{const arr=pickn(FRUITS,3);return{code:`fruits = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint(list(enumerate(fruits)))`,concept:"enumerate produces (index, item) tuples",why:`Wrapping enumerate in list() shows the pairs it makes: [${arr.map((f,i)=>pyTup([i,f])).join(", ")}].`};}},
+  {topic:"comprehensions",gen:()=>{const n=ri(5,8);const arr=[];for(let i=0;i<n;i++)if(i%2===1)arr.push(i*i);return{code:`print([x * x for x in range(${n}) if x % 2 == 1])`,concept:"a comprehension can transform AND filter at once",why:`For the odd x in 0..${n-1} it squares each one: ${pyList(arr)}.`};}},
+  {topic:"comprehensions",gen:()=>{const arr=pickn(NAMES,4);const first=arr.map(w=>w[0]);return{code:`names = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint([n[0] for n in names])`,concept:"a comprehension over strings, using indexing",why:`It takes the first letter of each name: ${arr.map((w,i)=>`${w}→${first[i]}`).join(", ")} → ${pyList(first)}.`};}},
+  {topic:"sets",gen:()=>{const a=pickn([1,2,3,4],3),b=pickn([3,4,5,6],3);const uni=[...new Set(a.concat(b))].sort((x,y)=>x-y);return{code:`a = {${a.join(", ")}}\nb = {${b.join(", ")}}\nprint(sorted(a.union(b)))`,concept:"union = every item from EITHER set, without repeats",why:`Combining a and b and dropping duplicates gives ${pyList(uni)}.`};}},
+  {topic:"errors",gen:()=>{const x=ri(1,5);return{code:`def check(n):\n    if n < 0:\n        raise ValueError("negative")\n    return n * 2\n\ntry:\n    print(check(${x}))\n    print(check(-1))\nexcept ValueError as e:\n    print("stopped:", e)`,concept:"raise makes your own error; except catches it (with 'as' for the message)",why:`check(${x}) returns ${x*2} and prints it. check(-1) raises ValueError("negative"), so the next print is skipped and except prints "stopped: negative".`};}},
  ]
 };
 
 /* ===== topics for the filter ===== */
-const TOPICS=[["all","All"],["loops","Loops"],["conditionals","If/Else"],["functions","Functions"],["strings","Strings"],["lists","Lists"],["dicts","Dicts"],["tuples","Tuples"],["methods","Str/List tools"],["builtins","Built-ins"]];
+const TOPICS=[["all","All"],["loops","Loops"],["conditionals","If/Else"],["functions","Functions"],["strings","Strings"],["lists","Lists"],["dicts","Dicts"],["tuples","Tuples"],["methods","Str/List tools"],["builtins","Built-ins"],["comprehensions","Comprehensions"],["sets","Sets"],["errors","Try / Except"]];
 
 /* ===== ranks ===== */
 const RANKS=[[0,"🥚 Hatchling"],[40,"🌱 Sprout"],[110,"🐍 Coder"],[220,"🔥 Sharp"],[380,"⚡ Pro"],[600,"🏆 Master"],[900,"🧙 Wizard"],[1300,"🌟 Legend"]];
@@ -686,7 +704,7 @@ let srs=ld(SK.srs,{}), clock=ld(SK.clock,0);
 let mode="easy", topic="all", cur=null, attempts=0, solvedThis=false, bought=[];
 let gameMode=ld("ct-mode","alt"), qIndex=0, curW=null, __lvl=0;
 let forceTopic=null, forceLevel=null, reviewed=false;
-const TOPIC_KEYS=["basics","strings","loops","conditionals","functions","lists","dicts","tuples","methods","builtins"];
+const TOPIC_KEYS=["basics","strings","loops","conditionals","functions","lists","dicts","tuples","methods","builtins","comprehensions","sets","errors"];
 const SRS_INT=[0,1,3,8,20,50];
 function levelFromBox(box){ return box<=2?1:(box<=4?2:3); }
 function recordReview(t,success){ if(reviewed) return; reviewed=true; clock++; sv(SK.clock,clock);
@@ -911,6 +929,8 @@ const WGEN={
   {topic:"builtins",gen:()=>{const arr=pickn([7,2,9,4,1,8,5],4);return{prompt:`The list <b>nums = [${arr.join(", ")}]</b> is given. Print them <b>sorted</b> (smallest first).`,starter:`nums = [${arr.join(", ")}]\n`,kind:"output",expected:pyList(arr.slice().sort((x,y)=>x-y)),need:["sorted"],solution:`nums = [${arr.join(", ")}]\nprint(sorted(nums))`,concept:"sorted() returns an ordered copy",why:`In order: ${pyList(arr.slice().sort((x,y)=>x-y))}.`};}},
   {topic:"methods",gen:()=>{const arr=pickn(WORDS,3);return{prompt:`Join the list <b>words = [${arr.map(x=>`"${x}"`).join(", ")}]</b> into one string with <b>"-"</b> between the words, and print it.`,starter:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\n`,kind:"output",expected:arr.join("-"),need:[".join("],solution:`words = [${arr.map(x=>`"${x}"`).join(", ")}]\nprint("-".join(words))`,concept:'"sep".join(list) glues text together',why:`Result: "${arr.join("-")}".`};}},
   {topic:"loops",gen:()=>{const k=ri(3,5);const exp=Array.from({length:k},(_,i)=>i).join("\n");return{prompt:`Print <b>0 up to ${k-1}</b>, then <b>stop</b> before ${k} using <b>break</b>. (Loop over range(10).)`,starter:`for i in range(10):\n    `,kind:"output",expected:exp,need:["break"],solution:`for i in range(10):\n    if i == ${k}:\n        break\n    print(i)`,concept:"break leaves the loop early",why:`It prints 0..${k-1}, then break stops the loop before ${k}.`};}},
+  {topic:"comprehensions",gen:()=>({prompt:`Use a <b>list comprehension</b> to print the squares of <b>1, 2, 3, 4, 5</b>. (Expected: [1, 4, 9, 16, 25])`,starter:``,kind:"output",expected:"[1, 4, 9, 16, 25]",need:["for"],solution:`print([x * x for x in range(1, 6)])`,concept:"a comprehension builds a list in one line",why:`x*x for x in 1..5 gives 1, 4, 9, 16, 25.`})},
+  {topic:"sets",gen:()=>({prompt:`The list <b>nums = [1, 2, 2, 3, 3, 3]</b> is given. Print how many <b>unique</b> values it has using <b>set()</b>. (Expected: 3)`,starter:`nums = [1, 2, 2, 3, 3, 3]\n`,kind:"output",expected:"3",need:["set("],solution:`nums = [1, 2, 2, 3, 3, 3]\nprint(len(set(nums)))`,concept:"a set drops duplicates",why:`The unique values are 1, 2, 3 → 3 of them.`})},
  ],
  3:[
   {topic:"functions",gen:()=>({prompt:`Write a function <b>double(n)</b> that returns <b>n times 2</b>.`,starter:`def double(n):\n    `,kind:"func",tests:`print(double(4))\nprint(double(25))`,expectedTests:"8\n50",need:["def","return"],solution:`def double(n):\n    return n * 2`,concept:"a function transforms its input and returns it",why:`double(4) → 8, double(25) → 50.`})},
@@ -920,6 +940,8 @@ const WGEN={
   {topic:"functions",gen:()=>({prompt:`Write a function <b>is_even(n)</b> that returns <b>True</b> if n is even, otherwise <b>False</b>.`,starter:`def is_even(n):\n    `,kind:"func",tests:`print(is_even(4))\nprint(is_even(7))`,expectedTests:"True\nFalse",need:["def","return"],solution:`def is_even(n):\n    return n % 2 == 0`,concept:"you can return a comparison (it's True or False)",why:`4 is even → True, 7 is odd → False.`})},
   {topic:"tuples",gen:()=>({prompt:`Write a function <b>swap(a, b)</b> that <b>returns them reversed</b>, as (b, a).`,starter:`def swap(a, b):\n    `,kind:"func",tests:`print(swap(1, 2))\nprint(swap("x", "y"))`,expectedTests:`(2, 1)\n('y', 'x')`,need:["def","return"],solution:`def swap(a, b):\n    return b, a`,concept:"a function can return several values as a tuple",why:`swap(1, 2) → (2, 1) and swap("x", "y") → ('y', 'x').`})},
   {topic:"builtins",gen:()=>{const a=pickn([1,2,3,4,5],3),b=pickn([10,20,30,40],3);const exp=a.map((x,i)=>`${x} ${b[i]}`).join("\n");return{prompt:`Two lists <b>a = [${a.join(", ")}]</b> and <b>b = [${b.join(", ")}]</b> are given. Use <b>zip</b> to print each pair as "<b>x y</b>" on its own line.`,starter:`a = [${a.join(", ")}]\nb = [${b.join(", ")}]\n`,kind:"output",expected:exp,need:["zip"],solution:`a = [${a.join(", ")}]\nb = [${b.join(", ")}]\nfor x, y in zip(a, b):\n    print(x, y)`,concept:"zip pairs two lists item by item",why:`Each pair prints on its own line: ${a.map((x,i)=>`${x} ${b[i]}`).join(", ")}.`};}},
+  {topic:"errors",gen:()=>({prompt:`Use <b>try / except ZeroDivisionError</b> to print <b>"oops"</b> instead of crashing when computing <b>10 // 0</b>.`,starter:`try:\n    `,kind:"output",expected:"oops",need:["try","except"],solution:`try:\n    print(10 // 0)\nexcept ZeroDivisionError:\n    print("oops")`,concept:"try/except handles an error gracefully",why:`10 // 0 raises ZeroDivisionError, which the except catches to print "oops".`})},
+  {topic:"comprehensions",gen:()=>({prompt:`Given <b>nums = [1, 2, 3, 4, 5, 6]</b>, use a <b>comprehension with if</b> to print only the <b>even</b> numbers. (Expected: [2, 4, 6])`,starter:`nums = [1, 2, 3, 4, 5, 6]\n`,kind:"output",expected:"[2, 4, 6]",need:["for","if"],solution:`nums = [1, 2, 3, 4, 5, 6]\nprint([n for n in nums if n % 2 == 0])`,concept:"add 'if' to a comprehension to filter",why:`It keeps only n where n % 2 == 0.`})},
  ]
 };
 const WHINTS=[

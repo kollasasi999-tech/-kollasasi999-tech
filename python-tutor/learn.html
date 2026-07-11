@@ -96,7 +96,7 @@
   <header class="top">
     <div class="kicker">guided beginner path</div>
     <h1>Learn <span class="glow">Python</span></h1>
-    <p class="sub">Thirteen short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
+    <p class="sub">Sixteen short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
   </header>
   <div class="nav">
     <a class="pill" href="quiz.html">🎯 Practice game</a>
@@ -119,13 +119,17 @@
    f-strings, + - * // % **, augmented assignment (+= -= *= //= %= **=),
    comparisons, and/or/not, in, lists, tuples & unpacking, indexing,
    slicing, item assignment, break/continue/pass, dicts, range, for,
-   while, if/elif/else, def/return (defaults), and many builtins
-   (len, sum, min, max, abs, round, sorted, reversed, zip, enumerate,
-   any, all, list, tuple, set, bool) plus string methods (upper, lower,
-   title, split, join, replace, strip, startswith, find, ...) and list
-   methods (append, pop, sort, reverse, insert, index, extend, remove).
+   while, if/elif/else, break/continue/pass, def/return (defaults),
+   try/except/else/finally + raise, not in / is / is not, list/set/dict
+   comprehensions, sets, and many builtins (len, sum, min, max, abs,
+   round, sorted, reversed, zip, enumerate, any, all, list, tuple, set,
+   bool) plus string methods (upper, lower, title, split, join, replace,
+   strip, startswith, find, ...) and list methods (append, pop, sort,
+   reverse, insert, index, extend, remove).
    (Numbers are unified — no separate float type — so it avoids true
-   division / and float-precision cases like round(x, n).)
+   division / and float-precision cases like round(x, n). Set iteration
+   order is insertion order, so generated content prints sorted(set) not
+   raw sets.)
    ============================================================ */
 function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
 function toLogicalLines(src){
@@ -587,6 +591,21 @@ const MODULES=[
   example:`nums = [3, 1, 2]\nprint(sorted(nums))\nprint(sum(nums))`,
   predict:{code:`print(min([4, 2, 8]), max([4, 2, 8]))`,out:`2 8`,why:`min finds the smallest (2) and max the largest (8).`},
   write:{prompt:`A list <b>nums = [5, 2, 9, 1]</b> is given. Print them <b>sorted</b> (smallest first). (Expected: [1, 2, 5, 9])`,starter:`nums = [5, 2, 9, 1]\n`,kind:"output",expected:`[1, 2, 5, 9]`,need:["sorted"],solution:`nums = [5, 2, 9, 1]\nprint(sorted(nums))`,why:`sorted() returns a new list ordered smallest to largest.`}},
+ {icon:"⚡",title:"List comprehensions",
+  teach:`<p>A <b>list comprehension</b> builds a new list in a single line: <code>[expr for item in iterable]</code>.</p><p>It's a compact loop. Add <code>if condition</code> at the end to keep only some items.</p>`,
+  example:`squares = [x * x for x in range(1, 6)]\nprint(squares)`,
+  predict:{code:`print([n * 10 for n in [1, 2, 3]])`,out:`[10, 20, 30]`,why:`For each n in the list it works out n*10, collecting [10, 20, 30].`},
+  write:{prompt:`Use a <b>list comprehension</b> to print the <b>doubles</b> of 1, 2, 3, 4. (Expected: [2, 4, 6, 8])`,starter:``,kind:"output",expected:`[2, 4, 6, 8]`,need:["for"],solution:`print([x * 2 for x in range(1, 5)])`,why:`x*2 for x in 1..4 gives 2, 4, 6, 8.`}},
+ {icon:"🎯",title:"Sets",
+  teach:`<p>A <b>set</b> holds only <b>unique</b> items, written with <code>{ }</code> (or <code>set()</code>). Duplicates are dropped automatically.</p><p>Sets are great for removing duplicates and for fast "is this in here?" checks. (They have no order, so we usually <code>sorted()</code> them to print.)</p>`,
+  example:`nums = [1, 2, 2, 3, 3, 3]\nprint(len(set(nums)))`,
+  predict:{code:`print(sorted(set("hello")))`,out:`['e', 'h', 'l', 'o']`,why:`set("hello") keeps the unique letters {h, e, l, o}; sorted puts them in order.`},
+  write:{prompt:`The list <b>letters = ["a", "b", "a", "c", "b"]</b> is given. Print how many <b>unique</b> letters it has using <b>set()</b>. (Expected: 3)`,starter:`letters = ["a", "b", "a", "c", "b"]\n`,kind:"output",expected:`3`,need:["set("],solution:`letters = ["a", "b", "a", "c", "b"]\nprint(len(set(letters)))`,why:`The unique letters are a, b, c → 3 of them.`}},
+ {icon:"🛟",title:"Handling errors",
+  teach:`<p>When code might fail, wrap it in <code>try:</code> and catch the problem in <code>except:</code>. The program keeps running instead of crashing.</p><p>You can name the error type, e.g. <code>except ZeroDivisionError:</code> or <code>except IndexError:</code>.</p>`,
+  example:`try:\n    print(10 // 0)\nexcept ZeroDivisionError:\n    print("cannot divide by zero")`,
+  predict:{code:`nums = [1, 2, 3]\ntry:\n    print(nums[9])\nexcept IndexError:\n    print("no such item")`,out:`no such item`,why:`nums[9] doesn't exist, so it raises IndexError — the except catches it and prints the message.`},
+  write:{prompt:`Use <b>try / except ZeroDivisionError</b> to print <b>"oops"</b> instead of crashing when computing <b>5 // 0</b>.`,starter:`try:\n    `,kind:"output",expected:`oops`,need:["try","except"],solution:`try:\n    print(5 // 0)\nexcept ZeroDivisionError:\n    print("oops")`,why:`5 // 0 raises ZeroDivisionError, which the except catches to print "oops".`}},
 ];
 
 const PHASES=["Learn","Predict","Write"];

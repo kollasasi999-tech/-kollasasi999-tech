@@ -113,7 +113,7 @@
   <header class=&quot;top&quot;>
     <div class=&quot;kicker&quot;>guided beginner path</div>
     <h1>Learn <span class=&quot;glow&quot;>Python</span></h1>
-    <p class=&quot;sub&quot;>Thirteen short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
+    <p class=&quot;sub&quot;>Sixteen short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
   </header>
   <div class=&quot;nav&quot;>
     
@@ -136,13 +136,17 @@
    f-strings, + - * // % **, augmented assignment (+= -= *= //= %= **=),
    comparisons, and/or/not, in, lists, tuples &amp; unpacking, indexing,
    slicing, item assignment, break/continue/pass, dicts, range, for,
-   while, if/elif/else, def/return (defaults), and many builtins
-   (len, sum, min, max, abs, round, sorted, reversed, zip, enumerate,
-   any, all, list, tuple, set, bool) plus string methods (upper, lower,
-   title, split, join, replace, strip, startswith, find, ...) and list
-   methods (append, pop, sort, reverse, insert, index, extend, remove).
+   while, if/elif/else, break/continue/pass, def/return (defaults),
+   try/except/else/finally + raise, not in / is / is not, list/set/dict
+   comprehensions, sets, and many builtins (len, sum, min, max, abs,
+   round, sorted, reversed, zip, enumerate, any, all, list, tuple, set,
+   bool) plus string methods (upper, lower, title, split, join, replace,
+   strip, startswith, find, ...) and list methods (append, pop, sort,
+   reverse, insert, index, extend, remove).
    (Numbers are unified — no separate float type — so it avoids true
-   division / and float-precision cases like round(x, n).)
+   division / and float-precision cases like round(x, n). Set iteration
+   order is insertion order, so generated content prints sorted(set) not
+   raw sets.)
    ============================================================ */
 function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
 function toLogicalLines(src){
@@ -185,11 +189,21 @@ function parseStatement(lines,st,indent){
   }
   if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(&quot;,&quot;).map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:&quot;for&quot;,targets,iter,body:parseBlock(lines,st,indent)}; }
   if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:&quot;while&quot;,cond:parseExpr(m[1]),body:parseBlock(lines,st,indent)}; }
+  if(/^try\s*:$/.test(text)){ st.i++; const body=parseBlock(lines,st,indent); const handlers=[]; let els=null,fin=null;
+    while(st.i<lines.length &amp;&amp; lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^except\b(.*):$/.exec(t))){ st.i++; const spec=em[1].trim(); let type=null,vname=null;
+        if(spec){ const am=/^([A-Za-z_]\w*)(?:\s+as\s+([A-Za-z_]\w*))?$/.exec(spec); if(am){type=am[1];vname=am[2]||null;} }
+        handlers.push({type,vname,body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); }
+      else if(/^finally\s*:$/.test(t)){ st.i++; fin=parseBlock(lines,st,indent); break; }
+      else break; }
+    return {t:&quot;try&quot;,body,handlers,els,fin}; }
   if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:&quot;def&quot;,name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent)}; }
   if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:&quot;return&quot;,expr:ex?parseExpr(ex):{t:&quot;none&quot;}}; }
   if(/^break$/.test(text)){ st.i++; return {t:&quot;break&quot;}; }
   if(/^continue$/.test(text)){ st.i++; return {t:&quot;continue&quot;}; }
   if(/^pass$/.test(text)){ st.i++; return {t:&quot;pass&quot;}; }
+  if((m=/^raise\b(.*)$/.exec(text))){ st.i++; return {t:&quot;raise&quot;,arg:m[1].trim()}; }
   st.i++;
   const aug=findAug(text);
   if(aug){ return {t:&quot;assign&quot;,target:text.slice(0,aug.start).trim(),op:aug.op,expr:parseExpr(text.slice(aug.eqPos+1).trim())}; }
@@ -229,7 +243,7 @@ function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),
     if(isD(c)||(c===&quot;.&quot;&amp;&amp;isD(s[k+1]))){ let j=k,num=&quot;&quot;; while(j<s.length&amp;&amp;/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:&quot;num&quot;,v:parseFloat(num)}); k=j; continue; }
     if(isId(c)){ let j=k,id=&quot;&quot;; while(j<s.length&amp;&amp;isIdc(s[j])){id+=s[j];j++;}
       if(id===&quot;True&quot;)toks.push({t:&quot;bool&quot;,v:true}); else if(id===&quot;False&quot;)toks.push({t:&quot;bool&quot;,v:false}); else if(id===&quot;None&quot;)toks.push({t:&quot;none&quot;});
-      else if(id===&quot;and&quot;||id===&quot;or&quot;||id===&quot;not&quot;||id===&quot;in&quot;)toks.push({t:&quot;kw&quot;,v:id}); else toks.push({t:&quot;name&quot;,v:id}); k=j; continue; }
+      else if(id===&quot;and&quot;||id===&quot;or&quot;||id===&quot;not&quot;||id===&quot;in&quot;||id===&quot;is&quot;)toks.push({t:&quot;kw&quot;,v:id}); else toks.push({t:&quot;name&quot;,v:id}); k=j; continue; }
     const two=s.slice(k,k+2); if([&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;,&quot;//&quot;,&quot;**&quot;].includes(two)){toks.push({t:&quot;op&quot;,v:two});k+=2;continue;}
     if(&quot;+-*/%<>()[]{}:,.&quot;.includes(c)){toks.push({t:&quot;op&quot;,v:c});k++;continue;}
     throw pyError(&quot;SyntaxError: unexpected character '&quot;+c+&quot;'&quot;); }
@@ -243,7 +257,15 @@ function eat(p,v){const t=p.toks[p.i];if(!t||(v&amp;&amp;!(t.v===v||t.t===v)))th
 function parseOr(p){let l=parseAnd(p);while(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;or&quot;){p.i++;l={t:&quot;bin&quot;,op:&quot;or&quot;,l,r:parseAnd(p)};}return l;}
 function parseAnd(p){let l=parseNot(p);while(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;and&quot;){p.i++;l={t:&quot;bin&quot;,op:&quot;and&quot;,l,r:parseNot(p)};}return l;}
 function parseNot(p){if(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;not&quot;){p.i++;return {t:&quot;unary&quot;,op:&quot;not&quot;,e:parseNot(p)};}return parseCmp(p);}
-function parseCmp(p){let l=parseAdd(p);while(peek(p)&amp;&amp;((peek(p).t===&quot;op&quot;&amp;&amp;[&quot;<&quot;,&quot;>&quot;,&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;].includes(peek(p).v))||(peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;in&quot;))){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseAdd(p)};}return l;}
+function parseCmp(p){let l=parseAdd(p);
+  while(peek(p)){ const t=peek(p); let op=null;
+    if(t.t===&quot;op&quot;&amp;&amp;[&quot;<&quot;,&quot;>&quot;,&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;].includes(t.v)){op=t.v;p.i++;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;in&quot;){op=&quot;in&quot;;p.i++;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;not&quot;&amp;&amp;p.toks[p.i+1]&amp;&amp;p.toks[p.i+1].t===&quot;kw&quot;&amp;&amp;p.toks[p.i+1].v===&quot;in&quot;){op=&quot;notin&quot;;p.i+=2;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;is&quot;){ p.i++; if(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;not&quot;){p.i++;op=&quot;isnot&quot;;}else op=&quot;is&quot;; }
+    else break;
+    l={t:&quot;bin&quot;,op,l,r:parseAdd(p)}; }
+  return l;}
 function parseAdd(p){let l=parseMul(p);while(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;(peek(p).v===&quot;+&quot;||peek(p).v===&quot;-&quot;)){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseMul(p)};}return l;}
 function parseMul(p){let l=parseUnary(p);while(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;[&quot;*&quot;,&quot;/&quot;,&quot;//&quot;,&quot;%&quot;].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseUnary(p)};}return l;}
 function parseUnary(p){if(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;peek(p).v===&quot;-&quot;){p.i++;return {t:&quot;unary&quot;,op:&quot;-&quot;,e:parseUnary(p)};}return parsePow(p);}
@@ -273,9 +295,37 @@ function parsePrimary(p){ const t=peek(p); if(!t)throw pyError(&quot;SyntaxError
     const first=parseOr(p);
     if(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){ const items=[first]; while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;)&quot;)break;items.push(parseOr(p));} eat(p,&quot;)&quot;); return {t:&quot;tuple&quot;,items}; }
     eat(p,&quot;)&quot;);return first;}
-  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;[&quot;){p.i++;const items=[];if(!(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)){items.push(parseOr(p));while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)break;items.push(parseOr(p));}}eat(p,&quot;]&quot;);return {t:&quot;list&quot;,items};}
-  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;{&quot;){p.i++;const pairs=[];if(!(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)){do{if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;const k=parseOr(p);eat(p,&quot;:&quot;);const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;&amp;&amp;(p.i++,true));}eat(p,&quot;}&quot;);return {t:&quot;dict&quot;,pairs};}
+  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;[&quot;){p.i++;
+    if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;){p.i++;return {t:&quot;list&quot;,items:[]};}
+    const first=parseOr(p);
+    if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;]&quot;); return {t:&quot;listcomp&quot;,expr:first,...comp}; }
+    const items=[first];
+    while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)break;items.push(parseOr(p));}
+    eat(p,&quot;]&quot;);return {t:&quot;list&quot;,items};}
+  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;{&quot;){p.i++;
+    if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;){p.i++;return {t:&quot;dict&quot;,pairs:[]};}
+    const k0=parseOr(p);
+    if(peek(p)&amp;&amp;peek(p).v===&quot;:&quot;){ p.i++; const v0=parseOr(p);
+      if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;}&quot;); return {t:&quot;dictcomp&quot;,key:k0,val:v0,...comp}; }
+      const pairs=[[k0,v0]];
+      while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;const k=parseOr(p);eat(p,&quot;:&quot;);const v=parseOr(p);pairs.push([k,v]);}
+      eat(p,&quot;}&quot;);return {t:&quot;dict&quot;,pairs};
+    }
+    if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;}&quot;); return {t:&quot;setcomp&quot;,expr:k0,...comp}; }
+    const items=[k0];
+    while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;items.push(parseOr(p));}
+    eat(p,&quot;}&quot;);return {t:&quot;set&quot;,items};}
   throw pyError(&quot;SyntaxError near '&quot;+t.v+&quot;'&quot;); }
+function isKwName(tok,word){ return tok &amp;&amp; tok.t===&quot;name&quot; &amp;&amp; tok.v===word; }
+/* parse the &quot;for <targets> in <iterable> [if <cond>]&quot; tail of a comprehension */
+function parseComp(p){ eat(p,&quot;name&quot;); /* 'for' */ const targets=[eat(p,&quot;name&quot;).v];
+  while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;targets.push(eat(p,&quot;name&quot;).v);}
+  if(!(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;in&quot;)) throw pyError(&quot;SyntaxError: expected 'in' in comprehension&quot;);
+  p.i++; const iter=parseOr(p); let cond=null;
+  while(isKwName(peek(p),&quot;if&quot;)){ p.i++; const c=parseOr(p); cond=cond?{t:&quot;bin&quot;,op:&quot;and&quot;,l:cond,r:c}:c; }
+  return {targets,iter,cond}; }
+function runComp(n,scope,G,emit){ const seq=iterate(evalExpr(n.iter,scope,G)); const local=Object.create(scope);
+  for(const item of seq){ bindTargets(n.targets,item,local); if(n.cond &amp;&amp; !truthy(evalExpr(n.cond,local,G))) continue; emit(local); } }
 function execBlock(stmts,scope,G){ for(const s of stmts) execStmt(s,scope,G); }
 function execStmt(s,scope,G){ switch(s.t){
   case &quot;assign&quot;:{ if(s.op){ const cur=readTarget(s.target,scope,G); const val=applyOp(s.op,cur,evalExpr(s.expr,scope,G)); writeTarget(s.target,val,scope,G); return; } const val=evalExpr(s.expr,scope,G); assignTo(s.target,val,scope,G); return; }
@@ -287,7 +337,22 @@ function execStmt(s,scope,G){ switch(s.t){
   case &quot;for&quot;:{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); try{ execBlock(s.body,scope,G); }catch(e){ if(e&amp;&amp;e.__brk)break; if(e&amp;&amp;e.__cont)continue; throw e; } } return; }
   case &quot;while&quot;:{ let guard=0; while(truthy(evalExpr(s.cond,scope,G))){ try{ execBlock(s.body,scope,G); }catch(e){ if(e&amp;&amp;e.__brk)break; if(e&amp;&amp;e.__cont){ if(++guard>100000) throw pyError(&quot;RuntimeError: loop too long&quot;); continue; } throw e; } if(++guard>100000) throw pyError(&quot;RuntimeError: loop too long&quot;); } return; }
   case &quot;def&quot;:{ scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
-  case &quot;return&quot;:{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+  case &quot;return&quot;:{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; }
+  case &quot;raise&quot;:{ throw makeRaise(s.arg,scope,G); }
+  case &quot;try&quot;:{ let raised=null;
+    try{ execBlock(s.body,scope,G); }
+    catch(e){ if(e&amp;&amp;(e.__ret||e.__brk||e.__cont)){ if(s.fin)execBlock(s.fin,scope,G); throw e; } raised=e; }
+    if(raised){ const msg=raised.__pyerr?raised.message:((raised&amp;&amp;raised.message)||String(raised)); const etype=pyErrType(msg);
+      let handled=false;
+      for(const h of s.handlers){ if(h.type===null||h.type===etype||h.type===&quot;Exception&quot;||h.type===&quot;BaseException&quot;){ if(h.vname) scope[h.vname]=excMessage(msg); execBlock(h.body,scope,G); handled=true; break; } }
+      if(!handled){ if(s.fin)execBlock(s.fin,scope,G); throw raised; }
+    } else if(s.els){ execBlock(s.els,scope,G); }
+    if(s.fin) execBlock(s.fin,scope,G); return; } } }
+function pyErrType(msg){ const m=/^([A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration))\b/.exec(msg); return m?m[1]:&quot;Exception&quot;; }
+function excMessage(msg){ const m=/^[A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration):\s?(.*)$/.exec(msg); return m?m[1]:&quot;&quot;; }
+function makeRaise(arg,scope,G){ arg=arg.trim(); if(!arg) throw pyError(&quot;RuntimeError: No active exception to re-raise&quot;);
+  const m=/^([A-Za-z_]\w*)\s*(?:\((.*)\))?$/.exec(arg); if(!m) throw pyError(&quot;SyntaxError: bad raise&quot;);
+  let msg=m[1]; if(m[2]!=null &amp;&amp; m[2].trim()){ const a=evalExpr(parseExpr(m[2].trim()),scope,G); msg=m[1]+&quot;: &quot;+pyStr(a); } return pyError(msg); }
 function isName(t){ return /^[A-Za-z_]\w*$/.test(t); }
 /* Find the final top-level [..] in an assignment target → {base, idx}, else null. */
 function idxMatch(t){ if(t[t.length-1]!==&quot;]&quot;) return null; let depth=0;
@@ -310,9 +375,9 @@ function applyOp(op,a,b){ switch(op){
   case &quot;+&quot;: if(typeof a===&quot;string&quot;||typeof b===&quot;string&quot;){ if(typeof a!==&quot;string&quot;||typeof b!==&quot;string&quot;) throw pyError(&quot;TypeError: str + non-str&quot;); return a+b; } if(Array.isArray(a)&amp;&amp;Array.isArray(b)) return a.concat(b); return a+b;
   case &quot;-&quot;: return a-b;
   case &quot;*&quot;: if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;number&quot;) return a.repeat(b); if(typeof a===&quot;number&quot;&amp;&amp;typeof b===&quot;string&quot;) return b.repeat(a); return a*b;
-  case &quot;/&quot;: return a/b;
-  case &quot;//&quot;: return Math.floor(a/b);
-  case &quot;%&quot;: return ((a%b)+b)%b;
+  case &quot;/&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: division by zero&quot;); return a/b;
+  case &quot;//&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return Math.floor(a/b);
+  case &quot;%&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return ((a%b)+b)%b;
   case &quot;**&quot;: return Math.pow(a,b); }
   throw pyError(&quot;SyntaxError: bad operator&quot;); }
 function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError(&quot;ValueError: cannot unpack&quot;); targets.forEach((t,i)=>scope[t]=item[i]); } }
@@ -323,7 +388,11 @@ function evalExpr(n,scope,G){ switch(n.t){
   case &quot;name&quot;: return lookup(n.v,scope,G);
   case &quot;list&quot;: return n.items.map(x=>evalExpr(x,scope,G));
   case &quot;tuple&quot;: return mkTuple(n.items.map(x=>evalExpr(x,scope,G)));
+  case &quot;set&quot;:{ const arr=mkSet([]); for(const x of n.items) setAdd(arr,evalExpr(x,scope,G)); return arr; }
   case &quot;dict&quot;:{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case &quot;listcomp&quot;:{ const out=[]; runComp(n,scope,G,loc=>out.push(evalExpr(n.expr,loc,G))); return out; }
+  case &quot;setcomp&quot;:{ const arr=mkSet([]); runComp(n,scope,G,loc=>setAdd(arr,evalExpr(n.expr,loc,G))); return arr; }
+  case &quot;dictcomp&quot;:{ const m=new Map(); runComp(n,scope,G,loc=>m.set(evalExpr(n.key,loc,G),evalExpr(n.val,loc,G))); return m; }
   case &quot;unary&quot;:{ const v=evalExpr(n.e,scope,G); if(n.op===&quot;-&quot;) return -v; if(n.op===&quot;not&quot;) return !truthy(v); return; }
   case &quot;bin&quot;: return evalBin(n,scope,G);
   case &quot;index&quot;:{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
@@ -342,13 +411,17 @@ function evalBin(n,scope,G){ const op=n.op;
     case &quot;+&quot;: if(typeof a===&quot;string&quot;||typeof b===&quot;string&quot;){ if(typeof a!==&quot;string&quot;||typeof b!==&quot;string&quot;) throw pyError(&quot;TypeError: str + non-str&quot;); return a+b; } if(Array.isArray(a)&amp;&amp;Array.isArray(b)) return a.concat(b); return a+b;
     case &quot;-&quot;: return a-b;
     case &quot;*&quot;: if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;number&quot;) return a.repeat(b); if(typeof a===&quot;number&quot;&amp;&amp;typeof b===&quot;string&quot;) return b.repeat(a); return a*b;
-    case &quot;/&quot;: return a/b;
-    case &quot;//&quot;: return Math.floor(a/b);
+    case &quot;/&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: division by zero&quot;); return a/b;
+    case &quot;//&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return Math.floor(a/b);
     case &quot;**&quot;: return Math.pow(a,b);
-    case &quot;%&quot;: return ((a%b)+b)%b;
+    case &quot;%&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return ((a%b)+b)%b;
     case &quot;<&quot;: return a<b; case &quot;>&quot;: return a>b; case &quot;<=&quot;: return a<=b; case &quot;>=&quot;: return a>=b;
     case &quot;==&quot;: return pyEq(a,b); case &quot;!=&quot;: return !pyEq(a,b);
-    case &quot;in&quot;:{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b===&quot;string&quot;) return b.includes(a); return false; } } }
+    case &quot;in&quot;: return pyIn(a,b);
+    case &quot;notin&quot;: return !pyIn(a,b);
+    case &quot;is&quot;: return a===b || (a===null&amp;&amp;b===null);
+    case &quot;isnot&quot;: return !(a===b || (a===null&amp;&amp;b===null)); } }
+function pyIn(a,b){ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b===&quot;string&quot;) return b.includes(a); throw pyError(&quot;TypeError: argument is not iterable&quot;); }
 function evalCall(n,scope,G){
   if(n.fn.t===&quot;attr&quot;){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
   if(n.fn.t===&quot;name&quot;){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
@@ -367,7 +440,8 @@ function evalCall(n,scope,G){
     if(name===&quot;reversed&quot;){ return iterate(args[0]).slice().reverse(); }
     if(name===&quot;list&quot;){ return args.length?iterate(args[0]).slice():[]; }
     if(name===&quot;tuple&quot;){ return mkTuple(args.length?iterate(args[0]).slice():[]); }
-    if(name===&quot;set&quot;){ const seen=[]; (args.length?iterate(args[0]):[]).forEach(x=>{ if(!seen.some(y=>pyEq(y,x)))seen.push(x); }); return seen; }
+    if(name===&quot;set&quot;){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
+    if(name===&quot;frozenset&quot;){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
     if(name===&quot;zip&quot;){ const seqs=args.map(iterate); const nn=seqs.length?Math.min.apply(null,seqs.map(s=>s.length)):0; const r=[]; for(let i=0;i<nn;i++) r.push(mkTuple(seqs.map(s=>s[i]))); return r; }
     if(name===&quot;any&quot;){ return iterate(args[0]).some(truthy); }
     if(name===&quot;all&quot;){ return iterate(args[0]).every(truthy); }
@@ -379,6 +453,19 @@ function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError(&quot;TypeError: n
   fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError(&quot;TypeError: missing arg '&quot;+p.name+&quot;'&quot;); });
   try{ execBlock(fn.body,local,G); }catch(e){ if(e&amp;&amp;e.__ret) return e.value; throw e; } return null; }
 function callMethod(obj,name,args){
+  if(isSet(obj)){
+    if(name===&quot;add&quot;){ setAdd(obj,args[0]); return null; }
+    if(name===&quot;discard&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p>=0)obj.splice(p,1); return null; }
+    if(name===&quot;remove&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;KeyError: &quot;+pyRepr(args[0])); obj.splice(p,1); return null; }
+    if(name===&quot;clear&quot;){ obj.length=0; return null; }
+    if(name===&quot;pop&quot;){ if(!obj.length) throw pyError(&quot;KeyError: 'pop from an empty set'&quot;); return obj.shift(); }
+    if(name===&quot;union&quot;){ const r=mkSet(obj.slice()); mkSet(r); iterate(args[0]).forEach(x=>setAdd(r,x)); return r; }
+    if(name===&quot;intersection&quot;){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name===&quot;difference&quot;){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(!other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name===&quot;update&quot;){ iterate(args[0]).forEach(x=>setAdd(obj,x)); return null; }
+    if(name===&quot;issubset&quot;){ const other=iterate(args[0]); return obj.every(x=>other.some(y=>pyEq(y,x))); }
+    if(name===&quot;issuperset&quot;){ const other=iterate(args[0]); return other.every(x=>obj.some(y=>pyEq(y,x))); }
+    throw pyError(&quot;AttributeError: set.&quot;+name); }
   if(Array.isArray(obj)){ if(name===&quot;append&quot;){obj.push(args[0]);return null;} if(name===&quot;pop&quot;){ if(args.length){ let i=args[0]<0?obj.length+args[0]:args[0]; if(i<0||i>=obj.length) throw pyError(&quot;IndexError: pop index out of range&quot;); return obj.splice(i,1)[0]; } if(!obj.length) throw pyError(&quot;IndexError: pop from empty list&quot;); return obj.pop(); } if(name===&quot;count&quot;){return obj.filter(x=>pyEq(x,args[0])).length;} if(name===&quot;sort&quot;){obj.sort((x,y)=>pyCmp(x,y));return null;} if(name===&quot;reverse&quot;){obj.reverse();return null;} if(name===&quot;index&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;ValueError: not in list&quot;); return p; } if(name===&quot;insert&quot;){ let i=args[0]; if(i<0)i+=obj.length; if(i<0)i=0; if(i>obj.length)i=obj.length; obj.splice(i,0,args[1]); return null; } if(name===&quot;extend&quot;){ iterate(args[0]).forEach(x=>obj.push(x)); return null; } if(name===&quot;remove&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;ValueError: list.remove(x): x not in list&quot;); obj.splice(p,1); return null; } if(name===&quot;clear&quot;){ obj.length=0; return null; } throw pyError(&quot;AttributeError: list.&quot;+name); }
   if(obj instanceof Map){ if(name===&quot;items&quot;)return Array.from(obj.entries()).map(([k,v])=>mkTuple([k,v])); if(name===&quot;keys&quot;)return Array.from(obj.keys()); if(name===&quot;values&quot;)return Array.from(obj.values()); if(name===&quot;get&quot;)return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); if(name===&quot;pop&quot;){ if(obj.has(args[0])){const v=obj.get(args[0]);obj.delete(args[0]);return v;} if(args.length>1)return args[1]; throw pyError(&quot;KeyError: &quot;+pyRepr(args[0])); } if(name===&quot;update&quot;){ const o=args[0]; if(o instanceof Map)o.forEach((v,k)=>obj.set(k,v)); return null; } throw pyError(&quot;AttributeError: dict.&quot;+name); }
   if(typeof obj===&quot;string&quot;){ if(name===&quot;upper&quot;)return obj.toUpperCase(); if(name===&quot;lower&quot;)return obj.toLowerCase(); if(name===&quot;title&quot;)return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name===&quot;capitalize&quot;)return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name===&quot;count&quot;){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;}
@@ -399,15 +486,18 @@ function callMethod(obj,name,args){
     throw pyError(&quot;AttributeError: str.&quot;+name); }
   throw pyError(&quot;AttributeError&quot;); }
 function mkTuple(arr){ Object.defineProperty(arr,&quot;__tuple&quot;,{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function mkSet(arr){ Object.defineProperty(arr,&quot;__set&quot;,{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function setAdd(s,v){ if(!s.some(x=>pyEq(x,v))) s.push(v); }
+function isSet(v){ return Array.isArray(v)&amp;&amp;v.__set; }
 function stripChars(s,chars,left,right){ let a=0,b=s.length; if(left){while(a<b&amp;&amp;chars.indexOf(s[a])>=0)a++;} if(right){while(b>a&amp;&amp;chars.indexOf(s[b-1])>=0)b--;} return s.slice(a,b); }
-function pyType(v){ if(typeof v===&quot;number&quot;)return Number.isInteger(v)?&quot;int&quot;:&quot;float&quot;; if(typeof v===&quot;string&quot;)return &quot;str&quot;; if(typeof v===&quot;boolean&quot;)return &quot;bool&quot;; if(Array.isArray(v))return v.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(v instanceof Map)return &quot;dict&quot;; if(v===null)return &quot;NoneType&quot;; return &quot;object&quot;; }
+function pyType(v){ if(typeof v===&quot;number&quot;)return Number.isInteger(v)?&quot;int&quot;:&quot;float&quot;; if(typeof v===&quot;string&quot;)return &quot;str&quot;; if(typeof v===&quot;boolean&quot;)return &quot;bool&quot;; if(Array.isArray(v))return v.__set?&quot;set&quot;:v.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(v instanceof Map)return &quot;dict&quot;; if(v===null)return &quot;NoneType&quot;; return &quot;object&quot;; }
 function pyCmp(a,b){ if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;string&quot;)return a<b?-1:a>b?1:0; if(Array.isArray(a)&amp;&amp;Array.isArray(b)){ for(let i=0;i<Math.min(a.length,b.length);i++){const c=pyCmp(a[i],b[i]);if(c)return c;} return a.length-b.length; } return a-b; }
 function evalFString(raw,scope,G){ let res=&quot;&quot;,i=0; while(i<raw.length){ const c=raw[i];
   if(c===&quot;{&quot;){ if(raw[i+1]===&quot;{&quot;){res+=&quot;{&quot;;i+=2;continue;} let j=i+1,depth=1,ex=&quot;&quot;; while(j<raw.length&amp;&amp;depth>0){const d=raw[j];if(d===&quot;{&quot;)depth++;else if(d===&quot;}&quot;){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
   else if(c===&quot;}&quot;){ if(raw[i+1]===&quot;}&quot;){res+=&quot;}&quot;;i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
 function truthy(v){ if(v===null||v===false)return false; if(v===0||v===&quot;&quot;)return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
-function pyEq(a,b){ if(Array.isArray(a)&amp;&amp;Array.isArray(b))return a.length===b.length&amp;&amp;a.every((x,i)=>pyEq(x,b[i])); return a===b; }
-function pyStr(v){ if(v===null)return &quot;None&quot;; if(v===true)return &quot;True&quot;; if(v===false)return &quot;False&quot;; if(typeof v===&quot;number&quot;)return String(v); if(typeof v===&quot;string&quot;)return v; if(Array.isArray(v)&amp;&amp;v.__tuple)return v.length===1?&quot;(&quot;+pyRepr(v[0])+&quot;,)&quot;:&quot;(&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;)&quot;; if(Array.isArray(v))return &quot;[&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;]&quot;; if(v instanceof Map)return &quot;{&quot;+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+&quot;: &quot;+pyRepr(val)).join(&quot;, &quot;)+&quot;}&quot;; if(v&amp;&amp;v.__fn)return &quot;<function>&quot;; return String(v); }
+function pyEq(a,b){ if(Array.isArray(a)&amp;&amp;Array.isArray(b)){ const ak=a.__set?&quot;set&quot;:a.__tuple?&quot;tuple&quot;:&quot;list&quot;, bk=b.__set?&quot;set&quot;:b.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(ak!==bk) return false; if(ak===&quot;set&quot;) return a.length===b.length&amp;&amp;a.every(x=>b.some(y=>pyEq(y,x))); return a.length===b.length&amp;&amp;a.every((x,i)=>pyEq(x,b[i])); } return a===b; }
+function pyStr(v){ if(v===null)return &quot;None&quot;; if(v===true)return &quot;True&quot;; if(v===false)return &quot;False&quot;; if(typeof v===&quot;number&quot;)return String(v); if(typeof v===&quot;string&quot;)return v; if(Array.isArray(v)&amp;&amp;v.__set)return v.length===0?&quot;set()&quot;:&quot;{&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;}&quot;; if(Array.isArray(v)&amp;&amp;v.__tuple)return v.length===1?&quot;(&quot;+pyRepr(v[0])+&quot;,)&quot;:&quot;(&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;)&quot;; if(Array.isArray(v))return &quot;[&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;]&quot;; if(v instanceof Map)return &quot;{&quot;+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+&quot;: &quot;+pyRepr(val)).join(&quot;, &quot;)+&quot;}&quot;; if(v&amp;&amp;v.__fn)return &quot;<function>&quot;; return String(v); }
 function pyRepr(v){ if(typeof v===&quot;string&quot;)return &quot;'&quot;+v+&quot;'&quot;; return pyStr(v); }
 function iterate(v){ if(Array.isArray(v))return v; if(typeof v===&quot;string&quot;)return v.split(&quot;&quot;); if(v instanceof Map)return Array.from(v.keys()); throw pyError(&quot;TypeError: not iterable&quot;); }
 /* Python slice semantics (mirrors CPython's slice.indices) */
@@ -518,6 +608,21 @@ const MODULES=[
   example:`nums = [3, 1, 2]\nprint(sorted(nums))\nprint(sum(nums))`,
   predict:{code:`print(min([4, 2, 8]), max([4, 2, 8]))`,out:`2 8`,why:`min finds the smallest (2) and max the largest (8).`},
   write:{prompt:`A list <b>nums = [5, 2, 9, 1]</b> is given. Print them <b>sorted</b> (smallest first). (Expected: [1, 2, 5, 9])`,starter:`nums = [5, 2, 9, 1]\n`,kind:&quot;output&quot;,expected:`[1, 2, 5, 9]`,need:[&quot;sorted&quot;],solution:`nums = [5, 2, 9, 1]\nprint(sorted(nums))`,why:`sorted() returns a new list ordered smallest to largest.`}},
+ {icon:&quot;⚡&quot;,title:&quot;List comprehensions&quot;,
+  teach:`<p>A <b>list comprehension</b> builds a new list in a single line: <code>[expr for item in iterable]</code>.</p><p>It's a compact loop. Add <code>if condition</code> at the end to keep only some items.</p>`,
+  example:`squares = [x * x for x in range(1, 6)]\nprint(squares)`,
+  predict:{code:`print([n * 10 for n in [1, 2, 3]])`,out:`[10, 20, 30]`,why:`For each n in the list it works out n*10, collecting [10, 20, 30].`},
+  write:{prompt:`Use a <b>list comprehension</b> to print the <b>doubles</b> of 1, 2, 3, 4. (Expected: [2, 4, 6, 8])`,starter:``,kind:&quot;output&quot;,expected:`[2, 4, 6, 8]`,need:[&quot;for&quot;],solution:`print([x * 2 for x in range(1, 5)])`,why:`x*2 for x in 1..4 gives 2, 4, 6, 8.`}},
+ {icon:&quot;🎯&quot;,title:&quot;Sets&quot;,
+  teach:`<p>A <b>set</b> holds only <b>unique</b> items, written with <code>{ }</code> (or <code>set()</code>). Duplicates are dropped automatically.</p><p>Sets are great for removing duplicates and for fast &quot;is this in here?&quot; checks. (They have no order, so we usually <code>sorted()</code> them to print.)</p>`,
+  example:`nums = [1, 2, 2, 3, 3, 3]\nprint(len(set(nums)))`,
+  predict:{code:`print(sorted(set(&quot;hello&quot;)))`,out:`['e', 'h', 'l', 'o']`,why:`set(&quot;hello&quot;) keeps the unique letters {h, e, l, o}; sorted puts them in order.`},
+  write:{prompt:`The list <b>letters = [&quot;a&quot;, &quot;b&quot;, &quot;a&quot;, &quot;c&quot;, &quot;b&quot;]</b> is given. Print how many <b>unique</b> letters it has using <b>set()</b>. (Expected: 3)`,starter:`letters = [&quot;a&quot;, &quot;b&quot;, &quot;a&quot;, &quot;c&quot;, &quot;b&quot;]\n`,kind:&quot;output&quot;,expected:`3`,need:[&quot;set(&quot;],solution:`letters = [&quot;a&quot;, &quot;b&quot;, &quot;a&quot;, &quot;c&quot;, &quot;b&quot;]\nprint(len(set(letters)))`,why:`The unique letters are a, b, c → 3 of them.`}},
+ {icon:&quot;🛟&quot;,title:&quot;Handling errors&quot;,
+  teach:`<p>When code might fail, wrap it in <code>try:</code> and catch the problem in <code>except:</code>. The program keeps running instead of crashing.</p><p>You can name the error type, e.g. <code>except ZeroDivisionError:</code> or <code>except IndexError:</code>.</p>`,
+  example:`try:\n    print(10 // 0)\nexcept ZeroDivisionError:\n    print(&quot;cannot divide by zero&quot;)`,
+  predict:{code:`nums = [1, 2, 3]\ntry:\n    print(nums[9])\nexcept IndexError:\n    print(&quot;no such item&quot;)`,out:`no such item`,why:`nums[9] doesn't exist, so it raises IndexError — the except catches it and prints the message.`},
+  write:{prompt:`Use <b>try / except ZeroDivisionError</b> to print <b>&quot;oops&quot;</b> instead of crashing when computing <b>5 // 0</b>.`,starter:`try:\n    `,kind:&quot;output&quot;,expected:`oops`,need:[&quot;try&quot;,&quot;except&quot;],solution:`try:\n    print(5 // 0)\nexcept ZeroDivisionError:\n    print(&quot;oops&quot;)`,why:`5 // 0 raises ZeroDivisionError, which the except catches to print &quot;oops&quot;.`}},
 ];
 
 const PHASES=[&quot;Learn&quot;,&quot;Predict&quot;,&quot;Write&quot;];
@@ -849,13 +954,17 @@ render();
    f-strings, + - * // % **, augmented assignment (+= -= *= //= %= **=),
    comparisons, and/or/not, in, lists, tuples &amp; unpacking, indexing,
    slicing, item assignment, break/continue/pass, dicts, range, for,
-   while, if/elif/else, def/return (defaults), and many builtins
-   (len, sum, min, max, abs, round, sorted, reversed, zip, enumerate,
-   any, all, list, tuple, set, bool) plus string methods (upper, lower,
-   title, split, join, replace, strip, startswith, find, ...) and list
-   methods (append, pop, sort, reverse, insert, index, extend, remove).
+   while, if/elif/else, break/continue/pass, def/return (defaults),
+   try/except/else/finally + raise, not in / is / is not, list/set/dict
+   comprehensions, sets, and many builtins (len, sum, min, max, abs,
+   round, sorted, reversed, zip, enumerate, any, all, list, tuple, set,
+   bool) plus string methods (upper, lower, title, split, join, replace,
+   strip, startswith, find, ...) and list methods (append, pop, sort,
+   reverse, insert, index, extend, remove).
    (Numbers are unified — no separate float type — so it avoids true
-   division / and float-precision cases like round(x, n).)
+   division / and float-precision cases like round(x, n). Set iteration
+   order is insertion order, so generated content prints sorted(set) not
+   raw sets.)
    ============================================================ */
 function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
 function toLogicalLines(src){
@@ -898,11 +1007,21 @@ function parseStatement(lines,st,indent){
   }
   if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(&quot;,&quot;).map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:&quot;for&quot;,targets,iter,body:parseBlock(lines,st,indent)}; }
   if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:&quot;while&quot;,cond:parseExpr(m[1]),body:parseBlock(lines,st,indent)}; }
+  if(/^try\s*:$/.test(text)){ st.i++; const body=parseBlock(lines,st,indent); const handlers=[]; let els=null,fin=null;
+    while(st.i<lines.length &amp;&amp; lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^except\b(.*):$/.exec(t))){ st.i++; const spec=em[1].trim(); let type=null,vname=null;
+        if(spec){ const am=/^([A-Za-z_]\w*)(?:\s+as\s+([A-Za-z_]\w*))?$/.exec(spec); if(am){type=am[1];vname=am[2]||null;} }
+        handlers.push({type,vname,body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); }
+      else if(/^finally\s*:$/.test(t)){ st.i++; fin=parseBlock(lines,st,indent); break; }
+      else break; }
+    return {t:&quot;try&quot;,body,handlers,els,fin}; }
   if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:&quot;def&quot;,name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent)}; }
   if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:&quot;return&quot;,expr:ex?parseExpr(ex):{t:&quot;none&quot;}}; }
   if(/^break$/.test(text)){ st.i++; return {t:&quot;break&quot;}; }
   if(/^continue$/.test(text)){ st.i++; return {t:&quot;continue&quot;}; }
   if(/^pass$/.test(text)){ st.i++; return {t:&quot;pass&quot;}; }
+  if((m=/^raise\b(.*)$/.exec(text))){ st.i++; return {t:&quot;raise&quot;,arg:m[1].trim()}; }
   st.i++;
   const aug=findAug(text);
   if(aug){ return {t:&quot;assign&quot;,target:text.slice(0,aug.start).trim(),op:aug.op,expr:parseExpr(text.slice(aug.eqPos+1).trim())}; }
@@ -942,7 +1061,7 @@ function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),
     if(isD(c)||(c===&quot;.&quot;&amp;&amp;isD(s[k+1]))){ let j=k,num=&quot;&quot;; while(j<s.length&amp;&amp;/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:&quot;num&quot;,v:parseFloat(num)}); k=j; continue; }
     if(isId(c)){ let j=k,id=&quot;&quot;; while(j<s.length&amp;&amp;isIdc(s[j])){id+=s[j];j++;}
       if(id===&quot;True&quot;)toks.push({t:&quot;bool&quot;,v:true}); else if(id===&quot;False&quot;)toks.push({t:&quot;bool&quot;,v:false}); else if(id===&quot;None&quot;)toks.push({t:&quot;none&quot;});
-      else if(id===&quot;and&quot;||id===&quot;or&quot;||id===&quot;not&quot;||id===&quot;in&quot;)toks.push({t:&quot;kw&quot;,v:id}); else toks.push({t:&quot;name&quot;,v:id}); k=j; continue; }
+      else if(id===&quot;and&quot;||id===&quot;or&quot;||id===&quot;not&quot;||id===&quot;in&quot;||id===&quot;is&quot;)toks.push({t:&quot;kw&quot;,v:id}); else toks.push({t:&quot;name&quot;,v:id}); k=j; continue; }
     const two=s.slice(k,k+2); if([&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;,&quot;//&quot;,&quot;**&quot;].includes(two)){toks.push({t:&quot;op&quot;,v:two});k+=2;continue;}
     if(&quot;+-*/%<>()[]{}:,.&quot;.includes(c)){toks.push({t:&quot;op&quot;,v:c});k++;continue;}
     throw pyError(&quot;SyntaxError: unexpected character '&quot;+c+&quot;'&quot;); }
@@ -956,7 +1075,15 @@ function eat(p,v){const t=p.toks[p.i];if(!t||(v&amp;&amp;!(t.v===v||t.t===v)))th
 function parseOr(p){let l=parseAnd(p);while(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;or&quot;){p.i++;l={t:&quot;bin&quot;,op:&quot;or&quot;,l,r:parseAnd(p)};}return l;}
 function parseAnd(p){let l=parseNot(p);while(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;and&quot;){p.i++;l={t:&quot;bin&quot;,op:&quot;and&quot;,l,r:parseNot(p)};}return l;}
 function parseNot(p){if(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;not&quot;){p.i++;return {t:&quot;unary&quot;,op:&quot;not&quot;,e:parseNot(p)};}return parseCmp(p);}
-function parseCmp(p){let l=parseAdd(p);while(peek(p)&amp;&amp;((peek(p).t===&quot;op&quot;&amp;&amp;[&quot;<&quot;,&quot;>&quot;,&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;].includes(peek(p).v))||(peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;in&quot;))){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseAdd(p)};}return l;}
+function parseCmp(p){let l=parseAdd(p);
+  while(peek(p)){ const t=peek(p); let op=null;
+    if(t.t===&quot;op&quot;&amp;&amp;[&quot;<&quot;,&quot;>&quot;,&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;].includes(t.v)){op=t.v;p.i++;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;in&quot;){op=&quot;in&quot;;p.i++;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;not&quot;&amp;&amp;p.toks[p.i+1]&amp;&amp;p.toks[p.i+1].t===&quot;kw&quot;&amp;&amp;p.toks[p.i+1].v===&quot;in&quot;){op=&quot;notin&quot;;p.i+=2;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;is&quot;){ p.i++; if(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;not&quot;){p.i++;op=&quot;isnot&quot;;}else op=&quot;is&quot;; }
+    else break;
+    l={t:&quot;bin&quot;,op,l,r:parseAdd(p)}; }
+  return l;}
 function parseAdd(p){let l=parseMul(p);while(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;(peek(p).v===&quot;+&quot;||peek(p).v===&quot;-&quot;)){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseMul(p)};}return l;}
 function parseMul(p){let l=parseUnary(p);while(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;[&quot;*&quot;,&quot;/&quot;,&quot;//&quot;,&quot;%&quot;].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseUnary(p)};}return l;}
 function parseUnary(p){if(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;peek(p).v===&quot;-&quot;){p.i++;return {t:&quot;unary&quot;,op:&quot;-&quot;,e:parseUnary(p)};}return parsePow(p);}
@@ -986,9 +1113,37 @@ function parsePrimary(p){ const t=peek(p); if(!t)throw pyError(&quot;SyntaxError
     const first=parseOr(p);
     if(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){ const items=[first]; while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;)&quot;)break;items.push(parseOr(p));} eat(p,&quot;)&quot;); return {t:&quot;tuple&quot;,items}; }
     eat(p,&quot;)&quot;);return first;}
-  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;[&quot;){p.i++;const items=[];if(!(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)){items.push(parseOr(p));while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)break;items.push(parseOr(p));}}eat(p,&quot;]&quot;);return {t:&quot;list&quot;,items};}
-  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;{&quot;){p.i++;const pairs=[];if(!(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)){do{if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;const k=parseOr(p);eat(p,&quot;:&quot;);const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;&amp;&amp;(p.i++,true));}eat(p,&quot;}&quot;);return {t:&quot;dict&quot;,pairs};}
+  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;[&quot;){p.i++;
+    if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;){p.i++;return {t:&quot;list&quot;,items:[]};}
+    const first=parseOr(p);
+    if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;]&quot;); return {t:&quot;listcomp&quot;,expr:first,...comp}; }
+    const items=[first];
+    while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)break;items.push(parseOr(p));}
+    eat(p,&quot;]&quot;);return {t:&quot;list&quot;,items};}
+  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;{&quot;){p.i++;
+    if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;){p.i++;return {t:&quot;dict&quot;,pairs:[]};}
+    const k0=parseOr(p);
+    if(peek(p)&amp;&amp;peek(p).v===&quot;:&quot;){ p.i++; const v0=parseOr(p);
+      if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;}&quot;); return {t:&quot;dictcomp&quot;,key:k0,val:v0,...comp}; }
+      const pairs=[[k0,v0]];
+      while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;const k=parseOr(p);eat(p,&quot;:&quot;);const v=parseOr(p);pairs.push([k,v]);}
+      eat(p,&quot;}&quot;);return {t:&quot;dict&quot;,pairs};
+    }
+    if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;}&quot;); return {t:&quot;setcomp&quot;,expr:k0,...comp}; }
+    const items=[k0];
+    while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;items.push(parseOr(p));}
+    eat(p,&quot;}&quot;);return {t:&quot;set&quot;,items};}
   throw pyError(&quot;SyntaxError near '&quot;+t.v+&quot;'&quot;); }
+function isKwName(tok,word){ return tok &amp;&amp; tok.t===&quot;name&quot; &amp;&amp; tok.v===word; }
+/* parse the &quot;for <targets> in <iterable> [if <cond>]&quot; tail of a comprehension */
+function parseComp(p){ eat(p,&quot;name&quot;); /* 'for' */ const targets=[eat(p,&quot;name&quot;).v];
+  while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;targets.push(eat(p,&quot;name&quot;).v);}
+  if(!(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;in&quot;)) throw pyError(&quot;SyntaxError: expected 'in' in comprehension&quot;);
+  p.i++; const iter=parseOr(p); let cond=null;
+  while(isKwName(peek(p),&quot;if&quot;)){ p.i++; const c=parseOr(p); cond=cond?{t:&quot;bin&quot;,op:&quot;and&quot;,l:cond,r:c}:c; }
+  return {targets,iter,cond}; }
+function runComp(n,scope,G,emit){ const seq=iterate(evalExpr(n.iter,scope,G)); const local=Object.create(scope);
+  for(const item of seq){ bindTargets(n.targets,item,local); if(n.cond &amp;&amp; !truthy(evalExpr(n.cond,local,G))) continue; emit(local); } }
 function execBlock(stmts,scope,G){ for(const s of stmts) execStmt(s,scope,G); }
 function execStmt(s,scope,G){ switch(s.t){
   case &quot;assign&quot;:{ if(s.op){ const cur=readTarget(s.target,scope,G); const val=applyOp(s.op,cur,evalExpr(s.expr,scope,G)); writeTarget(s.target,val,scope,G); return; } const val=evalExpr(s.expr,scope,G); assignTo(s.target,val,scope,G); return; }
@@ -1000,7 +1155,22 @@ function execStmt(s,scope,G){ switch(s.t){
   case &quot;for&quot;:{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); try{ execBlock(s.body,scope,G); }catch(e){ if(e&amp;&amp;e.__brk)break; if(e&amp;&amp;e.__cont)continue; throw e; } } return; }
   case &quot;while&quot;:{ let guard=0; while(truthy(evalExpr(s.cond,scope,G))){ try{ execBlock(s.body,scope,G); }catch(e){ if(e&amp;&amp;e.__brk)break; if(e&amp;&amp;e.__cont){ if(++guard>100000) throw pyError(&quot;RuntimeError: loop too long&quot;); continue; } throw e; } if(++guard>100000) throw pyError(&quot;RuntimeError: loop too long&quot;); } return; }
   case &quot;def&quot;:{ scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
-  case &quot;return&quot;:{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+  case &quot;return&quot;:{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; }
+  case &quot;raise&quot;:{ throw makeRaise(s.arg,scope,G); }
+  case &quot;try&quot;:{ let raised=null;
+    try{ execBlock(s.body,scope,G); }
+    catch(e){ if(e&amp;&amp;(e.__ret||e.__brk||e.__cont)){ if(s.fin)execBlock(s.fin,scope,G); throw e; } raised=e; }
+    if(raised){ const msg=raised.__pyerr?raised.message:((raised&amp;&amp;raised.message)||String(raised)); const etype=pyErrType(msg);
+      let handled=false;
+      for(const h of s.handlers){ if(h.type===null||h.type===etype||h.type===&quot;Exception&quot;||h.type===&quot;BaseException&quot;){ if(h.vname) scope[h.vname]=excMessage(msg); execBlock(h.body,scope,G); handled=true; break; } }
+      if(!handled){ if(s.fin)execBlock(s.fin,scope,G); throw raised; }
+    } else if(s.els){ execBlock(s.els,scope,G); }
+    if(s.fin) execBlock(s.fin,scope,G); return; } } }
+function pyErrType(msg){ const m=/^([A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration))\b/.exec(msg); return m?m[1]:&quot;Exception&quot;; }
+function excMessage(msg){ const m=/^[A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration):\s?(.*)$/.exec(msg); return m?m[1]:&quot;&quot;; }
+function makeRaise(arg,scope,G){ arg=arg.trim(); if(!arg) throw pyError(&quot;RuntimeError: No active exception to re-raise&quot;);
+  const m=/^([A-Za-z_]\w*)\s*(?:\((.*)\))?$/.exec(arg); if(!m) throw pyError(&quot;SyntaxError: bad raise&quot;);
+  let msg=m[1]; if(m[2]!=null &amp;&amp; m[2].trim()){ const a=evalExpr(parseExpr(m[2].trim()),scope,G); msg=m[1]+&quot;: &quot;+pyStr(a); } return pyError(msg); }
 function isName(t){ return /^[A-Za-z_]\w*$/.test(t); }
 /* Find the final top-level [..] in an assignment target → {base, idx}, else null. */
 function idxMatch(t){ if(t[t.length-1]!==&quot;]&quot;) return null; let depth=0;
@@ -1023,9 +1193,9 @@ function applyOp(op,a,b){ switch(op){
   case &quot;+&quot;: if(typeof a===&quot;string&quot;||typeof b===&quot;string&quot;){ if(typeof a!==&quot;string&quot;||typeof b!==&quot;string&quot;) throw pyError(&quot;TypeError: str + non-str&quot;); return a+b; } if(Array.isArray(a)&amp;&amp;Array.isArray(b)) return a.concat(b); return a+b;
   case &quot;-&quot;: return a-b;
   case &quot;*&quot;: if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;number&quot;) return a.repeat(b); if(typeof a===&quot;number&quot;&amp;&amp;typeof b===&quot;string&quot;) return b.repeat(a); return a*b;
-  case &quot;/&quot;: return a/b;
-  case &quot;//&quot;: return Math.floor(a/b);
-  case &quot;%&quot;: return ((a%b)+b)%b;
+  case &quot;/&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: division by zero&quot;); return a/b;
+  case &quot;//&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return Math.floor(a/b);
+  case &quot;%&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return ((a%b)+b)%b;
   case &quot;**&quot;: return Math.pow(a,b); }
   throw pyError(&quot;SyntaxError: bad operator&quot;); }
 function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError(&quot;ValueError: cannot unpack&quot;); targets.forEach((t,i)=>scope[t]=item[i]); } }
@@ -1036,7 +1206,11 @@ function evalExpr(n,scope,G){ switch(n.t){
   case &quot;name&quot;: return lookup(n.v,scope,G);
   case &quot;list&quot;: return n.items.map(x=>evalExpr(x,scope,G));
   case &quot;tuple&quot;: return mkTuple(n.items.map(x=>evalExpr(x,scope,G)));
+  case &quot;set&quot;:{ const arr=mkSet([]); for(const x of n.items) setAdd(arr,evalExpr(x,scope,G)); return arr; }
   case &quot;dict&quot;:{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case &quot;listcomp&quot;:{ const out=[]; runComp(n,scope,G,loc=>out.push(evalExpr(n.expr,loc,G))); return out; }
+  case &quot;setcomp&quot;:{ const arr=mkSet([]); runComp(n,scope,G,loc=>setAdd(arr,evalExpr(n.expr,loc,G))); return arr; }
+  case &quot;dictcomp&quot;:{ const m=new Map(); runComp(n,scope,G,loc=>m.set(evalExpr(n.key,loc,G),evalExpr(n.val,loc,G))); return m; }
   case &quot;unary&quot;:{ const v=evalExpr(n.e,scope,G); if(n.op===&quot;-&quot;) return -v; if(n.op===&quot;not&quot;) return !truthy(v); return; }
   case &quot;bin&quot;: return evalBin(n,scope,G);
   case &quot;index&quot;:{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
@@ -1055,13 +1229,17 @@ function evalBin(n,scope,G){ const op=n.op;
     case &quot;+&quot;: if(typeof a===&quot;string&quot;||typeof b===&quot;string&quot;){ if(typeof a!==&quot;string&quot;||typeof b!==&quot;string&quot;) throw pyError(&quot;TypeError: str + non-str&quot;); return a+b; } if(Array.isArray(a)&amp;&amp;Array.isArray(b)) return a.concat(b); return a+b;
     case &quot;-&quot;: return a-b;
     case &quot;*&quot;: if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;number&quot;) return a.repeat(b); if(typeof a===&quot;number&quot;&amp;&amp;typeof b===&quot;string&quot;) return b.repeat(a); return a*b;
-    case &quot;/&quot;: return a/b;
-    case &quot;//&quot;: return Math.floor(a/b);
+    case &quot;/&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: division by zero&quot;); return a/b;
+    case &quot;//&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return Math.floor(a/b);
     case &quot;**&quot;: return Math.pow(a,b);
-    case &quot;%&quot;: return ((a%b)+b)%b;
+    case &quot;%&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return ((a%b)+b)%b;
     case &quot;<&quot;: return a<b; case &quot;>&quot;: return a>b; case &quot;<=&quot;: return a<=b; case &quot;>=&quot;: return a>=b;
     case &quot;==&quot;: return pyEq(a,b); case &quot;!=&quot;: return !pyEq(a,b);
-    case &quot;in&quot;:{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b===&quot;string&quot;) return b.includes(a); return false; } } }
+    case &quot;in&quot;: return pyIn(a,b);
+    case &quot;notin&quot;: return !pyIn(a,b);
+    case &quot;is&quot;: return a===b || (a===null&amp;&amp;b===null);
+    case &quot;isnot&quot;: return !(a===b || (a===null&amp;&amp;b===null)); } }
+function pyIn(a,b){ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b===&quot;string&quot;) return b.includes(a); throw pyError(&quot;TypeError: argument is not iterable&quot;); }
 function evalCall(n,scope,G){
   if(n.fn.t===&quot;attr&quot;){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
   if(n.fn.t===&quot;name&quot;){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
@@ -1080,7 +1258,8 @@ function evalCall(n,scope,G){
     if(name===&quot;reversed&quot;){ return iterate(args[0]).slice().reverse(); }
     if(name===&quot;list&quot;){ return args.length?iterate(args[0]).slice():[]; }
     if(name===&quot;tuple&quot;){ return mkTuple(args.length?iterate(args[0]).slice():[]); }
-    if(name===&quot;set&quot;){ const seen=[]; (args.length?iterate(args[0]):[]).forEach(x=>{ if(!seen.some(y=>pyEq(y,x)))seen.push(x); }); return seen; }
+    if(name===&quot;set&quot;){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
+    if(name===&quot;frozenset&quot;){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
     if(name===&quot;zip&quot;){ const seqs=args.map(iterate); const nn=seqs.length?Math.min.apply(null,seqs.map(s=>s.length)):0; const r=[]; for(let i=0;i<nn;i++) r.push(mkTuple(seqs.map(s=>s[i]))); return r; }
     if(name===&quot;any&quot;){ return iterate(args[0]).some(truthy); }
     if(name===&quot;all&quot;){ return iterate(args[0]).every(truthy); }
@@ -1092,6 +1271,19 @@ function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError(&quot;TypeError: n
   fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError(&quot;TypeError: missing arg '&quot;+p.name+&quot;'&quot;); });
   try{ execBlock(fn.body,local,G); }catch(e){ if(e&amp;&amp;e.__ret) return e.value; throw e; } return null; }
 function callMethod(obj,name,args){
+  if(isSet(obj)){
+    if(name===&quot;add&quot;){ setAdd(obj,args[0]); return null; }
+    if(name===&quot;discard&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p>=0)obj.splice(p,1); return null; }
+    if(name===&quot;remove&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;KeyError: &quot;+pyRepr(args[0])); obj.splice(p,1); return null; }
+    if(name===&quot;clear&quot;){ obj.length=0; return null; }
+    if(name===&quot;pop&quot;){ if(!obj.length) throw pyError(&quot;KeyError: 'pop from an empty set'&quot;); return obj.shift(); }
+    if(name===&quot;union&quot;){ const r=mkSet(obj.slice()); mkSet(r); iterate(args[0]).forEach(x=>setAdd(r,x)); return r; }
+    if(name===&quot;intersection&quot;){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name===&quot;difference&quot;){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(!other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name===&quot;update&quot;){ iterate(args[0]).forEach(x=>setAdd(obj,x)); return null; }
+    if(name===&quot;issubset&quot;){ const other=iterate(args[0]); return obj.every(x=>other.some(y=>pyEq(y,x))); }
+    if(name===&quot;issuperset&quot;){ const other=iterate(args[0]); return other.every(x=>obj.some(y=>pyEq(y,x))); }
+    throw pyError(&quot;AttributeError: set.&quot;+name); }
   if(Array.isArray(obj)){ if(name===&quot;append&quot;){obj.push(args[0]);return null;} if(name===&quot;pop&quot;){ if(args.length){ let i=args[0]<0?obj.length+args[0]:args[0]; if(i<0||i>=obj.length) throw pyError(&quot;IndexError: pop index out of range&quot;); return obj.splice(i,1)[0]; } if(!obj.length) throw pyError(&quot;IndexError: pop from empty list&quot;); return obj.pop(); } if(name===&quot;count&quot;){return obj.filter(x=>pyEq(x,args[0])).length;} if(name===&quot;sort&quot;){obj.sort((x,y)=>pyCmp(x,y));return null;} if(name===&quot;reverse&quot;){obj.reverse();return null;} if(name===&quot;index&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;ValueError: not in list&quot;); return p; } if(name===&quot;insert&quot;){ let i=args[0]; if(i<0)i+=obj.length; if(i<0)i=0; if(i>obj.length)i=obj.length; obj.splice(i,0,args[1]); return null; } if(name===&quot;extend&quot;){ iterate(args[0]).forEach(x=>obj.push(x)); return null; } if(name===&quot;remove&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;ValueError: list.remove(x): x not in list&quot;); obj.splice(p,1); return null; } if(name===&quot;clear&quot;){ obj.length=0; return null; } throw pyError(&quot;AttributeError: list.&quot;+name); }
   if(obj instanceof Map){ if(name===&quot;items&quot;)return Array.from(obj.entries()).map(([k,v])=>mkTuple([k,v])); if(name===&quot;keys&quot;)return Array.from(obj.keys()); if(name===&quot;values&quot;)return Array.from(obj.values()); if(name===&quot;get&quot;)return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); if(name===&quot;pop&quot;){ if(obj.has(args[0])){const v=obj.get(args[0]);obj.delete(args[0]);return v;} if(args.length>1)return args[1]; throw pyError(&quot;KeyError: &quot;+pyRepr(args[0])); } if(name===&quot;update&quot;){ const o=args[0]; if(o instanceof Map)o.forEach((v,k)=>obj.set(k,v)); return null; } throw pyError(&quot;AttributeError: dict.&quot;+name); }
   if(typeof obj===&quot;string&quot;){ if(name===&quot;upper&quot;)return obj.toUpperCase(); if(name===&quot;lower&quot;)return obj.toLowerCase(); if(name===&quot;title&quot;)return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name===&quot;capitalize&quot;)return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name===&quot;count&quot;){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;}
@@ -1112,15 +1304,18 @@ function callMethod(obj,name,args){
     throw pyError(&quot;AttributeError: str.&quot;+name); }
   throw pyError(&quot;AttributeError&quot;); }
 function mkTuple(arr){ Object.defineProperty(arr,&quot;__tuple&quot;,{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function mkSet(arr){ Object.defineProperty(arr,&quot;__set&quot;,{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function setAdd(s,v){ if(!s.some(x=>pyEq(x,v))) s.push(v); }
+function isSet(v){ return Array.isArray(v)&amp;&amp;v.__set; }
 function stripChars(s,chars,left,right){ let a=0,b=s.length; if(left){while(a<b&amp;&amp;chars.indexOf(s[a])>=0)a++;} if(right){while(b>a&amp;&amp;chars.indexOf(s[b-1])>=0)b--;} return s.slice(a,b); }
-function pyType(v){ if(typeof v===&quot;number&quot;)return Number.isInteger(v)?&quot;int&quot;:&quot;float&quot;; if(typeof v===&quot;string&quot;)return &quot;str&quot;; if(typeof v===&quot;boolean&quot;)return &quot;bool&quot;; if(Array.isArray(v))return v.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(v instanceof Map)return &quot;dict&quot;; if(v===null)return &quot;NoneType&quot;; return &quot;object&quot;; }
+function pyType(v){ if(typeof v===&quot;number&quot;)return Number.isInteger(v)?&quot;int&quot;:&quot;float&quot;; if(typeof v===&quot;string&quot;)return &quot;str&quot;; if(typeof v===&quot;boolean&quot;)return &quot;bool&quot;; if(Array.isArray(v))return v.__set?&quot;set&quot;:v.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(v instanceof Map)return &quot;dict&quot;; if(v===null)return &quot;NoneType&quot;; return &quot;object&quot;; }
 function pyCmp(a,b){ if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;string&quot;)return a<b?-1:a>b?1:0; if(Array.isArray(a)&amp;&amp;Array.isArray(b)){ for(let i=0;i<Math.min(a.length,b.length);i++){const c=pyCmp(a[i],b[i]);if(c)return c;} return a.length-b.length; } return a-b; }
 function evalFString(raw,scope,G){ let res=&quot;&quot;,i=0; while(i<raw.length){ const c=raw[i];
   if(c===&quot;{&quot;){ if(raw[i+1]===&quot;{&quot;){res+=&quot;{&quot;;i+=2;continue;} let j=i+1,depth=1,ex=&quot;&quot;; while(j<raw.length&amp;&amp;depth>0){const d=raw[j];if(d===&quot;{&quot;)depth++;else if(d===&quot;}&quot;){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
   else if(c===&quot;}&quot;){ if(raw[i+1]===&quot;}&quot;){res+=&quot;}&quot;;i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
 function truthy(v){ if(v===null||v===false)return false; if(v===0||v===&quot;&quot;)return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
-function pyEq(a,b){ if(Array.isArray(a)&amp;&amp;Array.isArray(b))return a.length===b.length&amp;&amp;a.every((x,i)=>pyEq(x,b[i])); return a===b; }
-function pyStr(v){ if(v===null)return &quot;None&quot;; if(v===true)return &quot;True&quot;; if(v===false)return &quot;False&quot;; if(typeof v===&quot;number&quot;)return String(v); if(typeof v===&quot;string&quot;)return v; if(Array.isArray(v)&amp;&amp;v.__tuple)return v.length===1?&quot;(&quot;+pyRepr(v[0])+&quot;,)&quot;:&quot;(&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;)&quot;; if(Array.isArray(v))return &quot;[&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;]&quot;; if(v instanceof Map)return &quot;{&quot;+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+&quot;: &quot;+pyRepr(val)).join(&quot;, &quot;)+&quot;}&quot;; if(v&amp;&amp;v.__fn)return &quot;<function>&quot;; return String(v); }
+function pyEq(a,b){ if(Array.isArray(a)&amp;&amp;Array.isArray(b)){ const ak=a.__set?&quot;set&quot;:a.__tuple?&quot;tuple&quot;:&quot;list&quot;, bk=b.__set?&quot;set&quot;:b.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(ak!==bk) return false; if(ak===&quot;set&quot;) return a.length===b.length&amp;&amp;a.every(x=>b.some(y=>pyEq(y,x))); return a.length===b.length&amp;&amp;a.every((x,i)=>pyEq(x,b[i])); } return a===b; }
+function pyStr(v){ if(v===null)return &quot;None&quot;; if(v===true)return &quot;True&quot;; if(v===false)return &quot;False&quot;; if(typeof v===&quot;number&quot;)return String(v); if(typeof v===&quot;string&quot;)return v; if(Array.isArray(v)&amp;&amp;v.__set)return v.length===0?&quot;set()&quot;:&quot;{&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;}&quot;; if(Array.isArray(v)&amp;&amp;v.__tuple)return v.length===1?&quot;(&quot;+pyRepr(v[0])+&quot;,)&quot;:&quot;(&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;)&quot;; if(Array.isArray(v))return &quot;[&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;]&quot;; if(v instanceof Map)return &quot;{&quot;+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+&quot;: &quot;+pyRepr(val)).join(&quot;, &quot;)+&quot;}&quot;; if(v&amp;&amp;v.__fn)return &quot;<function>&quot;; return String(v); }
 function pyRepr(v){ if(typeof v===&quot;string&quot;)return &quot;'&quot;+v+&quot;'&quot;; return pyStr(v); }
 function iterate(v){ if(Array.isArray(v))return v; if(typeof v===&quot;string&quot;)return v.split(&quot;&quot;); if(v instanceof Map)return Array.from(v.keys()); throw pyError(&quot;TypeError: not iterable&quot;); }
 /* Python slice semantics (mirrors CPython's slice.indices) */
@@ -1205,6 +1400,12 @@ const GEN={
   {topic:&quot;loops&quot;,gen:()=>{const n=ri(5,7),k=ri(1,3);const printed=[];for(let i=0;i<n;i++){if(i===k)continue;printed.push(i);}return{code:`for i in range(${n}):\n    if i == ${k}:\n        continue\n    print(i)`,concept:&quot;continue skips the rest of THIS turn, then keeps going&quot;,why:`When i == ${k}, continue jumps to the next turn, so ${k} is skipped but the loop carries on. It prints ${printed.join(&quot;, &quot;)}.`};}},
   {topic:&quot;builtins&quot;,gen:()=>{const arr=pickn([12,4,19,7,23,8,15,3],ri(4,5));const s=arr.reduce((a,b)=>a+b,0);return{code:`nums = [${arr.join(&quot;, &quot;)}]\nprint(min(nums), max(nums), sum(nums))`,concept:&quot;min(), max() and sum() summarise a list at a glance&quot;,why:`Smallest is ${Math.min(...arr)}, largest is ${Math.max(...arr)}, and they add to ${s}. print shows all three with spaces.`};}},
   {topic:&quot;basics&quot;,gen:()=>{const arr=pickn([2,3,4,5,6,7],ri(3,4));const s=arr.reduce((a,b)=>a+b,0);return{code:`total = 0\nfor n in [${arr.join(&quot;, &quot;)}]:\n    total += n\nprint(total)`,concept:&quot;total += n is the tidy way to accumulate&quot;,why:`total starts at 0 and each turn grows by n: ${arr.join(&quot; + &quot;)} = ${s}.`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>{const n=ri(3,6);const arr=Array.from({length:n},(_,i)=>(i+1)*2);return{code:`print([x * 2 for x in range(1, ${n+1})])`,concept:&quot;a list comprehension builds a whole list in one line&quot;,why:`For each x in 1..${n} it works out x*2 and collects the results: ${pyList(arr)}.`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>{const arr=pickn(WORDS,ri(3,4));return{code:`words = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nprint([w.upper() for w in words])`,concept:&quot;a comprehension transforms every item of a list&quot;,why:`It upper-cases each word in turn: ${pyList(arr.map(w=>w.toUpperCase()))}.`};}},
+  {topic:&quot;sets&quot;,gen:()=>{const base=pickn([1,2,3,4,5],3);const arr=base.concat(pickn(base,2));return{code:`nums = [${arr.join(&quot;, &quot;)}]\nprint(len(set(nums)))`,concept:&quot;a set keeps only the unique values&quot;,why:`nums has ${arr.length} items, but only ${new Set(arr).size} are different, so len(set(nums)) is ${new Set(arr).size}.`};}},
+  {topic:&quot;sets&quot;,gen:()=>{const w=pick([&quot;banana&quot;,&quot;apple&quot;,&quot;letter&quot;,&quot;coffee&quot;,&quot;balloon&quot;]);const uniq=[...new Set(w.split(&quot;&quot;))].sort();return{code:`print(sorted(set(&quot;${w}&quot;)))`,concept:&quot;set() on a word finds its unique letters&quot;,why:`The distinct letters of &quot;${w}&quot;, put in order, are ${pyList(uniq)}.`};}},
+  {topic:&quot;errors&quot;,gen:()=>{return{code:`try:\n    print(10 // 0)\nexcept ZeroDivisionError:\n    print(&quot;cannot divide by zero&quot;)`,concept:&quot;try/except catches an error instead of crashing&quot;,why:`10 // 0 would raise ZeroDivisionError, so the except block runs and prints the message instead of stopping the program.`};}},
+  {topic:&quot;errors&quot;,gen:()=>{const arr=pickn([10,20,30,40],3);const i=ri(4,7);return{code:`nums = [${arr.join(&quot;, &quot;)}]\ntry:\n    print(nums[${i}])\nexcept IndexError:\n    print(&quot;out of range&quot;)`,concept:&quot;catch an IndexError for a position that doesn't exist&quot;,why:`nums has ${arr.length} items (indexes 0–${arr.length-1}); nums[${i}] doesn't exist, so the except prints &quot;out of range&quot;.`};}},
  ],
  3:[ /* ===== HARD: 5–10 lines, nested / functions / multi-step ===== */
   {topic:&quot;functions&quot;,gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8],ri(3,4));const map=arr.map(n=>`${n}→${n%2===0?&quot;even&quot;:&quot;odd&quot;}`).join(&quot;, &quot;);return{code:`def label(n):\n    if n % 2 == 0:\n        return &quot;even&quot;\n    else:\n        return &quot;odd&quot;\n\nfor n in [${arr.join(&quot;, &quot;)}]:\n    print(n, label(n))`,concept:&quot;a function with an if, called inside a loop&quot;,why:`label(n) returns &quot;even&quot; when n % 2 == 0, otherwise &quot;odd&quot;. The loop tags each number: ${map}. print(n, label(n)) puts the number and its tag on one line, separated by a space.`};}},
@@ -1226,6 +1427,10 @@ const GEN={
   {topic:&quot;loops&quot;,gen:()=>{const arr=pickn([3,8,1,6,10,4,7],ri(4,5));const t=pick([5,6]);const found=arr.find(n=>n>t);return{code:`nums = [${arr.join(&quot;, &quot;)}]\nfor n in nums:\n    if n > ${t}:\n        print(&quot;found&quot;, n)\n        break`,concept:&quot;scan until you find a match, then break&quot;,why:`It walks the list and stops at the FIRST value over ${t}. That is ${found}, so it prints &quot;found ${found}&quot; and breaks — later items are ignored.`};}},
   {topic:&quot;methods&quot;,gen:()=>{const arr=pickn([10,20,30,40,50],ri(3,4));const i=ri(1,2);const after=arr.slice();after.splice(i,0,99);return{code:`nums = [${arr.join(&quot;, &quot;)}]\nnums.insert(${i}, 99)\nprint(nums)\nprint(nums.index(99))`,concept:&quot;.insert(i, x) adds at a position; .index(x) finds where a value sits&quot;,why:`insert puts 99 at index ${i} → ${pyList(after)}. Then .index(99) reports its position, ${i}.`};}},
   {topic:&quot;builtins&quot;,gen:()=>{const arr=pickn([&quot;pear&quot;,&quot;kiwi&quot;,&quot;lime&quot;,&quot;fig&quot;,&quot;date&quot;],3);const sorted=arr.slice().sort();const lines=sorted.map((w,i)=>`${i} ${w}`).join(&quot;  |  &quot;);return{code:`words = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nfor i, w in enumerate(sorted(words)):\n    print(i, w)`,concept:&quot;sort first, then enumerate to number them&quot;,why:`sorted(words) puts them alphabetically: ${pyList(sorted)}. enumerate then pairs each with its position: ${lines}.`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>{const arr=pickn([1,2,3,4,5,6,7,8,9,10],6);const ev=arr.filter(n=>n%2===0);return{code:`nums = [${arr.join(&quot;, &quot;)}]\nprint([n for n in nums if n % 2 == 0])`,concept:&quot;a comprehension with 'if' keeps only some items (a filter)&quot;,why:`It keeps the numbers where n % 2 == 0 — the evens ${pyList(ev)}.`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>{const arr=pickn(FRUITS,4);const lens=arr.map(w=>w.length);return{code:`fruits = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nprint([len(f) for f in fruits])`,concept:&quot;build a new list of results from another list&quot;,why:`It takes the length of each word: ${arr.map((w,i)=>`${w}→${lens[i]}`).join(&quot;, &quot;)} → ${pyList(lens)}.`};}},
+  {topic:&quot;sets&quot;,gen:()=>{const a=pickn([1,2,3,4,5],3),b=pickn([3,4,5,6,7],3);const inter=a.filter(x=>b.includes(x)).sort((x,y)=>x-y);return{code:`a = {${a.join(&quot;, &quot;)}}\nb = {${b.join(&quot;, &quot;)}}\nprint(sorted(a.intersection(b)))`,concept:&quot;intersection = the items in BOTH sets&quot;,why:`The values found in both a and b, sorted, are ${pyList(inter)}.`};}},
+  {topic:&quot;errors&quot;,gen:()=>{const b1=ri(2,5);return{code:`def safe_div(a, b):\n    try:\n        return a // b\n    except ZeroDivisionError:\n        return -1\n\nprint(safe_div(20, ${b1}))\nprint(safe_div(20, 0))`,concept:&quot;a function can catch its own error and return a fallback value&quot;,why:`20 // ${b1} = ${Math.floor(20/b1)}. 20 // 0 would raise ZeroDivisionError, so except returns -1.`};}},
  ],
  4:[ /* ===== EXPERT: slicing &amp; enumerate ===== */
   {topic:&quot;strings&quot;,gen:()=>{const w=pick([&quot;rainbow&quot;,&quot;sunlight&quot;,&quot;diamond&quot;,&quot;picture&quot;,&quot;library&quot;]);const k=ri(2,4);return{code:`w = &quot;${w}&quot;\nprint(w[:${k}])\nprint(w[${k}:])`,concept:&quot;slicing: [:k] is the start, [k:] is the rest&quot;,why:`w[:${k}] takes the first ${k} letters → &quot;${w.slice(0,k)}&quot;. w[${k}:] takes from index ${k} to the end → &quot;${w.slice(k)}&quot;.`};}},
@@ -1246,11 +1451,15 @@ const GEN={
   {topic:&quot;tuples&quot;,gen:()=>{const ns=pickn(NAMES,3),ag=pickn([21,34,28,45,19],3);const win=ns.map((n,i)=>({n,a:ag[i]})).reduce((a,b)=>b.a>a.a?b:a);return{code:`names = [${ns.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nages = [${ag.join(&quot;, &quot;)}]\noldest = names[0]\nbest = ages[0]\nfor name, age in zip(names, ages):\n    if age > best:\n        best = age\n        oldest = name\nprint(oldest, best)`,concept:&quot;zip two lists and track a running best&quot;,why:`zip pairs each name with its age. Whenever an age beats the best so far, both update. The oldest is ${win.n} at ${win.a}.`};}},
   {topic:&quot;builtins&quot;,gen:()=>{const arr=pickn([2,4,6,8,10,3,5],4);const allEven=arr.every(n=>n%2===0);const anyEven=arr.some(n=>n%2===0);const flags=arr.map(n=>n%2===0);return{code:`nums = [${arr.join(&quot;, &quot;)}]\nchecks = [${flags.map(f=>f?&quot;True&quot;:&quot;False&quot;).join(&quot;, &quot;)}]\nprint(any(checks), all(checks))`,concept:&quot;any() is True if ANY item is true; all() needs EVERY item true&quot;,why:`checks is ${pyList(flags)}. any() → ${anyEven?&quot;True&quot;:&quot;False&quot;} (at least one True), all() → ${allEven?&quot;True&quot;:&quot;False&quot;} (${allEven?&quot;they are all True&quot;:&quot;not every one is True&quot;}).`};}},
   {topic:&quot;tuples&quot;,gen:()=>{const arr=pickn(FRUITS,3);return{code:`fruits = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nprint(list(enumerate(fruits)))`,concept:&quot;enumerate produces (index, item) tuples&quot;,why:`Wrapping enumerate in list() shows the pairs it makes: [${arr.map((f,i)=>pyTup([i,f])).join(&quot;, &quot;)}].`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>{const n=ri(5,8);const arr=[];for(let i=0;i<n;i++)if(i%2===1)arr.push(i*i);return{code:`print([x * x for x in range(${n}) if x % 2 == 1])`,concept:&quot;a comprehension can transform AND filter at once&quot;,why:`For the odd x in 0..${n-1} it squares each one: ${pyList(arr)}.`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>{const arr=pickn(NAMES,4);const first=arr.map(w=>w[0]);return{code:`names = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nprint([n[0] for n in names])`,concept:&quot;a comprehension over strings, using indexing&quot;,why:`It takes the first letter of each name: ${arr.map((w,i)=>`${w}→${first[i]}`).join(&quot;, &quot;)} → ${pyList(first)}.`};}},
+  {topic:&quot;sets&quot;,gen:()=>{const a=pickn([1,2,3,4],3),b=pickn([3,4,5,6],3);const uni=[...new Set(a.concat(b))].sort((x,y)=>x-y);return{code:`a = {${a.join(&quot;, &quot;)}}\nb = {${b.join(&quot;, &quot;)}}\nprint(sorted(a.union(b)))`,concept:&quot;union = every item from EITHER set, without repeats&quot;,why:`Combining a and b and dropping duplicates gives ${pyList(uni)}.`};}},
+  {topic:&quot;errors&quot;,gen:()=>{const x=ri(1,5);return{code:`def check(n):\n    if n < 0:\n        raise ValueError(&quot;negative&quot;)\n    return n * 2\n\ntry:\n    print(check(${x}))\n    print(check(-1))\nexcept ValueError as e:\n    print(&quot;stopped:&quot;, e)`,concept:&quot;raise makes your own error; except catches it (with 'as' for the message)&quot;,why:`check(${x}) returns ${x*2} and prints it. check(-1) raises ValueError(&quot;negative&quot;), so the next print is skipped and except prints &quot;stopped: negative&quot;.`};}},
  ]
 };
 
 /* ===== topics for the filter ===== */
-const TOPICS=[[&quot;all&quot;,&quot;All&quot;],[&quot;loops&quot;,&quot;Loops&quot;],[&quot;conditionals&quot;,&quot;If/Else&quot;],[&quot;functions&quot;,&quot;Functions&quot;],[&quot;strings&quot;,&quot;Strings&quot;],[&quot;lists&quot;,&quot;Lists&quot;],[&quot;dicts&quot;,&quot;Dicts&quot;],[&quot;tuples&quot;,&quot;Tuples&quot;],[&quot;methods&quot;,&quot;Str/List tools&quot;],[&quot;builtins&quot;,&quot;Built-ins&quot;]];
+const TOPICS=[[&quot;all&quot;,&quot;All&quot;],[&quot;loops&quot;,&quot;Loops&quot;],[&quot;conditionals&quot;,&quot;If/Else&quot;],[&quot;functions&quot;,&quot;Functions&quot;],[&quot;strings&quot;,&quot;Strings&quot;],[&quot;lists&quot;,&quot;Lists&quot;],[&quot;dicts&quot;,&quot;Dicts&quot;],[&quot;tuples&quot;,&quot;Tuples&quot;],[&quot;methods&quot;,&quot;Str/List tools&quot;],[&quot;builtins&quot;,&quot;Built-ins&quot;],[&quot;comprehensions&quot;,&quot;Comprehensions&quot;],[&quot;sets&quot;,&quot;Sets&quot;],[&quot;errors&quot;,&quot;Try / Except&quot;]];
 
 /* ===== ranks ===== */
 const RANKS=[[0,&quot;🥚 Hatchling&quot;],[40,&quot;🌱 Sprout&quot;],[110,&quot;🐍 Coder&quot;],[220,&quot;🔥 Sharp&quot;],[380,&quot;⚡ Pro&quot;],[600,&quot;🏆 Master&quot;],[900,&quot;🧙 Wizard&quot;],[1300,&quot;🌟 Legend&quot;]];
@@ -1266,7 +1475,7 @@ let srs=ld(SK.srs,{}), clock=ld(SK.clock,0);
 let mode=&quot;easy&quot;, topic=&quot;all&quot;, cur=null, attempts=0, solvedThis=false, bought=[];
 let gameMode=ld(&quot;ct-mode&quot;,&quot;alt&quot;), qIndex=0, curW=null, __lvl=0;
 let forceTopic=null, forceLevel=null, reviewed=false;
-const TOPIC_KEYS=[&quot;basics&quot;,&quot;strings&quot;,&quot;loops&quot;,&quot;conditionals&quot;,&quot;functions&quot;,&quot;lists&quot;,&quot;dicts&quot;,&quot;tuples&quot;,&quot;methods&quot;,&quot;builtins&quot;];
+const TOPIC_KEYS=[&quot;basics&quot;,&quot;strings&quot;,&quot;loops&quot;,&quot;conditionals&quot;,&quot;functions&quot;,&quot;lists&quot;,&quot;dicts&quot;,&quot;tuples&quot;,&quot;methods&quot;,&quot;builtins&quot;,&quot;comprehensions&quot;,&quot;sets&quot;,&quot;errors&quot;];
 const SRS_INT=[0,1,3,8,20,50];
 function levelFromBox(box){ return box<=2?1:(box<=4?2:3); }
 function recordReview(t,success){ if(reviewed) return; reviewed=true; clock++; sv(SK.clock,clock);
@@ -1490,6 +1699,8 @@ const WGEN={
   {topic:&quot;builtins&quot;,gen:()=>{const arr=pickn([7,2,9,4,1,8,5],4);return{prompt:`The list <b>nums = [${arr.join(&quot;, &quot;)}]</b> is given. Print them <b>sorted</b> (smallest first).`,starter:`nums = [${arr.join(&quot;, &quot;)}]\n`,kind:&quot;output&quot;,expected:pyList(arr.slice().sort((x,y)=>x-y)),need:[&quot;sorted&quot;],solution:`nums = [${arr.join(&quot;, &quot;)}]\nprint(sorted(nums))`,concept:&quot;sorted() returns an ordered copy&quot;,why:`In order: ${pyList(arr.slice().sort((x,y)=>x-y))}.`};}},
   {topic:&quot;methods&quot;,gen:()=>{const arr=pickn(WORDS,3);return{prompt:`Join the list <b>words = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]</b> into one string with <b>&quot;-&quot;</b> between the words, and print it.`,starter:`words = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\n`,kind:&quot;output&quot;,expected:arr.join(&quot;-&quot;),need:[&quot;.join(&quot;],solution:`words = [${arr.map(x=>`&quot;${x}&quot;`).join(&quot;, &quot;)}]\nprint(&quot;-&quot;.join(words))`,concept:'&quot;sep&quot;.join(list) glues text together',why:`Result: &quot;${arr.join(&quot;-&quot;)}&quot;.`};}},
   {topic:&quot;loops&quot;,gen:()=>{const k=ri(3,5);const exp=Array.from({length:k},(_,i)=>i).join(&quot;\n&quot;);return{prompt:`Print <b>0 up to ${k-1}</b>, then <b>stop</b> before ${k} using <b>break</b>. (Loop over range(10).)`,starter:`for i in range(10):\n    `,kind:&quot;output&quot;,expected:exp,need:[&quot;break&quot;],solution:`for i in range(10):\n    if i == ${k}:\n        break\n    print(i)`,concept:&quot;break leaves the loop early&quot;,why:`It prints 0..${k-1}, then break stops the loop before ${k}.`};}},
+  {topic:&quot;comprehensions&quot;,gen:()=>({prompt:`Use a <b>list comprehension</b> to print the squares of <b>1, 2, 3, 4, 5</b>. (Expected: [1, 4, 9, 16, 25])`,starter:``,kind:&quot;output&quot;,expected:&quot;[1, 4, 9, 16, 25]&quot;,need:[&quot;for&quot;],solution:`print([x * x for x in range(1, 6)])`,concept:&quot;a comprehension builds a list in one line&quot;,why:`x*x for x in 1..5 gives 1, 4, 9, 16, 25.`})},
+  {topic:&quot;sets&quot;,gen:()=>({prompt:`The list <b>nums = [1, 2, 2, 3, 3, 3]</b> is given. Print how many <b>unique</b> values it has using <b>set()</b>. (Expected: 3)`,starter:`nums = [1, 2, 2, 3, 3, 3]\n`,kind:&quot;output&quot;,expected:&quot;3&quot;,need:[&quot;set(&quot;],solution:`nums = [1, 2, 2, 3, 3, 3]\nprint(len(set(nums)))`,concept:&quot;a set drops duplicates&quot;,why:`The unique values are 1, 2, 3 → 3 of them.`})},
  ],
  3:[
   {topic:&quot;functions&quot;,gen:()=>({prompt:`Write a function <b>double(n)</b> that returns <b>n times 2</b>.`,starter:`def double(n):\n    `,kind:&quot;func&quot;,tests:`print(double(4))\nprint(double(25))`,expectedTests:&quot;8\n50&quot;,need:[&quot;def&quot;,&quot;return&quot;],solution:`def double(n):\n    return n * 2`,concept:&quot;a function transforms its input and returns it&quot;,why:`double(4) → 8, double(25) → 50.`})},
@@ -1499,6 +1710,8 @@ const WGEN={
   {topic:&quot;functions&quot;,gen:()=>({prompt:`Write a function <b>is_even(n)</b> that returns <b>True</b> if n is even, otherwise <b>False</b>.`,starter:`def is_even(n):\n    `,kind:&quot;func&quot;,tests:`print(is_even(4))\nprint(is_even(7))`,expectedTests:&quot;True\nFalse&quot;,need:[&quot;def&quot;,&quot;return&quot;],solution:`def is_even(n):\n    return n % 2 == 0`,concept:&quot;you can return a comparison (it's True or False)&quot;,why:`4 is even → True, 7 is odd → False.`})},
   {topic:&quot;tuples&quot;,gen:()=>({prompt:`Write a function <b>swap(a, b)</b> that <b>returns them reversed</b>, as (b, a).`,starter:`def swap(a, b):\n    `,kind:&quot;func&quot;,tests:`print(swap(1, 2))\nprint(swap(&quot;x&quot;, &quot;y&quot;))`,expectedTests:`(2, 1)\n('y', 'x')`,need:[&quot;def&quot;,&quot;return&quot;],solution:`def swap(a, b):\n    return b, a`,concept:&quot;a function can return several values as a tuple&quot;,why:`swap(1, 2) → (2, 1) and swap(&quot;x&quot;, &quot;y&quot;) → ('y', 'x').`})},
   {topic:&quot;builtins&quot;,gen:()=>{const a=pickn([1,2,3,4,5],3),b=pickn([10,20,30,40],3);const exp=a.map((x,i)=>`${x} ${b[i]}`).join(&quot;\n&quot;);return{prompt:`Two lists <b>a = [${a.join(&quot;, &quot;)}]</b> and <b>b = [${b.join(&quot;, &quot;)}]</b> are given. Use <b>zip</b> to print each pair as &quot;<b>x y</b>&quot; on its own line.`,starter:`a = [${a.join(&quot;, &quot;)}]\nb = [${b.join(&quot;, &quot;)}]\n`,kind:&quot;output&quot;,expected:exp,need:[&quot;zip&quot;],solution:`a = [${a.join(&quot;, &quot;)}]\nb = [${b.join(&quot;, &quot;)}]\nfor x, y in zip(a, b):\n    print(x, y)`,concept:&quot;zip pairs two lists item by item&quot;,why:`Each pair prints on its own line: ${a.map((x,i)=>`${x} ${b[i]}`).join(&quot;, &quot;)}.`};}},
+  {topic:&quot;errors&quot;,gen:()=>({prompt:`Use <b>try / except ZeroDivisionError</b> to print <b>&quot;oops&quot;</b> instead of crashing when computing <b>10 // 0</b>.`,starter:`try:\n    `,kind:&quot;output&quot;,expected:&quot;oops&quot;,need:[&quot;try&quot;,&quot;except&quot;],solution:`try:\n    print(10 // 0)\nexcept ZeroDivisionError:\n    print(&quot;oops&quot;)`,concept:&quot;try/except handles an error gracefully&quot;,why:`10 // 0 raises ZeroDivisionError, which the except catches to print &quot;oops&quot;.`})},
+  {topic:&quot;comprehensions&quot;,gen:()=>({prompt:`Given <b>nums = [1, 2, 3, 4, 5, 6]</b>, use a <b>comprehension with if</b> to print only the <b>even</b> numbers. (Expected: [2, 4, 6])`,starter:`nums = [1, 2, 3, 4, 5, 6]\n`,kind:&quot;output&quot;,expected:&quot;[2, 4, 6]&quot;,need:[&quot;for&quot;,&quot;if&quot;],solution:`nums = [1, 2, 3, 4, 5, 6]\nprint([n for n in nums if n % 2 == 0])`,concept:&quot;add 'if' to a comprehension to filter&quot;,why:`It keeps only n where n % 2 == 0.`})},
  ]
 };
 const WHINTS=[
@@ -1778,11 +1991,21 @@ function parseStatement(lines,st,indent){ const text=lines[st.i].text.trim(); co
     return {t:&quot;if&quot;,branches,els,line:ln}; }
   if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(&quot;,&quot;).map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:&quot;for&quot;,targets,iter,body:parseBlock(lines,st,indent),line:ln}; }
   if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:&quot;while&quot;,cond:parseExpr(m[1]),body:parseBlock(lines,st,indent),line:ln}; }
+  if(/^try\s*:$/.test(text)){ st.i++; const body=parseBlock(lines,st,indent); const handlers=[]; let els=null,fin=null;
+    while(st.i<lines.length &amp;&amp; lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^except\b(.*):$/.exec(t))){ st.i++; const spec=em[1].trim(); let type=null,vname=null;
+        if(spec){ const am=/^([A-Za-z_]\w*)(?:\s+as\s+([A-Za-z_]\w*))?$/.exec(spec); if(am){type=am[1];vname=am[2]||null;} }
+        handlers.push({type,vname,body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); }
+      else if(/^finally\s*:$/.test(t)){ st.i++; fin=parseBlock(lines,st,indent); break; }
+      else break; }
+    return {t:&quot;try&quot;,body,handlers,els,fin,line:ln}; }
   if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:&quot;def&quot;,name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent),line:ln}; }
   if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:&quot;return&quot;,expr:ex?parseExpr(ex):{t:&quot;none&quot;},line:ln}; }
   if(/^break$/.test(text)){ st.i++; return {t:&quot;break&quot;,line:ln}; }
   if(/^continue$/.test(text)){ st.i++; return {t:&quot;continue&quot;,line:ln}; }
   if(/^pass$/.test(text)){ st.i++; return {t:&quot;pass&quot;,line:ln}; }
+  if((m=/^raise\b(.*)$/.exec(text))){ st.i++; return {t:&quot;raise&quot;,arg:m[1].trim(),line:ln}; }
   st.i++; const aug=findAug(text);
   if(aug){ return {t:&quot;assign&quot;,target:text.slice(0,aug.start).trim(),op:aug.op,expr:parseExpr(text.slice(aug.eqPos+1).trim()),line:ln}; }
   const eq=findTopAssign(text);
@@ -1815,7 +2038,7 @@ function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),
     if(isD(c)||(c===&quot;.&quot;&amp;&amp;isD(s[k+1]))){ let j=k,num=&quot;&quot;; while(j<s.length&amp;&amp;/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:&quot;num&quot;,v:parseFloat(num)}); k=j; continue; }
     if(isId(c)){ let j=k,id=&quot;&quot;; while(j<s.length&amp;&amp;isIdc(s[j])){id+=s[j];j++;}
       if(id===&quot;True&quot;)toks.push({t:&quot;bool&quot;,v:true}); else if(id===&quot;False&quot;)toks.push({t:&quot;bool&quot;,v:false}); else if(id===&quot;None&quot;)toks.push({t:&quot;none&quot;});
-      else if(id===&quot;and&quot;||id===&quot;or&quot;||id===&quot;not&quot;||id===&quot;in&quot;)toks.push({t:&quot;kw&quot;,v:id}); else toks.push({t:&quot;name&quot;,v:id}); k=j; continue; }
+      else if(id===&quot;and&quot;||id===&quot;or&quot;||id===&quot;not&quot;||id===&quot;in&quot;||id===&quot;is&quot;)toks.push({t:&quot;kw&quot;,v:id}); else toks.push({t:&quot;name&quot;,v:id}); k=j; continue; }
     const two=s.slice(k,k+2); if([&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;,&quot;//&quot;,&quot;**&quot;].includes(two)){toks.push({t:&quot;op&quot;,v:two});k+=2;continue;}
     if(&quot;+-*/%<>()[]{}:,.&quot;.includes(c)){toks.push({t:&quot;op&quot;,v:c});k++;continue;} throw pyError(&quot;SyntaxError: unexpected character '&quot;+c+&quot;'&quot;); }
   return toks; }
@@ -1828,7 +2051,15 @@ function eat(p,v){const t=p.toks[p.i];if(!t||(v&amp;&amp;!(t.v===v||t.t===v)))th
 function parseOr(p){let l=parseAnd(p);while(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;or&quot;){p.i++;l={t:&quot;bin&quot;,op:&quot;or&quot;,l,r:parseAnd(p)};}return l;}
 function parseAnd(p){let l=parseNot(p);while(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;and&quot;){p.i++;l={t:&quot;bin&quot;,op:&quot;and&quot;,l,r:parseNot(p)};}return l;}
 function parseNot(p){if(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;not&quot;){p.i++;return {t:&quot;unary&quot;,op:&quot;not&quot;,e:parseNot(p)};}return parseCmp(p);}
-function parseCmp(p){let l=parseAdd(p);while(peek(p)&amp;&amp;((peek(p).t===&quot;op&quot;&amp;&amp;[&quot;<&quot;,&quot;>&quot;,&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;].includes(peek(p).v))||(peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;in&quot;))){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseAdd(p)};}return l;}
+function parseCmp(p){let l=parseAdd(p);
+  while(peek(p)){ const t=peek(p); let op=null;
+    if(t.t===&quot;op&quot;&amp;&amp;[&quot;<&quot;,&quot;>&quot;,&quot;==&quot;,&quot;!=&quot;,&quot;>=&quot;,&quot;<=&quot;].includes(t.v)){op=t.v;p.i++;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;in&quot;){op=&quot;in&quot;;p.i++;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;not&quot;&amp;&amp;p.toks[p.i+1]&amp;&amp;p.toks[p.i+1].t===&quot;kw&quot;&amp;&amp;p.toks[p.i+1].v===&quot;in&quot;){op=&quot;notin&quot;;p.i+=2;}
+    else if(t.t===&quot;kw&quot;&amp;&amp;t.v===&quot;is&quot;){ p.i++; if(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;not&quot;){p.i++;op=&quot;isnot&quot;;}else op=&quot;is&quot;; }
+    else break;
+    l={t:&quot;bin&quot;,op,l,r:parseAdd(p)}; }
+  return l;}
 function parseAdd(p){let l=parseMul(p);while(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;(peek(p).v===&quot;+&quot;||peek(p).v===&quot;-&quot;)){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseMul(p)};}return l;}
 function parseMul(p){let l=parseUnary(p);while(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;[&quot;*&quot;,&quot;/&quot;,&quot;//&quot;,&quot;%&quot;].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:&quot;bin&quot;,op,l,r:parseUnary(p)};}return l;}
 function parseUnary(p){if(peek(p)&amp;&amp;peek(p).t===&quot;op&quot;&amp;&amp;peek(p).v===&quot;-&quot;){p.i++;return {t:&quot;unary&quot;,op:&quot;-&quot;,e:parseUnary(p)};}return parsePow(p);}
@@ -1850,9 +2081,36 @@ function parsePrimary(p){ const t=peek(p); if(!t)throw pyError(&quot;SyntaxError
     const first=parseOr(p);
     if(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){ const items=[first]; while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;)&quot;)break;items.push(parseOr(p));} eat(p,&quot;)&quot;); return {t:&quot;tuple&quot;,items}; }
     eat(p,&quot;)&quot;);return first;}
-  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;[&quot;){p.i++;const items=[];if(!(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)){items.push(parseOr(p));while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)break;items.push(parseOr(p));}}eat(p,&quot;]&quot;);return {t:&quot;list&quot;,items};}
-  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;{&quot;){p.i++;const pairs=[];if(!(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)){do{if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;const k=parseOr(p);eat(p,&quot;:&quot;);const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;&amp;&amp;(p.i++,true));}eat(p,&quot;}&quot;);return {t:&quot;dict&quot;,pairs};}
+  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;[&quot;){p.i++;
+    if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;){p.i++;return {t:&quot;list&quot;,items:[]};}
+    const first=parseOr(p);
+    if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;]&quot;); return {t:&quot;listcomp&quot;,expr:first,...comp}; }
+    const items=[first];
+    while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;]&quot;)break;items.push(parseOr(p));}
+    eat(p,&quot;]&quot;);return {t:&quot;list&quot;,items};}
+  if(t.t===&quot;op&quot;&amp;&amp;t.v===&quot;{&quot;){p.i++;
+    if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;){p.i++;return {t:&quot;dict&quot;,pairs:[]};}
+    const k0=parseOr(p);
+    if(peek(p)&amp;&amp;peek(p).v===&quot;:&quot;){ p.i++; const v0=parseOr(p);
+      if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;}&quot;); return {t:&quot;dictcomp&quot;,key:k0,val:v0,...comp}; }
+      const pairs=[[k0,v0]];
+      while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;const k=parseOr(p);eat(p,&quot;:&quot;);const v=parseOr(p);pairs.push([k,v]);}
+      eat(p,&quot;}&quot;);return {t:&quot;dict&quot;,pairs};
+    }
+    if(isKwName(peek(p),&quot;for&quot;)){ const comp=parseComp(p); eat(p,&quot;}&quot;); return {t:&quot;setcomp&quot;,expr:k0,...comp}; }
+    const items=[k0];
+    while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;if(peek(p)&amp;&amp;peek(p).v===&quot;}&quot;)break;items.push(parseOr(p));}
+    eat(p,&quot;}&quot;);return {t:&quot;set&quot;,items};}
   throw pyError(&quot;SyntaxError near '&quot;+t.v+&quot;'&quot;); }
+function isKwName(tok,word){ return tok &amp;&amp; tok.t===&quot;name&quot; &amp;&amp; tok.v===word; }
+function parseComp(p){ eat(p,&quot;name&quot;); const targets=[eat(p,&quot;name&quot;).v];
+  while(peek(p)&amp;&amp;peek(p).v===&quot;,&quot;){p.i++;targets.push(eat(p,&quot;name&quot;).v);}
+  if(!(peek(p)&amp;&amp;peek(p).t===&quot;kw&quot;&amp;&amp;peek(p).v===&quot;in&quot;)) throw pyError(&quot;SyntaxError: expected 'in' in comprehension&quot;);
+  p.i++; const iter=parseOr(p); let cond=null;
+  while(isKwName(peek(p),&quot;if&quot;)){ p.i++; const c=parseOr(p); cond=cond?{t:&quot;bin&quot;,op:&quot;and&quot;,l:cond,r:c}:c; }
+  return {targets,iter,cond}; }
+function runComp(n,scope,G,emit){ const seq=iterate(evalExpr(n.iter,scope,G)); const local=Object.create(scope);
+  for(const item of seq){ bindTargets(n.targets,item,local); if(n.cond &amp;&amp; !truthy(evalExpr(n.cond,local,G))) continue; emit(local); } }
 
 /* ---- tracer ---- */
 let TR=null;
@@ -1871,7 +2129,22 @@ function execStmt(s,scope,G){ switch(s.t){
   case &quot;for&quot;:{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); rec(s.line,scope,G); try{ execBlock(s.body,scope,G); }catch(e){ if(e&amp;&amp;e.__brk)break; if(e&amp;&amp;e.__cont)continue; throw e; } } return; }
   case &quot;while&quot;:{ let g=0; while(truthy(evalExpr(s.cond,scope,G))){ rec(s.line,scope,G); try{ execBlock(s.body,scope,G); }catch(e){ if(e&amp;&amp;e.__brk)break; if(e&amp;&amp;e.__cont){ if(++g>100000) throw pyError(&quot;RuntimeError: loop too long&quot;); continue; } throw e; } if(++g>100000) throw pyError(&quot;RuntimeError: loop too long&quot;); } return; }
   case &quot;def&quot;:{ rec(s.line,scope,G); scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
-  case &quot;return&quot;:{ rec(s.line,scope,G); throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+  case &quot;return&quot;:{ rec(s.line,scope,G); throw {__ret:true,value:evalExpr(s.expr,scope,G)}; }
+  case &quot;raise&quot;:{ rec(s.line,scope,G); throw makeRaise(s.arg,scope,G); }
+  case &quot;try&quot;:{ rec(s.line,scope,G); let raised=null;
+    try{ execBlock(s.body,scope,G); }
+    catch(e){ if(e&amp;&amp;(e.__ret||e.__brk||e.__cont||e.message===&quot;__cap&quot;)){ if(s.fin)execBlock(s.fin,scope,G); throw e; } raised=e; }
+    if(raised){ const msg=raised.__pyerr?raised.message:((raised&amp;&amp;raised.message)||String(raised)); const etype=pyErrType(msg);
+      let handled=false;
+      for(const h of s.handlers){ if(h.type===null||h.type===etype||h.type===&quot;Exception&quot;||h.type===&quot;BaseException&quot;){ if(h.vname) scope[h.vname]=excMessage(msg); execBlock(h.body,scope,G); handled=true; break; } }
+      if(!handled){ if(s.fin)execBlock(s.fin,scope,G); throw raised; }
+    } else if(s.els){ execBlock(s.els,scope,G); }
+    if(s.fin) execBlock(s.fin,scope,G); return; } } }
+function pyErrType(msg){ const m=/^([A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration))\b/.exec(msg); return m?m[1]:&quot;Exception&quot;; }
+function excMessage(msg){ const m=/^[A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration):\s?(.*)$/.exec(msg); return m?m[1]:&quot;&quot;; }
+function makeRaise(arg,scope,G){ arg=arg.trim(); if(!arg) throw pyError(&quot;RuntimeError: No active exception to re-raise&quot;);
+  const m=/^([A-Za-z_]\w*)\s*(?:\((.*)\))?$/.exec(arg); if(!m) throw pyError(&quot;SyntaxError: bad raise&quot;);
+  let msg=m[1]; if(m[2]!=null &amp;&amp; m[2].trim()){ const a=evalExpr(parseExpr(m[2].trim()),scope,G); msg=m[1]+&quot;: &quot;+pyStr(a); } return pyError(msg); }
 function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError(&quot;ValueError: cannot unpack&quot;); targets.forEach((t,i)=>scope[t]=item[i]); } }
 function isName(t){ return /^[A-Za-z_]\w*$/.test(t); }
 function idxMatch(t){ if(t[t.length-1]!==&quot;]&quot;) return null; let depth=0;
@@ -1894,11 +2167,17 @@ function applyOp(op,a,b){ switch(op){
   case &quot;+&quot;: if(typeof a===&quot;string&quot;||typeof b===&quot;string&quot;){ if(typeof a!==&quot;string&quot;||typeof b!==&quot;string&quot;) throw pyError(&quot;TypeError: str + non-str&quot;); return a+b; } if(Array.isArray(a)&amp;&amp;Array.isArray(b)) return a.concat(b); return a+b;
   case &quot;-&quot;: return a-b;
   case &quot;*&quot;: if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;number&quot;) return a.repeat(b); if(typeof a===&quot;number&quot;&amp;&amp;typeof b===&quot;string&quot;) return b.repeat(a); return a*b;
-  case &quot;/&quot;: return a/b; case &quot;//&quot;: return Math.floor(a/b); case &quot;%&quot;: return ((a%b)+b)%b; case &quot;**&quot;: return Math.pow(a,b); }
+  case &quot;/&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: division by zero&quot;); return a/b;
+  case &quot;//&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return Math.floor(a/b);
+  case &quot;%&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return ((a%b)+b)%b;
+  case &quot;**&quot;: return Math.pow(a,b); }
   throw pyError(&quot;SyntaxError: bad operator&quot;); }
 function mkTuple(arr){ Object.defineProperty(arr,&quot;__tuple&quot;,{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function mkSet(arr){ Object.defineProperty(arr,&quot;__set&quot;,{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function setAdd(s,v){ if(!s.some(x=>pyEq(x,v))) s.push(v); }
+function isSet(v){ return Array.isArray(v)&amp;&amp;v.__set; }
 function stripChars(s,chars,left,right){ let a=0,b=s.length; if(left){while(a<b&amp;&amp;chars.indexOf(s[a])>=0)a++;} if(right){while(b>a&amp;&amp;chars.indexOf(s[b-1])>=0)b--;} return s.slice(a,b); }
-function pyType(v){ if(typeof v===&quot;number&quot;)return Number.isInteger(v)?&quot;int&quot;:&quot;float&quot;; if(typeof v===&quot;string&quot;)return &quot;str&quot;; if(typeof v===&quot;boolean&quot;)return &quot;bool&quot;; if(Array.isArray(v))return v.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(v instanceof Map)return &quot;dict&quot;; if(v===null)return &quot;NoneType&quot;; return &quot;object&quot;; }
+function pyType(v){ if(typeof v===&quot;number&quot;)return Number.isInteger(v)?&quot;int&quot;:&quot;float&quot;; if(typeof v===&quot;string&quot;)return &quot;str&quot;; if(typeof v===&quot;boolean&quot;)return &quot;bool&quot;; if(Array.isArray(v))return v.__set?&quot;set&quot;:v.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(v instanceof Map)return &quot;dict&quot;; if(v===null)return &quot;NoneType&quot;; return &quot;object&quot;; }
 function pyCmp(a,b){ if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;string&quot;)return a<b?-1:a>b?1:0; if(Array.isArray(a)&amp;&amp;Array.isArray(b)){ for(let i=0;i<Math.min(a.length,b.length);i++){const c=pyCmp(a[i],b[i]);if(c)return c;} return a.length-b.length; } return a-b; }
 function lookup(name,scope,G){ if(name in scope) return scope[name]; if(name in G) return G[name]; throw pyError(&quot;NameError: name '&quot;+name+&quot;' is not defined&quot;); }
 function evalExpr(n,scope,G){ switch(n.t){
@@ -1906,7 +2185,11 @@ function evalExpr(n,scope,G){ switch(n.t){
   case &quot;fstr&quot;: return evalFString(n.v,scope,G); case &quot;name&quot;: return lookup(n.v,scope,G);
   case &quot;list&quot;: return n.items.map(x=>evalExpr(x,scope,G));
   case &quot;tuple&quot;: return mkTuple(n.items.map(x=>evalExpr(x,scope,G)));
+  case &quot;set&quot;:{ const arr=mkSet([]); for(const x of n.items) setAdd(arr,evalExpr(x,scope,G)); return arr; }
   case &quot;dict&quot;:{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case &quot;listcomp&quot;:{ const out=[]; runComp(n,scope,G,loc=>out.push(evalExpr(n.expr,loc,G))); return out; }
+  case &quot;setcomp&quot;:{ const arr=mkSet([]); runComp(n,scope,G,loc=>setAdd(arr,evalExpr(n.expr,loc,G))); return arr; }
+  case &quot;dictcomp&quot;:{ const m=new Map(); runComp(n,scope,G,loc=>m.set(evalExpr(n.key,loc,G),evalExpr(n.val,loc,G))); return m; }
   case &quot;unary&quot;:{ const v=evalExpr(n.e,scope,G); if(n.op===&quot;-&quot;) return -v; if(n.op===&quot;not&quot;) return !truthy(v); return; }
   case &quot;bin&quot;: return evalBin(n,scope,G);
   case &quot;index&quot;:{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
@@ -1922,9 +2205,17 @@ function evalBin(n,scope,G){ const op=n.op;
   const a=evalExpr(n.l,scope,G),b=evalExpr(n.r,scope,G);
   switch(op){ case &quot;+&quot;: if(typeof a===&quot;string&quot;||typeof b===&quot;string&quot;){ if(typeof a!==&quot;string&quot;||typeof b!==&quot;string&quot;) throw pyError(&quot;TypeError: str + non-str&quot;); return a+b; } if(Array.isArray(a)&amp;&amp;Array.isArray(b)) return a.concat(b); return a+b;
     case &quot;-&quot;: return a-b; case &quot;*&quot;: if(typeof a===&quot;string&quot;&amp;&amp;typeof b===&quot;number&quot;) return a.repeat(b); if(typeof a===&quot;number&quot;&amp;&amp;typeof b===&quot;string&quot;) return b.repeat(a); return a*b;
-    case &quot;/&quot;: return a/b; case &quot;//&quot;: return Math.floor(a/b); case &quot;**&quot;: return Math.pow(a,b); case &quot;%&quot;: return ((a%b)+b)%b; case &quot;<&quot;: return a<b; case &quot;>&quot;: return a>b; case &quot;<=&quot;: return a<=b; case &quot;>=&quot;: return a>=b;
+    case &quot;/&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: division by zero&quot;); return a/b;
+    case &quot;//&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return Math.floor(a/b);
+    case &quot;**&quot;: return Math.pow(a,b);
+    case &quot;%&quot;: if(b===0) throw pyError(&quot;ZeroDivisionError: integer division or modulo by zero&quot;); return ((a%b)+b)%b;
+    case &quot;<&quot;: return a<b; case &quot;>&quot;: return a>b; case &quot;<=&quot;: return a<=b; case &quot;>=&quot;: return a>=b;
     case &quot;==&quot;: return pyEq(a,b); case &quot;!=&quot;: return !pyEq(a,b);
-    case &quot;in&quot;:{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b===&quot;string&quot;) return b.includes(a); return false; } } }
+    case &quot;in&quot;: return pyIn(a,b);
+    case &quot;notin&quot;: return !pyIn(a,b);
+    case &quot;is&quot;: return a===b || (a===null&amp;&amp;b===null);
+    case &quot;isnot&quot;: return !(a===b || (a===null&amp;&amp;b===null)); } }
+function pyIn(a,b){ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b===&quot;string&quot;) return b.includes(a); throw pyError(&quot;TypeError: argument is not iterable&quot;); }
 function evalCall(n,scope,G){
   if(n.fn.t===&quot;attr&quot;){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
   if(n.fn.t===&quot;name&quot;){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
@@ -1941,7 +2232,8 @@ function evalCall(n,scope,G){
     if(name===&quot;reversed&quot;){ return iterate(args[0]).slice().reverse(); }
     if(name===&quot;list&quot;){ return args.length?iterate(args[0]).slice():[]; }
     if(name===&quot;tuple&quot;){ return mkTuple(args.length?iterate(args[0]).slice():[]); }
-    if(name===&quot;set&quot;){ const seen=[]; (args.length?iterate(args[0]):[]).forEach(x=>{ if(!seen.some(y=>pyEq(y,x)))seen.push(x); }); return seen; }
+    if(name===&quot;set&quot;){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
+    if(name===&quot;frozenset&quot;){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
     if(name===&quot;zip&quot;){ const seqs=args.map(iterate); const nn=seqs.length?Math.min.apply(null,seqs.map(s=>s.length)):0; const r=[]; for(let i=0;i<nn;i++) r.push(mkTuple(seqs.map(s=>s[i]))); return r; }
     if(name===&quot;any&quot;){ return iterate(args[0]).some(truthy); }
     if(name===&quot;all&quot;){ return iterate(args[0]).every(truthy); }
@@ -1953,6 +2245,19 @@ function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError(&quot;TypeError: n
   fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError(&quot;TypeError: missing arg '&quot;+p.name+&quot;'&quot;); });
   try{ execBlock(fn.body,local,G); }catch(e){ if(e&amp;&amp;e.__ret) return e.value; throw e; } return null; }
 function callMethod(obj,name,args){
+  if(isSet(obj)){
+    if(name===&quot;add&quot;){ setAdd(obj,args[0]); return null; }
+    if(name===&quot;discard&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p>=0)obj.splice(p,1); return null; }
+    if(name===&quot;remove&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;KeyError: &quot;+pyRepr(args[0])); obj.splice(p,1); return null; }
+    if(name===&quot;clear&quot;){ obj.length=0; return null; }
+    if(name===&quot;pop&quot;){ if(!obj.length) throw pyError(&quot;KeyError: 'pop from an empty set'&quot;); return obj.shift(); }
+    if(name===&quot;union&quot;){ const r=mkSet(obj.slice()); iterate(args[0]).forEach(x=>setAdd(r,x)); return r; }
+    if(name===&quot;intersection&quot;){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name===&quot;difference&quot;){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(!other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name===&quot;update&quot;){ iterate(args[0]).forEach(x=>setAdd(obj,x)); return null; }
+    if(name===&quot;issubset&quot;){ const other=iterate(args[0]); return obj.every(x=>other.some(y=>pyEq(y,x))); }
+    if(name===&quot;issuperset&quot;){ const other=iterate(args[0]); return other.every(x=>obj.some(y=>pyEq(y,x))); }
+    throw pyError(&quot;AttributeError: set.&quot;+name); }
   if(Array.isArray(obj)){ if(name===&quot;append&quot;){obj.push(args[0]);return null;} if(name===&quot;pop&quot;){ if(args.length){ let i=args[0]<0?obj.length+args[0]:args[0]; if(i<0||i>=obj.length) throw pyError(&quot;IndexError: pop index out of range&quot;); return obj.splice(i,1)[0]; } if(!obj.length) throw pyError(&quot;IndexError: pop from empty list&quot;); return obj.pop(); } if(name===&quot;count&quot;){return obj.filter(x=>pyEq(x,args[0])).length;} if(name===&quot;sort&quot;){obj.sort((x,y)=>pyCmp(x,y));return null;} if(name===&quot;reverse&quot;){obj.reverse();return null;} if(name===&quot;index&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;ValueError: not in list&quot;); return p; } if(name===&quot;insert&quot;){ let i=args[0]; if(i<0)i+=obj.length; if(i<0)i=0; if(i>obj.length)i=obj.length; obj.splice(i,0,args[1]); return null; } if(name===&quot;extend&quot;){ iterate(args[0]).forEach(x=>obj.push(x)); return null; } if(name===&quot;remove&quot;){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError(&quot;ValueError: list.remove(x): x not in list&quot;); obj.splice(p,1); return null; } if(name===&quot;clear&quot;){ obj.length=0; return null; } throw pyError(&quot;AttributeError: list.&quot;+name); }
   if(obj instanceof Map){ if(name===&quot;items&quot;)return Array.from(obj.entries()).map(([k,v])=>mkTuple([k,v])); if(name===&quot;keys&quot;)return Array.from(obj.keys()); if(name===&quot;values&quot;)return Array.from(obj.values()); if(name===&quot;get&quot;)return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); if(name===&quot;pop&quot;){ if(obj.has(args[0])){const v=obj.get(args[0]);obj.delete(args[0]);return v;} if(args.length>1)return args[1]; throw pyError(&quot;KeyError: &quot;+pyRepr(args[0])); } if(name===&quot;update&quot;){ const o=args[0]; if(o instanceof Map)o.forEach((v,k)=>obj.set(k,v)); return null; } throw pyError(&quot;AttributeError: dict.&quot;+name); }
   if(typeof obj===&quot;string&quot;){ if(name===&quot;upper&quot;)return obj.toUpperCase(); if(name===&quot;lower&quot;)return obj.toLowerCase(); if(name===&quot;title&quot;)return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name===&quot;capitalize&quot;)return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name===&quot;count&quot;){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;}
@@ -1976,8 +2281,8 @@ function evalFString(raw,scope,G){ let res=&quot;&quot;,i=0; while(i<raw.length)
   if(c===&quot;{&quot;){ if(raw[i+1]===&quot;{&quot;){res+=&quot;{&quot;;i+=2;continue;} let j=i+1,depth=1,ex=&quot;&quot;; while(j<raw.length&amp;&amp;depth>0){const d=raw[j];if(d===&quot;{&quot;)depth++;else if(d===&quot;}&quot;){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
   else if(c===&quot;}&quot;){ if(raw[i+1]===&quot;}&quot;){res+=&quot;}&quot;;i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
 function truthy(v){ if(v===null||v===false)return false; if(v===0||v===&quot;&quot;)return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
-function pyEq(a,b){ if(Array.isArray(a)&amp;&amp;Array.isArray(b))return a.length===b.length&amp;&amp;a.every((x,i)=>pyEq(x,b[i])); return a===b; }
-function pyStr(v){ if(v===null)return &quot;None&quot;; if(v===true)return &quot;True&quot;; if(v===false)return &quot;False&quot;; if(typeof v===&quot;number&quot;)return String(v); if(typeof v===&quot;string&quot;)return v; if(Array.isArray(v)&amp;&amp;v.__tuple)return v.length===1?&quot;(&quot;+pyRepr(v[0])+&quot;,)&quot;:&quot;(&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;)&quot;; if(Array.isArray(v))return &quot;[&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;]&quot;; if(v instanceof Map)return &quot;{&quot;+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+&quot;: &quot;+pyRepr(val)).join(&quot;, &quot;)+&quot;}&quot;; if(v&amp;&amp;v.__fn)return &quot;<function>&quot;; return String(v); }
+function pyEq(a,b){ if(Array.isArray(a)&amp;&amp;Array.isArray(b)){ const ak=a.__set?&quot;set&quot;:a.__tuple?&quot;tuple&quot;:&quot;list&quot;, bk=b.__set?&quot;set&quot;:b.__tuple?&quot;tuple&quot;:&quot;list&quot;; if(ak!==bk) return false; if(ak===&quot;set&quot;) return a.length===b.length&amp;&amp;a.every(x=>b.some(y=>pyEq(y,x))); return a.length===b.length&amp;&amp;a.every((x,i)=>pyEq(x,b[i])); } return a===b; }
+function pyStr(v){ if(v===null)return &quot;None&quot;; if(v===true)return &quot;True&quot;; if(v===false)return &quot;False&quot;; if(typeof v===&quot;number&quot;)return String(v); if(typeof v===&quot;string&quot;)return v; if(Array.isArray(v)&amp;&amp;v.__set)return v.length===0?&quot;set()&quot;:&quot;{&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;}&quot;; if(Array.isArray(v)&amp;&amp;v.__tuple)return v.length===1?&quot;(&quot;+pyRepr(v[0])+&quot;,)&quot;:&quot;(&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;)&quot;; if(Array.isArray(v))return &quot;[&quot;+v.map(pyRepr).join(&quot;, &quot;)+&quot;]&quot;; if(v instanceof Map)return &quot;{&quot;+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+&quot;: &quot;+pyRepr(val)).join(&quot;, &quot;)+&quot;}&quot;; if(v&amp;&amp;v.__fn)return &quot;<function>&quot;; return String(v); }
 function pyRepr(v){ if(typeof v===&quot;string&quot;)return &quot;'&quot;+v+&quot;'&quot;; return pyStr(v); }
 function iterate(v){ if(Array.isArray(v))return v; if(typeof v===&quot;string&quot;)return v.split(&quot;&quot;); if(v instanceof Map)return Array.from(v.keys()); throw pyError(&quot;TypeError: not iterable&quot;); }
 function pySlice(seq,start,stop,step){ const isStr=typeof seq===&quot;string&quot;; const arr=isStr?seq.split(&quot;&quot;):seq; const len=arr.length;
@@ -2020,6 +2325,9 @@ const PRESETS=[
  {name:&quot;break early&quot;,code:`for n in [3, 8, 1, 9, 4]:\n    if n > 5:\n        print(&quot;found&quot;, n)\n        break`},
  {name:&quot;zip two lists&quot;,code:`names = [&quot;Ada&quot;, &quot;Leo&quot;, &quot;Mia&quot;]\nscores = [90, 75, 88]\nfor name, score in zip(names, scores):\n    print(name, score)`},
  {name:&quot;Running total (+=)&quot;,code:`total = 0\nfor n in [5, 8, 2]:\n    total += n\nprint(total)`},
+ {name:&quot;List comprehension&quot;,code:`nums = [1, 2, 3, 4, 5]\nsquares = [n * n for n in nums]\nprint(squares)`},
+ {name:&quot;Unique with a set&quot;,code:`nums = [1, 2, 2, 3, 3, 3]\nunique = set(nums)\nprint(len(unique))`},
+ {name:&quot;try / except&quot;,code:`for x in [10, 0, 5]:\n    try:\n        print(100 // x)\n    except ZeroDivisionError:\n        print(&quot;skip zero&quot;)`},
 ];
 let steps=[], si=0, srcLines=[], playTimer=null, prevVars={};
 

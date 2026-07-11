@@ -24,11 +24,11 @@ they can learn too, no account needed.
 
 ## Start here: the Guided Learn Path (`learn.html`)
 
-The best place for a beginner. **13 short lessons** (Printing → Variables →
+The best place for a beginner. **16 short lessons** (Printing → Variables →
 Numbers → f-strings → Lists → Loops → If/Else → Functions → Totals with `+=` →
 `break` & `continue` → Tuples & unpacking → Text tools (`split`/`join`) →
-Built-in helpers (`sorted`/`zip`)). Each lesson follows the proven *teach → try*
-loop:
+Built-in helpers (`sorted`/`zip`) → List comprehensions → Sets → Handling errors
+(`try`/`except`)). Each lesson follows the proven *teach → try* loop:
 
 1. **Learn** — a one-screen explanation with a **runnable example** you can edit.
 2. **Predict** — read a snippet, type its output (with a "why").
@@ -58,13 +58,14 @@ verified against real `python3`.
   star when you pass.
 - **A real Python interpreter in pure JavaScript** — `print`, variables,
   f-strings, math (`+ - * // % **`), augmented assignment (`+= -= *= …`), lists,
-  **tuples & unpacking**, dicts, indexing & slicing, item assignment, `range`,
-  `for`/`while` with `break`/`continue`, `if`/`elif`/`else`, functions with
-  defaults, a wide set of **built-ins** (`sorted`, `reversed`, `zip`,
-  `enumerate`, `min`/`max`/`sum`, `any`/`all`, `list`/`tuple`/`set`) and
-  **string/list methods** (`split`, `join`, `replace`, `strip`, `startswith`,
-  `sort`, `insert`, `index`, …), plus friendly error messages. All offline, and
-  cross-checked against real `python3`.
+  **tuples & unpacking**, **sets**, dicts, indexing & slicing, item assignment,
+  **list/set/dict comprehensions**, `range`, `for`/`while` with
+  `break`/`continue`, `if`/`elif`/`else`, **`try`/`except`/`finally` + `raise`**,
+  `not in` / `is` / `is not`, functions with defaults, a wide set of **built-ins**
+  (`sorted`, `reversed`, `zip`, `enumerate`, `min`/`max`/`sum`, `any`/`all`,
+  `list`/`tuple`/`set`) and **string/list methods** (`split`, `join`, `replace`,
+  `strip`, `startswith`, `sort`, `insert`, `index`, …), plus friendly error
+  messages. All offline, and cross-checked against real `python3`.
 - **Free Play sandbox** to experiment with your own code.
 - **Doubt Helper** (the 💬 Ask button) — see below.
 - **Code Trace game** (`quiz.html`, linked from the toolbar) — an **endless**
@@ -73,7 +74,8 @@ verified against real `python3`.
     nested loops, functions, FizzBuzz-style logic; Expert = **slicing &
     `enumerate`**) and filterable by **topic** — Loops, If/Else, Functions,
     Strings, Lists, Dicts, plus **Tuples**, **Str/List tools** (split/join/sort/
-    insert…) and **Built-ins** (sorted/zip/min/max/any/all).
+    insert…), **Built-ins** (sorted/zip/min/max/any/all), **Comprehensions**,
+    **Sets**, and **Try/Except** error handling.
   - **Every answer is computed by the app's real Python interpreter** (which
     supports slicing and `enumerate`) and was **cross-checked against actual
     `python3`** (490 programs, 0 mismatches).
