@@ -232,11 +232,21 @@ function parseStatement(lines,st,indent){
   }
   if((m=/^for\s+(.*?)\s+in\s+(.*):$/.exec(text))){ st.i++; const targets=m[1].split(",").map(s=>s.trim()); const iter=parseExpr(m[2]); return {t:"for",targets,iter,body:parseBlock(lines,st,indent)}; }
   if((m=/^while\s+(.*):$/.exec(text))){ st.i++; return {t:"while",cond:parseExpr(m[1]),body:parseBlock(lines,st,indent)}; }
+  if(/^try\s*:$/.test(text)){ st.i++; const body=parseBlock(lines,st,indent); const handlers=[]; let els=null,fin=null;
+    while(st.i<lines.length && lines[st.i].indent===indent){ const t=lines[st.i].text.trim(); let em;
+      if((em=/^except\b(.*):$/.exec(t))){ st.i++; const spec=em[1].trim(); let type=null,vname=null;
+        if(spec){ const am=/^([A-Za-z_]\w*)(?:\s+as\s+([A-Za-z_]\w*))?$/.exec(spec); if(am){type=am[1];vname=am[2]||null;} }
+        handlers.push({type,vname,body:parseBlock(lines,st,indent)}); }
+      else if(/^else\s*:$/.test(t)){ st.i++; els=parseBlock(lines,st,indent); }
+      else if(/^finally\s*:$/.test(t)){ st.i++; fin=parseBlock(lines,st,indent); break; }
+      else break; }
+    return {t:"try",body,handlers,els,fin}; }
   if((m=/^def\s+([A-Za-z_]\w*)\s*\((.*)\)\s*:$/.exec(text))){ st.i++; return {t:"def",name:m[1],params:parseParams(m[2]),body:parseBlock(lines,st,indent)}; }
   if((m=/^return\b(.*)$/.exec(text))){ st.i++; const ex=m[1].trim(); return {t:"return",expr:ex?parseExpr(ex):{t:"none"}}; }
   if(/^break$/.test(text)){ st.i++; return {t:"break"}; }
   if(/^continue$/.test(text)){ st.i++; return {t:"continue"}; }
   if(/^pass$/.test(text)){ st.i++; return {t:"pass"}; }
+  if((m=/^raise\b(.*)$/.exec(text))){ st.i++; return {t:"raise",arg:m[1].trim()}; }
   st.i++;
   const aug=findAug(text);
   if(aug){ return {t:"assign",target:text.slice(0,aug.start).trim(),op:aug.op,expr:parseExpr(text.slice(aug.eqPos+1).trim())}; }
@@ -276,7 +286,7 @@ function tokenize(s){ const toks=[]; let k=0; const isId=c=>/[A-Za-z_]/.test(c),
     if(isD(c)||(c==="."&&isD(s[k+1]))){ let j=k,num=""; while(j<s.length&&/[0-9.]/.test(s[j])){num+=s[j];j++;} toks.push({t:"num",v:parseFloat(num)}); k=j; continue; }
     if(isId(c)){ let j=k,id=""; while(j<s.length&&isIdc(s[j])){id+=s[j];j++;}
       if(id==="True")toks.push({t:"bool",v:true}); else if(id==="False")toks.push({t:"bool",v:false}); else if(id==="None")toks.push({t:"none"});
-      else if(id==="and"||id==="or"||id==="not"||id==="in")toks.push({t:"kw",v:id}); else toks.push({t:"name",v:id}); k=j; continue; }
+      else if(id==="and"||id==="or"||id==="not"||id==="in"||id==="is")toks.push({t:"kw",v:id}); else toks.push({t:"name",v:id}); k=j; continue; }
     const two=s.slice(k,k+2); if(["==","!=",">=","<=","//","**"].includes(two)){toks.push({t:"op",v:two});k+=2;continue;}
     if("+-*/%<>()[]{}:,.".includes(c)){toks.push({t:"op",v:c});k++;continue;}
     throw pyError("SyntaxError: unexpected character '"+c+"'"); }
@@ -290,7 +300,15 @@ function eat(p,v){const t=p.toks[p.i];if(!t||(v&&!(t.v===v||t.t===v)))throw pyEr
 function parseOr(p){let l=parseAnd(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="or"){p.i++;l={t:"bin",op:"or",l,r:parseAnd(p)};}return l;}
 function parseAnd(p){let l=parseNot(p);while(peek(p)&&peek(p).t==="kw"&&peek(p).v==="and"){p.i++;l={t:"bin",op:"and",l,r:parseNot(p)};}return l;}
 function parseNot(p){if(peek(p)&&peek(p).t==="kw"&&peek(p).v==="not"){p.i++;return {t:"unary",op:"not",e:parseNot(p)};}return parseCmp(p);}
-function parseCmp(p){let l=parseAdd(p);while(peek(p)&&((peek(p).t==="op"&&["<",">","==","!=",">=","<="].includes(peek(p).v))||(peek(p).t==="kw"&&peek(p).v==="in"))){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseAdd(p)};}return l;}
+function parseCmp(p){let l=parseAdd(p);
+  while(peek(p)){ const t=peek(p); let op=null;
+    if(t.t==="op"&&["<",">","==","!=",">=","<="].includes(t.v)){op=t.v;p.i++;}
+    else if(t.t==="kw"&&t.v==="in"){op="in";p.i++;}
+    else if(t.t==="kw"&&t.v==="not"&&p.toks[p.i+1]&&p.toks[p.i+1].t==="kw"&&p.toks[p.i+1].v==="in"){op="notin";p.i+=2;}
+    else if(t.t==="kw"&&t.v==="is"){ p.i++; if(peek(p)&&peek(p).t==="kw"&&peek(p).v==="not"){p.i++;op="isnot";}else op="is"; }
+    else break;
+    l={t:"bin",op,l,r:parseAdd(p)}; }
+  return l;}
 function parseAdd(p){let l=parseMul(p);while(peek(p)&&peek(p).t==="op"&&(peek(p).v==="+"||peek(p).v==="-")){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseMul(p)};}return l;}
 function parseMul(p){let l=parseUnary(p);while(peek(p)&&peek(p).t==="op"&&["*","/","//","%"].includes(peek(p).v)){const op=peek(p).v;p.i++;l={t:"bin",op,l,r:parseUnary(p)};}return l;}
 function parseUnary(p){if(peek(p)&&peek(p).t==="op"&&peek(p).v==="-"){p.i++;return {t:"unary",op:"-",e:parseUnary(p)};}return parsePow(p);}
@@ -320,9 +338,37 @@ function parsePrimary(p){ const t=peek(p); if(!t)throw pyError("SyntaxError: une
     const first=parseOr(p);
     if(peek(p)&&peek(p).v===","){ const items=[first]; while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v===")")break;items.push(parseOr(p));} eat(p,")"); return {t:"tuple",items}; }
     eat(p,")");return first;}
-  if(t.t==="op"&&t.v==="["){p.i++;const items=[];if(!(peek(p)&&peek(p).v==="]")){items.push(parseOr(p));while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="]")break;items.push(parseOr(p));}}eat(p,"]");return {t:"list",items};}
-  if(t.t==="op"&&t.v==="{"){p.i++;const pairs=[];if(!(peek(p)&&peek(p).v==="}")){do{if(peek(p)&&peek(p).v==="}")break;const k=parseOr(p);eat(p,":");const v=parseOr(p);pairs.push([k,v]);}while(peek(p)&&peek(p).v===","&&(p.i++,true));}eat(p,"}");return {t:"dict",pairs};}
+  if(t.t==="op"&&t.v==="["){p.i++;
+    if(peek(p)&&peek(p).v==="]"){p.i++;return {t:"list",items:[]};}
+    const first=parseOr(p);
+    if(isKwName(peek(p),"for")){ const comp=parseComp(p); eat(p,"]"); return {t:"listcomp",expr:first,...comp}; }
+    const items=[first];
+    while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="]")break;items.push(parseOr(p));}
+    eat(p,"]");return {t:"list",items};}
+  if(t.t==="op"&&t.v==="{"){p.i++;
+    if(peek(p)&&peek(p).v==="}"){p.i++;return {t:"dict",pairs:[]};}
+    const k0=parseOr(p);
+    if(peek(p)&&peek(p).v===":"){ p.i++; const v0=parseOr(p);
+      if(isKwName(peek(p),"for")){ const comp=parseComp(p); eat(p,"}"); return {t:"dictcomp",key:k0,val:v0,...comp}; }
+      const pairs=[[k0,v0]];
+      while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="}")break;const k=parseOr(p);eat(p,":");const v=parseOr(p);pairs.push([k,v]);}
+      eat(p,"}");return {t:"dict",pairs};
+    }
+    if(isKwName(peek(p),"for")){ const comp=parseComp(p); eat(p,"}"); return {t:"setcomp",expr:k0,...comp}; }
+    const items=[k0];
+    while(peek(p)&&peek(p).v===","){p.i++;if(peek(p)&&peek(p).v==="}")break;items.push(parseOr(p));}
+    eat(p,"}");return {t:"set",items};}
   throw pyError("SyntaxError near '"+t.v+"'"); }
+function isKwName(tok,word){ return tok && tok.t==="name" && tok.v===word; }
+/* parse the "for <targets> in <iterable> [if <cond>]" tail of a comprehension */
+function parseComp(p){ eat(p,"name"); /* 'for' */ const targets=[eat(p,"name").v];
+  while(peek(p)&&peek(p).v===","){p.i++;targets.push(eat(p,"name").v);}
+  if(!(peek(p)&&peek(p).t==="kw"&&peek(p).v==="in")) throw pyError("SyntaxError: expected 'in' in comprehension");
+  p.i++; const iter=parseOr(p); let cond=null;
+  while(isKwName(peek(p),"if")){ p.i++; const c=parseOr(p); cond=cond?{t:"bin",op:"and",l:cond,r:c}:c; }
+  return {targets,iter,cond}; }
+function runComp(n,scope,G,emit){ const seq=iterate(evalExpr(n.iter,scope,G)); const local=Object.create(scope);
+  for(const item of seq){ bindTargets(n.targets,item,local); if(n.cond && !truthy(evalExpr(n.cond,local,G))) continue; emit(local); } }
 function execBlock(stmts,scope,G){ for(const s of stmts) execStmt(s,scope,G); }
 function execStmt(s,scope,G){ switch(s.t){
   case "assign":{ if(s.op){ const cur=readTarget(s.target,scope,G); const val=applyOp(s.op,cur,evalExpr(s.expr,scope,G)); writeTarget(s.target,val,scope,G); return; } const val=evalExpr(s.expr,scope,G); assignTo(s.target,val,scope,G); return; }
@@ -334,7 +380,22 @@ function execStmt(s,scope,G){ switch(s.t){
   case "for":{ const it=iterate(evalExpr(s.iter,scope,G)); for(const item of it){ bindTargets(s.targets,item,scope); try{ execBlock(s.body,scope,G); }catch(e){ if(e&&e.__brk)break; if(e&&e.__cont)continue; throw e; } } return; }
   case "while":{ let guard=0; while(truthy(evalExpr(s.cond,scope,G))){ try{ execBlock(s.body,scope,G); }catch(e){ if(e&&e.__brk)break; if(e&&e.__cont){ if(++guard>100000) throw pyError("RuntimeError: loop too long"); continue; } throw e; } if(++guard>100000) throw pyError("RuntimeError: loop too long"); } return; }
   case "def":{ scope[s.name]={__fn:true,params:s.params,body:s.body}; return; }
-  case "return":{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; } } }
+  case "return":{ throw {__ret:true,value:evalExpr(s.expr,scope,G)}; }
+  case "raise":{ throw makeRaise(s.arg,scope,G); }
+  case "try":{ let raised=null;
+    try{ execBlock(s.body,scope,G); }
+    catch(e){ if(e&&(e.__ret||e.__brk||e.__cont)){ if(s.fin)execBlock(s.fin,scope,G); throw e; } raised=e; }
+    if(raised){ const msg=raised.__pyerr?raised.message:((raised&&raised.message)||String(raised)); const etype=pyErrType(msg);
+      let handled=false;
+      for(const h of s.handlers){ if(h.type===null||h.type===etype||h.type==="Exception"||h.type==="BaseException"){ if(h.vname) scope[h.vname]=excMessage(msg); execBlock(h.body,scope,G); handled=true; break; } }
+      if(!handled){ if(s.fin)execBlock(s.fin,scope,G); throw raised; }
+    } else if(s.els){ execBlock(s.els,scope,G); }
+    if(s.fin) execBlock(s.fin,scope,G); return; } } }
+function pyErrType(msg){ const m=/^([A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration))\b/.exec(msg); return m?m[1]:"Exception"; }
+function excMessage(msg){ const m=/^[A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit|Iteration):\s?(.*)$/.exec(msg); return m?m[1]:""; }
+function makeRaise(arg,scope,G){ arg=arg.trim(); if(!arg) throw pyError("RuntimeError: No active exception to re-raise");
+  const m=/^([A-Za-z_]\w*)\s*(?:\((.*)\))?$/.exec(arg); if(!m) throw pyError("SyntaxError: bad raise");
+  let msg=m[1]; if(m[2]!=null && m[2].trim()){ const a=evalExpr(parseExpr(m[2].trim()),scope,G); msg=m[1]+": "+pyStr(a); } return pyError(msg); }
 function isName(t){ return /^[A-Za-z_]\w*$/.test(t); }
 /* Find the final top-level [..] in an assignment target → {base, idx}, else null. */
 function idxMatch(t){ if(t[t.length-1]!=="]") return null; let depth=0;
@@ -357,9 +418,9 @@ function applyOp(op,a,b){ switch(op){
   case "+": if(typeof a==="string"||typeof b==="string"){ if(typeof a!=="string"||typeof b!=="string") throw pyError("TypeError: str + non-str"); return a+b; } if(Array.isArray(a)&&Array.isArray(b)) return a.concat(b); return a+b;
   case "-": return a-b;
   case "*": if(typeof a==="string"&&typeof b==="number") return a.repeat(b); if(typeof a==="number"&&typeof b==="string") return b.repeat(a); return a*b;
-  case "/": return a/b;
-  case "//": return Math.floor(a/b);
-  case "%": return ((a%b)+b)%b;
+  case "/": if(b===0) throw pyError("ZeroDivisionError: division by zero"); return a/b;
+  case "//": if(b===0) throw pyError("ZeroDivisionError: integer division or modulo by zero"); return Math.floor(a/b);
+  case "%": if(b===0) throw pyError("ZeroDivisionError: integer division or modulo by zero"); return ((a%b)+b)%b;
   case "**": return Math.pow(a,b); }
   throw pyError("SyntaxError: bad operator"); }
 function bindTargets(targets,item,scope){ if(targets.length===1){ scope[targets[0]]=item; } else { if(!Array.isArray(item)||item.length!==targets.length) throw pyError("ValueError: cannot unpack"); targets.forEach((t,i)=>scope[t]=item[i]); } }
@@ -370,7 +431,11 @@ function evalExpr(n,scope,G){ switch(n.t){
   case "name": return lookup(n.v,scope,G);
   case "list": return n.items.map(x=>evalExpr(x,scope,G));
   case "tuple": return mkTuple(n.items.map(x=>evalExpr(x,scope,G)));
+  case "set":{ const arr=mkSet([]); for(const x of n.items) setAdd(arr,evalExpr(x,scope,G)); return arr; }
   case "dict":{ const m=new Map(); for(const [k,v] of n.pairs) m.set(evalExpr(k,scope,G),evalExpr(v,scope,G)); return m; }
+  case "listcomp":{ const out=[]; runComp(n,scope,G,loc=>out.push(evalExpr(n.expr,loc,G))); return out; }
+  case "setcomp":{ const arr=mkSet([]); runComp(n,scope,G,loc=>setAdd(arr,evalExpr(n.expr,loc,G))); return arr; }
+  case "dictcomp":{ const m=new Map(); runComp(n,scope,G,loc=>m.set(evalExpr(n.key,loc,G),evalExpr(n.val,loc,G))); return m; }
   case "unary":{ const v=evalExpr(n.e,scope,G); if(n.op==="-") return -v; if(n.op==="not") return !truthy(v); return; }
   case "bin": return evalBin(n,scope,G);
   case "index":{ const o=evalExpr(n.obj,scope,G); const i=evalExpr(n.idx,scope,G);
@@ -389,13 +454,17 @@ function evalBin(n,scope,G){ const op=n.op;
     case "+": if(typeof a==="string"||typeof b==="string"){ if(typeof a!=="string"||typeof b!=="string") throw pyError("TypeError: str + non-str"); return a+b; } if(Array.isArray(a)&&Array.isArray(b)) return a.concat(b); return a+b;
     case "-": return a-b;
     case "*": if(typeof a==="string"&&typeof b==="number") return a.repeat(b); if(typeof a==="number"&&typeof b==="string") return b.repeat(a); return a*b;
-    case "/": return a/b;
-    case "//": return Math.floor(a/b);
+    case "/": if(b===0) throw pyError("ZeroDivisionError: division by zero"); return a/b;
+    case "//": if(b===0) throw pyError("ZeroDivisionError: integer division or modulo by zero"); return Math.floor(a/b);
     case "**": return Math.pow(a,b);
-    case "%": return ((a%b)+b)%b;
+    case "%": if(b===0) throw pyError("ZeroDivisionError: integer division or modulo by zero"); return ((a%b)+b)%b;
     case "<": return a<b; case ">": return a>b; case "<=": return a<=b; case ">=": return a>=b;
     case "==": return pyEq(a,b); case "!=": return !pyEq(a,b);
-    case "in":{ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b==="string") return b.includes(a); return false; } } }
+    case "in": return pyIn(a,b);
+    case "notin": return !pyIn(a,b);
+    case "is": return a===b || (a===null&&b===null);
+    case "isnot": return !(a===b || (a===null&&b===null)); } }
+function pyIn(a,b){ if(Array.isArray(b)) return b.some(x=>pyEq(x,a)); if(b instanceof Map) return b.has(a); if(typeof b==="string") return b.includes(a); throw pyError("TypeError: argument is not iterable"); }
 function evalCall(n,scope,G){
   if(n.fn.t==="attr"){ const obj=evalExpr(n.fn.obj,scope,G); const args=n.args.map(a=>evalExpr(a,scope,G)); return callMethod(obj,n.fn.name,args); }
   if(n.fn.t==="name"){ const name=n.fn.v; const args=n.args.map(a=>evalExpr(a,scope,G));
@@ -414,7 +483,8 @@ function evalCall(n,scope,G){
     if(name==="reversed"){ return iterate(args[0]).slice().reverse(); }
     if(name==="list"){ return args.length?iterate(args[0]).slice():[]; }
     if(name==="tuple"){ return mkTuple(args.length?iterate(args[0]).slice():[]); }
-    if(name==="set"){ const seen=[]; (args.length?iterate(args[0]):[]).forEach(x=>{ if(!seen.some(y=>pyEq(y,x)))seen.push(x); }); return seen; }
+    if(name==="set"){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
+    if(name==="frozenset"){ const s=mkSet([]); (args.length?iterate(args[0]):[]).forEach(x=>setAdd(s,x)); return s; }
     if(name==="zip"){ const seqs=args.map(iterate); const nn=seqs.length?Math.min.apply(null,seqs.map(s=>s.length)):0; const r=[]; for(let i=0;i<nn;i++) r.push(mkTuple(seqs.map(s=>s[i]))); return r; }
     if(name==="any"){ return iterate(args[0]).some(truthy); }
     if(name==="all"){ return iterate(args[0]).every(truthy); }
@@ -426,6 +496,19 @@ function callUser(fn,args,G){ if(!fn||!fn.__fn) throw pyError("TypeError: not ca
   fn.params.forEach((p,i)=>{ if(i<args.length) local[p.name]=args[i]; else if(p.def!==null) local[p.name]=evalExpr(p.def,local,G); else throw pyError("TypeError: missing arg '"+p.name+"'"); });
   try{ execBlock(fn.body,local,G); }catch(e){ if(e&&e.__ret) return e.value; throw e; } return null; }
 function callMethod(obj,name,args){
+  if(isSet(obj)){
+    if(name==="add"){ setAdd(obj,args[0]); return null; }
+    if(name==="discard"){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p>=0)obj.splice(p,1); return null; }
+    if(name==="remove"){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError("KeyError: "+pyRepr(args[0])); obj.splice(p,1); return null; }
+    if(name==="clear"){ obj.length=0; return null; }
+    if(name==="pop"){ if(!obj.length) throw pyError("KeyError: 'pop from an empty set'"); return obj.shift(); }
+    if(name==="union"){ const r=mkSet(obj.slice()); mkSet(r); iterate(args[0]).forEach(x=>setAdd(r,x)); return r; }
+    if(name==="intersection"){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name==="difference"){ const other=iterate(args[0]); const r=mkSet([]); obj.forEach(x=>{ if(!other.some(y=>pyEq(y,x)))setAdd(r,x); }); return r; }
+    if(name==="update"){ iterate(args[0]).forEach(x=>setAdd(obj,x)); return null; }
+    if(name==="issubset"){ const other=iterate(args[0]); return obj.every(x=>other.some(y=>pyEq(y,x))); }
+    if(name==="issuperset"){ const other=iterate(args[0]); return other.every(x=>obj.some(y=>pyEq(y,x))); }
+    throw pyError("AttributeError: set."+name); }
   if(Array.isArray(obj)){ if(name==="append"){obj.push(args[0]);return null;} if(name==="pop"){ if(args.length){ let i=args[0]<0?obj.length+args[0]:args[0]; if(i<0||i>=obj.length) throw pyError("IndexError: pop index out of range"); return obj.splice(i,1)[0]; } if(!obj.length) throw pyError("IndexError: pop from empty list"); return obj.pop(); } if(name==="count"){return obj.filter(x=>pyEq(x,args[0])).length;} if(name==="sort"){obj.sort((x,y)=>pyCmp(x,y));return null;} if(name==="reverse"){obj.reverse();return null;} if(name==="index"){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError("ValueError: not in list"); return p; } if(name==="insert"){ let i=args[0]; if(i<0)i+=obj.length; if(i<0)i=0; if(i>obj.length)i=obj.length; obj.splice(i,0,args[1]); return null; } if(name==="extend"){ iterate(args[0]).forEach(x=>obj.push(x)); return null; } if(name==="remove"){ const p=obj.findIndex(x=>pyEq(x,args[0])); if(p<0) throw pyError("ValueError: list.remove(x): x not in list"); obj.splice(p,1); return null; } if(name==="clear"){ obj.length=0; return null; } throw pyError("AttributeError: list."+name); }
   if(obj instanceof Map){ if(name==="items")return Array.from(obj.entries()).map(([k,v])=>mkTuple([k,v])); if(name==="keys")return Array.from(obj.keys()); if(name==="values")return Array.from(obj.values()); if(name==="get")return obj.has(args[0])?obj.get(args[0]):(args.length>1?args[1]:null); if(name==="pop"){ if(obj.has(args[0])){const v=obj.get(args[0]);obj.delete(args[0]);return v;} if(args.length>1)return args[1]; throw pyError("KeyError: "+pyRepr(args[0])); } if(name==="update"){ const o=args[0]; if(o instanceof Map)o.forEach((v,k)=>obj.set(k,v)); return null; } throw pyError("AttributeError: dict."+name); }
   if(typeof obj==="string"){ if(name==="upper")return obj.toUpperCase(); if(name==="lower")return obj.toLowerCase(); if(name==="title")return obj.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); if(name==="capitalize")return obj.charAt(0).toUpperCase()+obj.slice(1).toLowerCase(); if(name==="count"){let c=0,i=0;while((i=obj.indexOf(args[0],i))>=0){c++;i+=Math.max(1,args[0].length);}return c;}
@@ -446,15 +529,18 @@ function callMethod(obj,name,args){
     throw pyError("AttributeError: str."+name); }
   throw pyError("AttributeError"); }
 function mkTuple(arr){ Object.defineProperty(arr,"__tuple",{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function mkSet(arr){ Object.defineProperty(arr,"__set",{value:true,enumerable:false,writable:true,configurable:true}); return arr; }
+function setAdd(s,v){ if(!s.some(x=>pyEq(x,v))) s.push(v); }
+function isSet(v){ return Array.isArray(v)&&v.__set; }
 function stripChars(s,chars,left,right){ let a=0,b=s.length; if(left){while(a<b&&chars.indexOf(s[a])>=0)a++;} if(right){while(b>a&&chars.indexOf(s[b-1])>=0)b--;} return s.slice(a,b); }
-function pyType(v){ if(typeof v==="number")return Number.isInteger(v)?"int":"float"; if(typeof v==="string")return "str"; if(typeof v==="boolean")return "bool"; if(Array.isArray(v))return v.__tuple?"tuple":"list"; if(v instanceof Map)return "dict"; if(v===null)return "NoneType"; return "object"; }
+function pyType(v){ if(typeof v==="number")return Number.isInteger(v)?"int":"float"; if(typeof v==="string")return "str"; if(typeof v==="boolean")return "bool"; if(Array.isArray(v))return v.__set?"set":v.__tuple?"tuple":"list"; if(v instanceof Map)return "dict"; if(v===null)return "NoneType"; return "object"; }
 function pyCmp(a,b){ if(typeof a==="string"&&typeof b==="string")return a<b?-1:a>b?1:0; if(Array.isArray(a)&&Array.isArray(b)){ for(let i=0;i<Math.min(a.length,b.length);i++){const c=pyCmp(a[i],b[i]);if(c)return c;} return a.length-b.length; } return a-b; }
 function evalFString(raw,scope,G){ let res="",i=0; while(i<raw.length){ const c=raw[i];
   if(c==="{"){ if(raw[i+1]==="{"){res+="{";i+=2;continue;} let j=i+1,depth=1,ex=""; while(j<raw.length&&depth>0){const d=raw[j];if(d==="{")depth++;else if(d==="}"){depth--;if(depth===0)break;}ex+=d;j++;} res+=pyStr(evalExpr(parseExpr(ex),scope,G)); i=j+1; }
   else if(c==="}"){ if(raw[i+1]==="}"){res+="}";i+=2;continue;} i++; } else { res+=c; i++; } } return res; }
 function truthy(v){ if(v===null||v===false)return false; if(v===0||v==="")return false; if(Array.isArray(v))return v.length>0; if(v instanceof Map)return v.size>0; return true; }
-function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((x,i)=>pyEq(x,b[i])); return a===b; }
-function pyStr(v){ if(v===null)return "None"; if(v===true)return "True"; if(v===false)return "False"; if(typeof v==="number")return String(v); if(typeof v==="string")return v; if(Array.isArray(v)&&v.__tuple)return v.length===1?"("+pyRepr(v[0])+",)":"("+v.map(pyRepr).join(", ")+")"; if(Array.isArray(v))return "["+v.map(pyRepr).join(", ")+"]"; if(v instanceof Map)return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}"; if(v&&v.__fn)return "<function>"; return String(v); }
+function pyEq(a,b){ if(Array.isArray(a)&&Array.isArray(b)){ const ak=a.__set?"set":a.__tuple?"tuple":"list", bk=b.__set?"set":b.__tuple?"tuple":"list"; if(ak!==bk) return false; if(ak==="set") return a.length===b.length&&a.every(x=>b.some(y=>pyEq(y,x))); return a.length===b.length&&a.every((x,i)=>pyEq(x,b[i])); } return a===b; }
+function pyStr(v){ if(v===null)return "None"; if(v===true)return "True"; if(v===false)return "False"; if(typeof v==="number")return String(v); if(typeof v==="string")return v; if(Array.isArray(v)&&v.__set)return v.length===0?"set()":"{"+v.map(pyRepr).join(", ")+"}"; if(Array.isArray(v)&&v.__tuple)return v.length===1?"("+pyRepr(v[0])+",)":"("+v.map(pyRepr).join(", ")+")"; if(Array.isArray(v))return "["+v.map(pyRepr).join(", ")+"]"; if(v instanceof Map)return "{"+Array.from(v.entries()).map(([k,val])=>pyRepr(k)+": "+pyRepr(val)).join(", ")+"}"; if(v&&v.__fn)return "<function>"; return String(v); }
 function pyRepr(v){ if(typeof v==="string")return "'"+v+"'"; return pyStr(v); }
 function iterate(v){ if(Array.isArray(v))return v; if(typeof v==="string")return v.split(""); if(v instanceof Map)return Array.from(v.keys()); throw pyError("TypeError: not iterable"); }
 /* Python slice semantics (mirrors CPython's slice.indices) */
