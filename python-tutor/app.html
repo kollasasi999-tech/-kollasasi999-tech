@@ -113,7 +113,7 @@
   <header class=&quot;top&quot;>
     <div class=&quot;kicker&quot;>guided beginner path</div>
     <h1>Learn <span class=&quot;glow&quot;>Python</span></h1>
-    <p class=&quot;sub&quot;>Eight short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
+    <p class=&quot;sub&quot;>Thirteen short lessons. Each one teaches an idea, shows it running, then you try it — read, predict, and write.</p>
   </header>
   <div class=&quot;nav&quot;>
     
@@ -133,11 +133,16 @@
    COMPUTE the correct output of every generated program, so the
    game's answers are always right. Cross-checked against real
    CPython during development. Supports: print, variables,
-   f-strings, + - * // % **, comparisons, and/or/not, in, lists,
-   indexing, .append, len, sum, min, max, abs, round, dicts,
-   .items/.get/.keys/.values, range, for, while, if/elif/else,
-   def/return (defaults), .upper/.lower/.title/.count, comments.
-   (Intentionally avoids true division / and slicing.)
+   f-strings, + - * // % **, augmented assignment (+= -= *= //= %= **=),
+   comparisons, and/or/not, in, lists, tuples &amp; unpacking, indexing,
+   slicing, item assignment, break/continue/pass, dicts, range, for,
+   while, if/elif/else, def/return (defaults), and many builtins
+   (len, sum, min, max, abs, round, sorted, reversed, zip, enumerate,
+   any, all, list, tuple, set, bool) plus string methods (upper, lower,
+   title, split, join, replace, strip, startswith, find, ...) and list
+   methods (append, pop, sort, reverse, insert, index, extend, remove).
+   (Numbers are unified — no separate float type — so it avoids true
+   division / and float-precision cases like round(x, n).)
    ============================================================ */
 function pyError(msg){const e=new Error(msg);e.__pyerr=true;return e;}
 function toLogicalLines(src){
